@@ -1,0 +1,6 @@
+@OnlineOD_HostAddress = http://localhost:5183
+
+GET {{OnlineOD_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

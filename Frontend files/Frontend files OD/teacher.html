@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="OD Application - Teacher Dashboard for managing student On Duty requests">
+    <title>OD Application | Teacher Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="teacher.css">
+</head>
+<body>
+
+    <!-- Background -->
+    <div class="bg-animation">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="app-layout">
+
+        <!-- ============================================
+             Sidebar
+             ============================================ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 64 64" fill="none">
+                            <rect x="8" y="8" width="48" height="48" rx="12" stroke="white" stroke-width="3"/>
+                            <path d="M20 32L28 40L44 24" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <span class="logo-text">OD Application</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-label">OD Requests</div>
+                <button class="nav-item active" data-filter="pending" id="navPending">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Pending</span>
+                    <span class="nav-badge pending" id="pendingCount">4</span>
+                </button>
+                <button class="nav-item" data-filter="approved" id="navApproved">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Accepted</span>
+                    <span class="nav-badge approved" id="approvedCount">2</span>
+                </button>
+                <button class="nav-item" data-filter="rejected" id="navRejected">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Rejected</span>
+                    <span class="nav-badge rejected" id="rejectedCount">1</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-sidebar-btn" id="logoutBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ============================================
+             Main Content
+             ============================================ -->
+        <div class="main-content">
+
+            <!-- Mobile Header -->
+            <div class="mobile-topbar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle sidebar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="mobile-title">Teacher Dashboard</span>
+            </div>
+
+            <!-- Teacher Info Header -->
+            <header class="teacher-header" id="teacherHeader">
+                <div class="header-top">
+                    <div class="teacher-profile">
+                        <div class="teacher-avatar" id="teacherAvatar">
+                            <span>D</span>
+                        </div>
+                        <div class="teacher-info">
+                            <h1 class="teacher-name" id="teacherName">Dr. Ramesh Kumar</h1>
+                            <p class="teacher-role">Faculty / Class Advisor</p>
+                        </div>
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat-pill" id="statTotal">
+                            <span class="stat-number">7</span>
+                            <span class="stat-label">Total</span>
+                        </div>
+                        <div class="stat-pill pending-stat" id="statPending">
+                            <span class="stat-number">4</span>
+                            <span class="stat-label">Pending</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="teacher-details-row">
+                    <div class="teacher-detail">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span class="td-label">Employee ID:</span>
+                        <span class="td-value" id="teacherID">FAC2045</span>
+                    </div>
+                    <div class="teacher-detail">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                        </svg>
+                        <span class="td-label">Department:</span>
+                        <span class="td-value" id="teacherDept">Computer Science & Engineering</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="section-title" id="sectionTitle">
+                <h2>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Pending OD Requests
+                </h2>
+                <div class="section-actions">
+                    <span class="section-count" id="sectionCount">4 requests</span>
+                    <button class="refresh-btn" id="refreshBtn" title="Refresh requests">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Box (shown only for approved/rejected) -->
+            <div class="search-box" id="searchBox" style="display:none">
+                <div class="search-input-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search by register number..." autocomplete="off">
+                    <button id="clearSearch" style="display:none">&#x2715;</button>
+                </div>
+            </div>
+
+            <!-- OD Request Cards -->
+            <div class="requests-container" id="requestsContainer">
+                <!-- Cards populated by JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display:none">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </div>
+                <h3>No OD Requests Here</h3>
+                <p>No requests found in this category.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="confirmModal">
+            <div class="modal-icon" id="modalIcon"></div>
+            <h3 id="modalTitle">Confirm Action</h3>
+            <p id="modalMessage">Are you sure you want to proceed?</p>
+            <div class="modal-details" id="modalDetails"></div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" id="modalCancel">Cancel</button>
+                <button class="modal-btn confirm" id="modalConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="store.js"></script>
+    <script src="teacher.js"></script>
+</body>
+</html>
