@@ -21,7 +21,7 @@ namespace OnlineOD.Service
         }
 
         // Get OD application by ID
-        public async Task<OdApply> GetOdApplyByIdAsync(int id)
+        public async Task<OdApply?> GetOdApplyByIdAsync(int id)
         {
             return await _context.OdApplies.FindAsync(id);
         }
@@ -80,22 +80,19 @@ namespace OnlineOD.Service
         }
 
         // Update faculty status of an OD application
-        public async Task<OdApply> UpdateFacultyStatusAsync(int odId, string status)
+        public async Task<OdApply?> UpdateFacultyStatusAsync(int odId, string status)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
-
             od.FacultyStatus = status;
             await _context.SaveChangesAsync();
             return od;
         }
 
-        // Update HOD status of an OD application
-        public async Task<OdApply> UpdateHodStatusAsync(int odId, string status)
+        public async Task<OdApply?> UpdateHodStatusAsync(int odId, string status)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
-
             od.HodStatus = status;
             await _context.SaveChangesAsync();
             return od;
@@ -111,6 +108,13 @@ namespace OnlineOD.Service
             _context.OdApplies.Remove(od);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // In OdApplyService.cs
+        public async Task UpdateCertificateAsync(OdApply od)
+        {
+            _context.OdApplies.Update(od);
+            await _context.SaveChangesAsync();
         }
     }
 }

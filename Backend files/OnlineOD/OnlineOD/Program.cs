@@ -19,8 +19,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -45,6 +43,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseStaticFiles();          // ← needed for /uploads/ certificate files
 app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
