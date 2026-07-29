@@ -61,12 +61,13 @@ namespace OnlineOD.Service
 
         // this will check the staff details in my database for login
         public async Task<Staff> LoginAsync(string username, string password)
-        {
-            return await _context.Staffs
+            {
+           return  await _context.Staffs
                 .FirstOrDefaultAsync(s =>
                     s.Name == username &&
                     s.Password == password);
-        }
-       
+
+           }
+
     }
 }
