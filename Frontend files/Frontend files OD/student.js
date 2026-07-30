@@ -300,6 +300,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
+    // ── Auto-refresh status while tab is open ──
+    let statusPollInterval = null;
+    function startStatusPolling() {
+        if (statusPollInterval) clearInterval(statusPollInterval);
+        statusPollInterval = setInterval(() => {
+            if (document.getElementById('apply-status')?.classList.contains('active')) {
+                loadODStatus();
+            }
+        }, 15000); // every 15 seconds
+    }
+    startStatusPolling();
 
     // ── Filter buttons ──
     document.querySelectorAll('.filter-btn').forEach(btn => {
