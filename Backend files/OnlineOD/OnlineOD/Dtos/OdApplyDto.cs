@@ -16,5 +16,6 @@
         // Group OD fields
         public bool IsGroupOd { get; set; } = false;
         public string? GroupName { get; set; }
+        public string? RegisterNumbers { get; set; } // comma-separated list of member register numbers
     }
 }
