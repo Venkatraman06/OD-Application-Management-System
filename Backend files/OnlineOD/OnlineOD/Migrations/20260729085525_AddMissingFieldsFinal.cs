@@ -6,11 +6,19 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace OnlineOD.Migrations
 {
     /// <inheritdoc />
-    public partial class AddGroupAndCertificateFields : Migration
+    public partial class AddMissingFieldsFinal : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "DOB",
+                table: "OdApplies");
+
+            migrationBuilder.DropColumn(
+                name: "semester",
+                table: "OdApplies");
+
             migrationBuilder.RenameColumn(
                 name: "rollnumber",
                 table: "Staffs",
@@ -31,6 +39,13 @@ namespace OnlineOD.Migrations
                 nullable: false,
                 oldClrType: typeof(int),
                 oldType: "int");
+
+            migrationBuilder.AddColumn<string>(
+                name: "Email",
+                table: "Staffs",
+                type: "nvarchar(max)",
+                nullable: false,
+                defaultValue: "");
 
             migrationBuilder.AlterColumn<string>(
                 name: "registerNumber",
@@ -120,11 +135,22 @@ namespace OnlineOD.Migrations
                 table: "OdApplies",
                 type: "nvarchar(max)",
                 nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "Email",
+                table: "Hods",
+                type: "nvarchar(max)",
+                nullable: false,
+                defaultValue: "");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "Email",
+                table: "Staffs");
+
             migrationBuilder.DropColumn(
                 name: "CertificatePhotoUrl",
                 table: "OdApplies");
@@ -140,6 +166,10 @@ namespace OnlineOD.Migrations
             migrationBuilder.DropColumn(
                 name: "WinningStatus",
                 table: "OdApplies");
+
+            migrationBuilder.DropColumn(
+                name: "Email",
+                table: "Hods");
 
             migrationBuilder.RenameColumn(
                 name: "RollNumber",
@@ -241,6 +271,20 @@ namespace OnlineOD.Migrations
                 oldClrType: typeof(string),
                 oldType: "nvarchar(max)",
                 oldNullable: true);
+
+            migrationBuilder.AddColumn<DateOnly>(
+                name: "DOB",
+                table: "OdApplies",
+                type: "date",
+                nullable: false,
+                defaultValue: new DateOnly(1, 1, 1));
+
+            migrationBuilder.AddColumn<int>(
+                name: "semester",
+                table: "OdApplies",
+                type: "int",
+                nullable: false,
+                defaultValue: 0);
         }
     }
 }
