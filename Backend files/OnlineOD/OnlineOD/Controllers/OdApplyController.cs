@@ -53,13 +53,16 @@ namespace OnlineOD.Controllers
         {
             var all = await _service.GetAllOdApplyAsync();
 
-            // Match ODs where this register number is the applicant OR is listed in GroupName
+            var target = registerNumber.Trim().ToLower();
+
+            // Match ODs where this register number is the applicant OR is listed in RegisterNumbers
             var matched = all.Where(o =>
                 (o.registerNumber != null &&
-                 o.registerNumber.Trim().ToLower() == registerNumber.Trim().ToLower())
+                 o.registerNumber.Trim().ToLower() == target)
                 ||
-                (o.IsGroupOd && o.GroupName != null &&
-                 o.GroupName.ToLower().Contains(registerNumber.Trim().ToLower()))
+                (o.IsGroupOd && o.RegisterNumbers != null &&
+                 o.RegisterNumbers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                  .Any(r => r.ToLower() == target))
             )
             .OrderByDescending(o => o.AppliedDate)
             .ToList();

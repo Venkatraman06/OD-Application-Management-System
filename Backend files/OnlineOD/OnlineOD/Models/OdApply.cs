@@ -21,8 +21,10 @@ namespace OnlineOD.Models
         public string HodStatus { get; set; } = "Pending";
 
         // Feature 1 — Group OD
+        // Feature 1 — Group OD
         public bool IsGroupOd { get; set; } = false;
         public string? GroupName { get; set; }
+        public string? RegisterNumbers { get; set; } // comma-separated list of member register numbers
 
         // Feature 3 — Winning certificate
         public string? WinningStatus { get; set; }

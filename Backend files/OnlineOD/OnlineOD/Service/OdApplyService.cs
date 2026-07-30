@@ -72,8 +72,13 @@ namespace OnlineOD.Service
                 AppliedDate = DateTime.Now,
                 FacultyStatus = "Pending",
                 HodStatus = "Pending",
-                IsGroupOd = dto.IsGroupOd,        // ADD THIS
-                GroupName = dto.GroupName          // ADD THIS
+
+                
+
+                IsGroupOd = dto.IsGroupOd,
+                GroupName = dto.GroupName,
+                RegisterNumbers = dto.RegisterNumbers
+
             };
 
 
