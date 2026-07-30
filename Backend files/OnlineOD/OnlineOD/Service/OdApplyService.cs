@@ -71,8 +71,11 @@ namespace OnlineOD.Service
                 CollegeIndustry = dto.CollegeIndustry,
                 AppliedDate = DateTime.Now,
                 FacultyStatus = "Pending",
-                HodStatus = "Pending"
+                HodStatus = "Pending",
+                IsGroupOd = dto.IsGroupOd,        // ADD THIS
+                GroupName = dto.GroupName          // ADD THIS
             };
+
 
             _context.OdApplies.Add(od);
             await _context.SaveChangesAsync();
