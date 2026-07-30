@@ -292,6 +292,109 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // ── OD Detail Modal ──
+    const odModal = document.getElementById('odDetailModal');
+
+    document.getElementById('modalCloseBtn')?.addEventListener('click', closeOdModal);
+    odModal?.addEventListener('click', (e) => {
+        if (e.target === odModal) closeOdModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && odModal && odModal.style.display !== 'none') closeOdModal();
+    });
+
+    function closeOdModal() {
+        if (odModal) odModal.style.display = 'none';
+    }
+
+    function openOdModal(od) {
+        const facultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
+        const hodStatus     = od.HodStatus     ?? od.hodStatus     ?? 'Pending';
+        const eventName     = od.Event         ?? od.event         ?? '';
+        const college       = od.CollegeIndustry ?? od.collegeIndustry ?? '';
+        const fromDate      = od.FromDate      ?? od.fromDate      ?? '';
+        const toDate        = od.ToDate        ?? od.toDate        ?? '';
+        const numDays       = od.NumberOfDays  ?? od.numberOfDays  ?? '';
+        const reason        = od.Reason        ?? od.reason        ?? '';
+        const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
+        const groupName     = od.GroupName     ?? od.groupName     ?? '';
+        const regNumbersRaw = od.RegisterNumbers ?? od.registerNumbers ?? '';
+        const winningStatus = od.WinningStatus ?? od.winningStatus ?? '';
+        const certUrl       = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? '';
+
+        setEl('modalEventName', eventName || 'OD Request');
+        setEl('modalCollege', college || '-');
+        setEl('modalFromDate', fmtDate(fromDate));
+        setEl('modalToDate', fmtDate(toDate));
+        setEl('modalDays', numDays || '-');
+        setEl('modalReason', reason || 'No reason provided');
+
+        const overall = overallKey(facultyStatus, hodStatus);
+        const overallBadge = document.getElementById('modalOverallBadge');
+        if (overallBadge) {
+            overallBadge.className = `badge-${overall}`;
+            overallBadge.textContent = overallLabel(facultyStatus, hodStatus);
+        }
+
+        const facBadge = document.getElementById('modalFacultyStatus');
+        if (facBadge) {
+            facBadge.className = `badge-${bdg(facultyStatus)}`;
+            facBadge.textContent = facultyStatus;
+        }
+
+        const hodBadge = document.getElementById('modalHodStatus');
+        if (hodBadge) {
+            hodBadge.className = `badge-${bdg(hodStatus)}`;
+            hodBadge.textContent = hodStatus;
+        }
+
+        // Group section
+        const groupSection = document.getElementById('modalGroupSection');
+        if (isGroup) {
+            setEl('modalGroupName', groupName || '-');
+            const membersDiv = document.getElementById('modalMembers');
+            if (membersDiv) {
+                const members = regNumbersRaw
+                    .split(',')
+                    .map(r => r.trim())
+                    .filter(r => r.length > 0);
+                membersDiv.innerHTML = members.length
+                    ? members.map(m => `<span>${escapeHtml(m)}</span>`).join('')
+                    : '<span>No members listed</span>';
+            }
+            if (groupSection) groupSection.style.display = 'flex';
+        } else {
+            if (groupSection) groupSection.style.display = 'none';
+        }
+
+        // Certificate / winning status section
+        const certSection = document.getElementById('modalCertSection');
+        if (winningStatus || certUrl) {
+            setEl('modalWinningStatus', winningStatus || 'Not submitted yet');
+            const certImg = document.getElementById('modalCertImage');
+            if (certImg) {
+                if (certUrl) {
+                    certImg.src = certUrl.startsWith('http') ? certUrl : `${API_BASE}${certUrl}`;
+                    certImg.style.display = 'block';
+                } else {
+                    certImg.style.display = 'none';
+                    certImg.removeAttribute('src');
+                }
+            }
+            if (certSection) certSection.style.display = 'flex';
+        } else {
+            if (certSection) certSection.style.display = 'none';
+        }
+
+        if (odModal) odModal.style.display = 'flex';
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     // ── Load OD Status (solo + group, via register number) ──
     async function loadODStatus() {
         const list  = document.getElementById('statusList');
@@ -319,6 +422,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const ods = await res.json();
             console.log('ODs received from API:', ods);
 
+            // Store the full list so card clicks can look up full details without refetching
+            window.currentOdList = ods;
+
             if (!ods || ods.length === 0) {
                 list.innerHTML = '';
                 if (empty) empty.style.display = 'flex';
@@ -337,6 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const numDays       = od.NumberOfDays  ?? od.numberOfDays  ?? '';
                 const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
                 const groupName     = od.GroupName     ?? od.groupName     ?? '';
+                const odId          = od.OdId          ?? od.odId          ?? '';
 
                 const overall = overallKey(facultyStatus, hodStatus);
                 const groupTag = isGroup
@@ -344,7 +451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '';
 
                 return `
-                <div class="od-status-card" data-overall="${overall}">
+                <div class="od-status-card" data-overall="${overall}" data-odid="${odId}" style="cursor:pointer">
                     <div class="card-top">
                         <div>
                             <h4>${eventName} ${groupTag}</h4>
@@ -369,6 +476,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>`;
             }).join('');
+
+            // Wire up click handlers to open the modal
+            document.querySelectorAll('.od-status-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const odId = card.dataset.odid;
+                    const match = (window.currentOdList || []).find(o => {
+                        const id = o.OdId ?? o.odId ?? '';
+                        return String(id) === String(odId);
+                    });
+                    if (match) openOdModal(match);
+                });
+            });
 
             const activeFilter = document.querySelector('.filter-btn.active');
             if (activeFilter) filterCards(activeFilter.dataset.filter);
