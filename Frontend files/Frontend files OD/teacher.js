@@ -137,6 +137,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('refreshBtn')?.addEventListener('click', loadODs);
+    // ── Auto-refresh so HOD/email-approved changes reflect without manual refresh ──
+    setInterval(loadODs, 15000);
 
     window.approveOD = async (odId, name) => { if (confirm(`Approve OD for ${name}?`)) await updateStatus(odId, 'Approved'); };
     window.rejectOD  = async (odId, name) => { if (confirm(`Reject OD for ${name}?`))  await updateStatus(odId, 'Rejected'); };
