@@ -12,8 +12,8 @@ using OnlineOD.Data;
 namespace OnlineOD.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260628073558_AddGroupAndCertificateFields")]
-    partial class AddGroupAndCertificateFields
+    [Migration("20260729085525_AddMissingFieldsFinal")]
+    partial class AddMissingFieldsFinal
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
