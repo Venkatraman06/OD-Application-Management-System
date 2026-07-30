@@ -12,19 +12,14 @@
 </head>
 <body>
 
-    <!-- Background -->
     <div class="bg-animation">
         <div class="floating-shape shape-1"></div>
         <div class="floating-shape shape-2"></div>
         <div class="floating-shape shape-3"></div>
     </div>
 
-    <!-- Main App Container -->
     <div class="app-container">
 
-        <!-- ============================================
-             Header - Student Profile
-             ============================================ -->
         <header class="student-header" id="studentHeader">
             <div class="header-content">
                 <div class="profile-section">
@@ -46,7 +41,6 @@
                 </button>
             </div>
 
-            <!-- Student Details Cards -->
             <div class="details-grid">
                 <div class="detail-card">
                     <div class="detail-icon">
@@ -89,9 +83,6 @@
             </div>
         </header>
 
-        <!-- ============================================
-             Navigation Tabs
-             ============================================ -->
         <nav class="tab-nav" id="tabNav">
             <button class="tab-btn active" data-tab="od-apply" id="tabOdApply">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -101,6 +92,15 @@
                     <line x1="9" y1="15" x2="15" y2="15"/>
                 </svg>
                 <span>OD Apply</span>
+            </button>
+            <button class="tab-btn" data-tab="group-od-apply" id="tabGroupOdApply">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Group OD Apply</span>
             </button>
             <button class="tab-btn" data-tab="apply-status" id="tabApplyStatus">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -114,9 +114,6 @@
             <div class="tab-indicator" id="tabIndicator"></div>
         </nav>
 
-        <!-- ============================================
-             Tab Content
-             ============================================ -->
         <main class="tab-content">
 
             <!-- OD Apply Tab -->
@@ -138,7 +135,6 @@
                     </div>
 
                     <form id="odForm" class="od-form" novalidate>
-                        <!-- Row 1: From Date & To Date -->
                         <div class="form-row">
                             <div class="input-group" id="fromDate-group">
                                 <label for="fromDate">From Date <span class="required">*</span></label>
@@ -172,7 +168,6 @@
                             </div>
                         </div>
 
-                        <!-- Number of Days Display -->
                         <div class="form-row single">
                             <div class="input-group">
                                 <label>Number of Days</label>
@@ -188,7 +183,6 @@
                             </div>
                         </div>
 
-                        <!-- Row 2: College Name & Event Name -->
                         <div class="form-row">
                             <div class="input-group" id="collegeName-group">
                                 <label for="collegeName">College Name <span class="required">*</span></label>
@@ -217,9 +211,6 @@
                             </div>
                         </div>
 
-
-
-                        <!-- Row 4: Reason -->
                         <div class="form-row single">
                             <div class="input-group" id="reason-group">
                                 <label for="reason">Reason for OD <span class="required">*</span></label>
@@ -238,7 +229,6 @@
                             </div>
                         </div>
 
-                        <!-- Submit Button -->
                         <div class="form-actions">
                             <button type="reset" class="btn-secondary" id="resetBtn">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -249,6 +239,170 @@
                             </button>
                             <button type="submit" class="btn-primary" id="submitOdBtn">
                                 <span class="btn-text">Submit OD Request</span>
+                                <span class="btn-loader" style="display:none">
+                                    <span class="spinner"></span>
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Group OD Apply Tab -->
+            <section class="tab-pane" id="group-od-apply">
+                <div class="form-card">
+                    <div class="form-card-header">
+                        <div class="form-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2>Apply for Group On Duty</h2>
+                            <p>Fill in the details below to submit an OD request for your group</p>
+                        </div>
+                    </div>
+
+                    <form id="groupOdForm" class="od-form" novalidate>
+                        <div class="form-row">
+                            <div class="input-group" id="groupFromDate-group">
+                                <label for="groupFromDate">From Date <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                    </div>
+                                    <input type="date" id="groupFromDate" name="groupFromDate" required>
+                                </div>
+                                <span class="error-message" id="groupFromDate-error"></span>
+                            </div>
+                            <div class="input-group" id="groupToDate-group">
+                                <label for="groupToDate">To Date <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                    </div>
+                                    <input type="date" id="groupToDate" name="groupToDate" required>
+                                </div>
+                                <span class="error-message" id="groupToDate-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row single">
+                            <div class="input-group">
+                                <label>Number of Days</label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" id="groupNumberOfDays" name="groupNumberOfDays" placeholder="Auto-calculated" readonly style="background:#f0f4ff;cursor:not-allowed;font-weight:600;color:#6366f1;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="input-group" id="groupCollegeName-group">
+                                <label for="groupCollegeName">College Name <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" id="groupCollegeName" name="groupCollegeName" placeholder="Enter college name" required>
+                                </div>
+                                <span class="error-message" id="groupCollegeName-error"></span>
+                            </div>
+                            <div class="input-group" id="groupEventName-group">
+                                <label for="groupEventName">Event Name <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" id="groupEventName" name="groupEventName" placeholder="Enter event name" required>
+                                </div>
+                                <span class="error-message" id="groupEventName-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row single">
+                            <div class="input-group" id="groupName-group">
+                                <label for="groupName">Group Name <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="9" cy="7" r="4"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" id="groupName" name="groupName" placeholder="e.g. Hackathon Team A" required>
+                                </div>
+                                <span class="error-message" id="groupName-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row single">
+                            <div class="input-group" id="registerNumbers-group">
+                                <label for="registerNumbers">Group Members' Register Numbers <span class="required">*</span></label>
+                                <div class="input-wrapper textarea-wrapper">
+                                    <div class="input-icon textarea-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                    </div>
+                                    <textarea id="registerNumbers" name="registerNumbers" rows="3" placeholder="Enter register numbers separated by commas (e.g. 21CS101, 21CS102, 21CS103) — include your own" required></textarea>
+                                </div>
+                                <span class="error-message" id="registerNumbers-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row single">
+                            <div class="input-group" id="groupReason-group">
+                                <label for="groupReason">Reason for OD <span class="required">*</span></label>
+                                <div class="input-wrapper textarea-wrapper">
+                                    <div class="input-icon textarea-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="17" y1="10" x2="3" y2="10"/>
+                                            <line x1="21" y1="6" x2="3" y2="6"/>
+                                            <line x1="21" y1="14" x2="3" y2="14"/>
+                                            <line x1="17" y1="18" x2="3" y2="18"/>
+                                        </svg>
+                                    </div>
+                                    <textarea id="groupReason" name="groupReason" rows="4" placeholder="Describe the reason for your Group On Duty request..." required></textarea>
+                                </div>
+                                <span class="error-message" id="groupReason-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="reset" class="btn-secondary" id="groupResetBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="1 4 1 10 7 10"/>
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                </svg>
+                                Reset
+                            </button>
+                            <button type="submit" class="btn-primary" id="submitGroupOdBtn">
+                                <span class="btn-text">Submit Group OD Request</span>
                                 <span class="btn-loader" style="display:none">
                                     <span class="spinner"></span>
                                 </span>
@@ -276,7 +430,6 @@
                         </div>
                     </div>
 
-                    <!-- Status Filter -->
                     <div class="status-filter-row">
                         <div class="status-filter" id="statusFilter">
                             <button class="filter-btn active" data-filter="all">All</button>
@@ -293,10 +446,8 @@
                         </button>
                     </div>
 
-                    <!-- Status List (dynamically populated from store) -->
                     <div class="status-list" id="statusList"></div>
 
-                    <!-- Empty State -->
                     <div class="empty-state" id="emptyState" style="display:none">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -311,7 +462,6 @@
         </main>
     </div>
 
-    <!-- Toast Notification -->
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="store.js"></script>
