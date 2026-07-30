@@ -464,6 +464,58 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- OD Detail Modal -->
+    <div class="modal-overlay" id="odDetailModal" style="display:none">
+        <div class="modal-box">
+            <button class="modal-close" id="modalCloseBtn" type="button">&times;</button>
+            <div class="modal-header">
+                <h3 id="modalEventName">Event Name</h3>
+                <span class="badge-pending" id="modalOverallBadge">Pending</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-row">
+                    <span class="modal-label">College / Industry</span>
+                    <span class="modal-value" id="modalCollege">-</span>
+                </div>
+                <div class="modal-row">
+                    <span class="modal-label">From</span>
+                    <span class="modal-value" id="modalFromDate">-</span>
+                </div>
+                <div class="modal-row">
+                    <span class="modal-label">To</span>
+                    <span class="modal-value" id="modalToDate">-</span>
+                </div>
+                <div class="modal-row">
+                    <span class="modal-label">Number of Days</span>
+                    <span class="modal-value" id="modalDays">-</span>
+                </div>
+                <div class="modal-row full">
+                    <span class="modal-label">Reason</span>
+                    <p class="modal-value" id="modalReason">-</p>
+                </div>
+                <div class="modal-row" id="modalFacultyRow">
+                    <span class="modal-label">Faculty Status</span>
+                    <span class="badge-pending" id="modalFacultyStatus">Pending</span>
+                </div>
+                <div class="modal-row" id="modalHodRow">
+                    <span class="modal-label">HOD Status</span>
+                    <span class="badge-pending" id="modalHodStatus">Pending</span>
+                </div>
+                <div class="modal-row full" id="modalGroupSection" style="display:none">
+                    <span class="modal-label">Group Name</span>
+                    <span class="modal-value" id="modalGroupName">-</span>
+                    <span class="modal-label" style="margin-top:10px">Group Members</span>
+                    <div class="modal-members" id="modalMembers"></div>
+                </div>
+                <div class="modal-row full" id="modalCertSection" style="display:none">
+                    <span class="modal-label">Winning / Certificate Status</span>
+                    <span class="modal-value" id="modalWinningStatus">-</span>
+                    <img id="modalCertImage" class="modal-cert-img" style="display:none" alt="Certificate" />
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="store.js"></script>
     <script src="student.js"></script>
 </body>

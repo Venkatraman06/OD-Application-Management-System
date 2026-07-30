@@ -72,10 +72,15 @@ namespace OnlineOD.Service
                 AppliedDate = DateTime.Now,
                 FacultyStatus = "Pending",
                 HodStatus = "Pending",
+
+                
+
                 IsGroupOd = dto.IsGroupOd,
                 GroupName = dto.GroupName,
                 RegisterNumbers = dto.RegisterNumbers
+
             };
+
 
             _context.OdApplies.Add(od);
             await _context.SaveChangesAsync();
