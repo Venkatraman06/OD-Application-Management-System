@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OD Report</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: 'Times New Roman', Times, serif;
+        background: #e5e7eb;
+        color: #111;
+    }
+
+    /* ===== Page wrapper (A4-ish) ===== */
+    .page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 20px auto;
+        background: #fff;
+        padding: 14mm 16mm;
+        box-shadow: 0 0 12px rgba(0,0,0,0.15);
+    }
+
+    /* ===== Header ===== */
+    .report-header {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        border-bottom: 3px solid #1a3c8c;
+        padding-bottom: 14px;
+        margin-bottom: 22px;
+    }
+
+    .report-header img {
+        width: 90px;
+        height: auto;
+        flex-shrink: 0;
+    }
+
+    .header-text {
+        text-align: center;
+        flex: 1;
+    }
+
+    .header-text h1 {
+        font-size: 30px;
+        letter-spacing: 3px;
+        color: #1a3c8c;
+        font-weight: 700;
+    }
+
+    .header-text h2 {
+        font-size: 17px;
+        letter-spacing: 1px;
+        color: #222;
+        margin-top: 3px;
+        font-weight: 600;
+    }
+
+    .header-text h2 span {
+        font-weight: 400;
+        font-size: 13px;
+        display: block;
+    }
+
+    .header-text p {
+        font-size: 12px;
+        color: #444;
+        margin-top: 7px;
+        line-height: 1.5;
+    }
+
+    /* ===== Report Title ===== */
+    .report-title {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .report-title h3 {
+        display: inline-block;
+        font-size: 19px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        padding-bottom: 5px;
+        border-bottom: 2px solid #1a3c8c;
+        color: #1a3c8c;
+    }
+
+    /* ===== OD Meta (ID + Date) ===== */
+    .report-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    /* ===== Details Table — one field per row ===== */
+    .details-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        font-size: 14.5px;
+    }
+
+    .details-table td {
+        padding: 10px 12px;
+        border: 1px solid #999;
+        vertical-align: top;
+    }
+
+    .details-table td.label {
+        background: #f1f4fa;
+        font-weight: 700;
+        width: 32%;
+        color: #1a3c8c;
+    }
+
+    /* ===== Reason Box ===== */
+    .reason-box {
+        border: 1px solid #999;
+        padding: 14px;
+        min-height: 70px;
+        font-size: 14.5px;
+        margin-bottom: 20px;
+        line-height: 1.7;
+    }
+
+    .reason-box .box-label {
+        font-weight: 700;
+        color: #1a3c8c;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 7px;
+        display: block;
+    }
+
+    /* ===== Group Members (shown only for group OD) ===== */
+    .group-members {
+        border: 1px solid #999;
+        padding: 14px;
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    .group-members .box-label {
+        font-weight: 700;
+        color: #1a3c8c;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 9px;
+        display: block;
+    }
+
+    .group-members table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+    }
+
+    .group-members th, .group-members td {
+        border: 1px solid #bbb;
+        padding: 6px 8px;
+        text-align: left;
+    }
+
+    .group-members th {
+        background: #f1f4fa;
+        color: #1a3c8c;
+    }
+
+    /* ===== Approval Status ===== */
+    .approval-status {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .status-box {
+        flex: 1;
+        border: 1px solid #999;
+        padding: 12px 14px;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .status-box .box-label {
+        font-weight: 700;
+        color: #1a3c8c;
+        font-size: 12.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+        margin-bottom: 7px;
+    }
+
+    .status-value {
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .status-approved { color: #15803d; }
+    .status-pending  { color: #b45309; }
+    .status-rejected { color: #b91c1c; }
+
+    /* ===== Signature Section ===== */
+    .signature-section {
+        margin-top: 70px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .sign-block {
+        flex: 1;
+        text-align: center;
+    }
+
+    .sign-line {
+        border-top: 1.5px solid #111;
+        width: 80%;
+        margin: 0 auto 6px;
+        padding-top: 6px;
+    }
+
+    .sign-label {
+        font-size: 14px;
+        font-weight: 700;
+        color: #222;
+    }
+
+    .sign-sub {
+        font-size: 12px;
+        color: #555;
+        margin-top: 3px;
+    }
+
+    /* ===== Secondary row: Generated Date (left) + Student Signature (right) ===== */
+    .secondary-signature-row {
+        margin-top: 50px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .generated-date {
+        font-size: 12.5px;
+        color: #555;
+        font-style: italic;
+    }
+
+    .sign-block-right {
+        flex: none;
+        width: 220px;
+        text-align: center;
+    }
+
+    /* ===== Footer note ===== */
+    .footer-note {
+        margin-top: 30px;
+        font-size: 10px;
+        color: #777;
+        text-align: center;
+        border-top: 1px solid #ddd;
+        padding-top: 10px;
+    }
+
+    /* ===== Print styles ===== */
+    @media print {
+        body { background: #fff; }
+        .page {
+            margin: 0;
+            box-shadow: none;
+            width: auto;
+            min-height: auto;
+        }
+        .no-print { display: none !important; }
+    }
+
+    /* ===== Print button (screen only) ===== */
+    .print-bar {
+        max-width: 210mm;
+        margin: 0 auto 10px;
+        text-align: right;
+    }
+
+    .print-bar button {
+        padding: 10px 20px;
+        background: #1a3c8c;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: Arial, sans-serif;
+    }
+
+    .print-bar button:hover { background: #142f6e; }
+</style>
+</head>
+<body>
+
+    <div class="print-bar no-print">
+        <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+
+    <div class="page">
+
+        <!-- ===== Header: Logo + College Details ===== -->
+        <div class="report-header">
+            <img src="https://www.nandhaarts.org/wp-content/uploads/2026/04/Nandha_arts_Logo.png" alt="Nandha Arts and Science College Logo">
+            <div class="header-text">
+                <h1>NANDHA</h1>
+                <h2>ARTS AND SCIENCE COLLEGE <span>(AUTONOMOUS)</span></h2>
+                <p>
+                    (Affiliated to Bharathiar University, Coimbatore)<br>
+                    Recognized under section 2(f) and 12(B) of the UGC Act 1956,<br>
+                    Approved by AICTE, New Delhi &amp; Re-Accredited by NAAC with 'B+' Grade
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== Report Title ===== -->
+        <div class="report-title">
+            <h3 id="reportTitle">On Duty (OD) Report</h3>
+        </div>
+
+        <!-- ===== Meta Row: OD ID + Applied Date ===== -->
+        <div class="report-meta">
+            <span>OD Reference No: <strong id="odRefNo">#0000</strong></span>
+            <span>Date of Application: <strong id="appliedDate">--/--/----</strong></span>
+        </div>
+
+        <!-- ===== Student / Applicant Details — one field per row ===== -->
+        <table class="details-table">
+            <tr>
+                <td class="label">Student Name</td>
+                <td id="studentName">-</td>
+            </tr>
+            <tr>
+                <td class="label">Register Number</td>
+                <td id="registerNumber">-</td>
+            </tr>
+            <tr>
+                <td class="label">Department</td>
+                <td id="department">-</td>
+            </tr>
+            <tr>
+                <td class="label">OD Type</td>
+                <td id="odType">Individual</td>
+            </tr>
+            <tr>
+                <td class="label">College / Industry</td>
+                <td id="collegeIndustry">-</td>
+            </tr>
+            <tr>
+                <td class="label">Event Name</td>
+                <td id="eventName">-</td>
+            </tr>
+            <tr>
+                <td class="label">From Date</td>
+                <td id="fromDate">-</td>
+            </tr>
+            <tr>
+                <td class="label">To Date</td>
+                <td id="toDate">-</td>
+            </tr>
+            <tr>
+                <td class="label">Number of Days</td>
+                <td id="numberOfDays">-</td>
+            </tr>
+        </table>
+
+        <!-- ===== Group Members (only shown for Group OD; hidden otherwise) ===== -->
+        <div class="group-members" id="groupMembersSection" style="display:none">
+            <span class="box-label">Group Members</span>
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Register Number</th></tr>
+                </thead>
+                <tbody id="groupMembersBody">
+                    <!-- rows inserted dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===== Reason ===== -->
+        <div class="reason-box">
+            <span class="box-label">Reason for On Duty</span>
+            <span id="reason">-</span>
+        </div>
+
+        <!-- ===== Approval Status ===== -->
+        <div class="approval-status">
+            <div class="status-box">
+                <span class="box-label">Faculty Approval</span>
+                <span class="status-value status-pending" id="facultyStatus">Pending</span>
+            </div>
+            <div class="status-box">
+                <span class="box-label">HOD Approval</span>
+                <span class="status-value status-pending" id="hodStatus">Pending</span>
+            </div>
+            <div class="status-box">
+                <span class="box-label">Principal Approval</span>
+                <span class="status-value status-pending" id="principalStatus">Pending</span>
+            </div>
+        </div>
+
+        <!-- ===== Signature Section ===== -->
+        <div class="signature-section">
+            <div class="sign-block">
+                <div class="sign-line"></div>
+                <div class="sign-label">Staff Signature</div>
+                <div class="sign-sub" id="signStudentName">-</div>
+            </div>
+            <div class="sign-block">
+                <div class="sign-line"></div>
+                <div class="sign-label">HOD Signature</div>
+                <div class="sign-sub">Head of Department</div>
+            </div>
+            <div class="sign-block">
+                <div class="sign-line"></div>
+                <div class="sign-label">Principal Signature</div>
+                <div class="sign-sub">Principal</div>
+            </div>
+        </div>
+
+        <!-- ===== Second Row: Generated Date (left) + Student Signature (right) ===== -->
+        <div class="secondary-signature-row">
+            <div class="generated-date">
+                Report Generated: <span id="reportGeneratedDate">-</span>
+            </div>
+            <div class="sign-block sign-block-right">
+                <div class="sign-line"></div>
+                <div class="sign-label">Student Signature</div>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            This is a system-generated OD report from the Online OD Application Management System — Nandha Arts and Science College.
+        </div>
+
+    </div>
+
+    <script>
+        /*
+         * ==============================================================
+         * HOW TO USE THIS TEMPLATE FROM YOUR APP
+         * ==============================================================
+         * Call fillOdReport(odData) with an OD object from your API
+         * (same shape as what /api/OdApply/... returns), and this page
+         * will populate itself. Example usage from student.js:
+         *
+         *   const reportWindow = window.open('od_report.html', '_blank');
+         *   reportWindow.onload = () => reportWindow.fillOdReport(od);
+         *
+         * Or, if this template is opened directly with an odId in the
+         * URL query string (?odId=12), it will auto-fetch and fill itself
+         * (see autoLoadFromQueryString below).
+         * ==============================================================
+         */
+
+        function fmtDate(d) {
+            if (!d) return '-';
+            try {
+                const dt = new Date(d);
+                return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB');
+            } catch { return d; }
+        }
+
+        function setText(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = (val === undefined || val === null || val === '') ? '-' : val;
+        }
+
+        function statusClass(status) {
+            if (status === 'Approved') return 'status-approved';
+            if (status === 'Rejected') return 'status-rejected';
+            return 'status-pending';
+        }
+
+        function fillOdReport(od) {
+            const odId          = od.OdId ?? od.odId ?? '';
+            const studentName   = od.StudentName ?? od.studentName ?? '';
+            const registerNumber= od.registerNumber ?? od.RegisterNumber ?? '';
+            const department    = od.department ?? od.Department ?? '';
+            const fromDate      = od.FromDate ?? od.fromDate ?? '';
+            const toDate        = od.ToDate ?? od.toDate ?? '';
+            const numberOfDays  = od.NumberOfDays ?? od.numberOfDays ?? '';
+            const event         = od.Event ?? od.event ?? '';
+            const reason        = od.Reason ?? od.reason ?? '';
+            const collegeIndustry = od.CollegeIndustry ?? od.collegeIndustry ?? '';
+            const appliedDate   = od.AppliedDate ?? od.appliedDate ?? '';
+            const facultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
+            const hodStatus     = od.HodStatus ?? od.hodStatus ?? 'Pending';
+            // NOTE: PrincipalStatus isn't in the OdApply model/database yet.
+            // This will show 'Pending' until that field is added to the backend.
+            const principalStatus = od.PrincipalStatus ?? od.principalStatus ?? 'Pending';
+            const isGroupOd     = od.IsGroupOd ?? od.isGroupOd ?? false;
+            const groupName     = od.GroupName ?? od.groupName ?? '';
+            const registerNumbers = od.RegisterNumbers ?? od.registerNumbers ?? '';
+
+            document.title = `OD Report - ${studentName || odId}`;
+
+            setText('odRefNo', odId ? `#${odId}` : '#0000');
+            setText('appliedDate', fmtDate(appliedDate));
+            setText('studentName', studentName);
+            setText('registerNumber', registerNumber);
+            setText('department', department);
+            setText('odType', isGroupOd ? `Group OD${groupName ? ' — ' + groupName : ''}` : 'Individual');
+            setText('collegeIndustry', collegeIndustry);
+            setText('eventName', event);
+            setText('fromDate', fmtDate(fromDate));
+            setText('toDate', fmtDate(toDate));
+            setText('numberOfDays', numberOfDays);
+            setText('reason', reason);
+            setText('signStudentName', studentName);
+
+            // Report generated date = today, whenever this report is opened/printed
+            const today = new Date();
+            setText('reportGeneratedDate', today.toLocaleDateString('en-GB'));
+
+            const facEl = document.getElementById('facultyStatus');
+            if (facEl) { facEl.textContent = facultyStatus; facEl.className = `status-value ${statusClass(facultyStatus)}`; }
+
+            const hodEl = document.getElementById('hodStatus');
+            if (hodEl) { hodEl.textContent = hodStatus; hodEl.className = `status-value ${statusClass(hodStatus)}`; }
+
+            const principalEl = document.getElementById('principalStatus');
+            if (principalEl) { principalEl.textContent = principalStatus; principalEl.className = `status-value ${statusClass(principalStatus)}`; }
+
+            const groupSection = document.getElementById('groupMembersSection');
+            const groupBody = document.getElementById('groupMembersBody');
+            if (isGroupOd && registerNumbers) {
+                const members = registerNumbers.split(',').map(r => r.trim()).filter(r => r);
+                if (groupBody) {
+                    groupBody.innerHTML = members.map((m, i) =>
+                        `<tr><td>${i + 1}</td><td>${m}</td></tr>`
+                    ).join('');
+                }
+                if (groupSection) groupSection.style.display = 'block';
+            } else {
+                if (groupSection) groupSection.style.display = 'none';
+            }
+        }
+
+        // Optional: auto-load if opened as od_report.html?odId=12
+        // Uncomment and adjust API_BASE if you want this page to self-fetch.
+        /*
+        const API_BASE = 'http://localhost:5088';
+        async function autoLoadFromQueryString() {
+            const params = new URLSearchParams(window.location.search);
+            const odId = params.get('odId');
+            if (!odId) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/OdApply/${odId}`);
+                if (res.ok) {
+                    const od = await res.json();
+                    fillOdReport(od);
+                }
+            } catch (err) {
+                console.error('Failed to auto-load OD report:', err);
+            }
+        }
+        autoLoadFromQueryString();
+        */
+
+        window.fillOdReport = fillOdReport;
+
+        // Show today's date immediately, even before fillOdReport() runs
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            setText('reportGeneratedDate', today.toLocaleDateString('en-GB'));
+        });
+    </script>
+
+</body>
+</html>

@@ -386,6 +386,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (certSection) certSection.style.display = 'none';
         }
 
+        // Wire the modal's print button to this OD's data
+        const modalPrintBtn = document.getElementById('modalPrintBtn');
+        if (modalPrintBtn) modalPrintBtn.onclick = () => printOdReport(od);
+
         if (odModal) odModal.style.display = 'flex';
     }
 
@@ -393,6 +397,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    // ── Print Report: opens od_report.html and fills it with this OD's data ──
+    function printOdReport(od) {
+        const reportWindow = window.open('od_report.html', '_blank');
+        if (!reportWindow) {
+            showToast('error', 'Please allow pop-ups to print the OD report');
+            return;
+        }
+        const tryFill = () => {
+            if (typeof reportWindow.fillOdReport === 'function') {
+                reportWindow.fillOdReport(od);
+            } else {
+                // Report page may still be parsing scripts — retry briefly
+                setTimeout(tryFill, 100);
+            }
+        };
+        reportWindow.addEventListener('load', tryFill);
     }
 
     // ── Load OD Status (solo + group, via register number) ──
@@ -445,6 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const numDays       = od.NumberOfDays  ?? od.numberOfDays  ?? '';
                 const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
                 const groupName     = od.GroupName     ?? od.groupName     ?? '';
+                const odId          = od.OdId ?? od.odId ?? '';
                 const facRejected   = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
                                         .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
                 const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
@@ -470,7 +493,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 return `
-                <div class="od-status-card" data-overall="${overall}">
+                <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
                     <div class="card-top">
                         <div>
                             <h4>${eventName} ${groupTag} ${myStatusTag}</h4>
@@ -493,6 +516,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="badge-${bdg(hodStatus)}">${hodStatus}</span>
                         </div>
                     </div>
+                    <div class="card-actions">
+                        <button type="button" class="view-details-btn" data-odid="${odId}">View Details</button>
+                        <button type="button" class="print-report-btn" data-odid="${odId}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <polyline points="6 9 6 2 18 2 18 9"/>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                            Print Report
+                        </button>
+                    </div>
                 </div>`;
             }).join('');
 
@@ -505,6 +539,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Network error — make sure backend is running on ${API_BASE}</div>`;
         }
     }
+
+    // ── Delegated clicks on the status list: view details + print report ──
+    document.getElementById('statusList')?.addEventListener('click', (e) => {
+        const odId = e.target.closest('[data-odid]')?.dataset.odid;
+        if (odId === undefined) return;
+
+        const od = (window.currentOdList || []).find(
+            o => String(o.OdId ?? o.odId ?? '') === String(odId)
+        );
+        if (!od) { showToast('error', 'Could not find OD details'); return; }
+
+        if (e.target.closest('.print-report-btn')) {
+            e.stopPropagation();
+            printOdReport(od);
+            return;
+        }
+
+        if (e.target.closest('.view-details-btn') || e.target.closest('.od-status-card')) {
+            openOdModal(od);
+        }
+    });
 
     // ── Helpers ──
     function overallKey(f, h) {
