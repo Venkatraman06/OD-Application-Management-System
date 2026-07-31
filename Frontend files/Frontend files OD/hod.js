@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
-                        <h3>${od.studentName || ''}</h3>
+                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(14,165,233,0.15);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3)">GROUP: ${od.groupName || ''}</span>` : ''}</h3>
                         <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}</p>
                     </div>
                     <span class="status-badge approved">Faculty ✓</span>
@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <strong>HOD Status:</strong>
                         <span class="status-badge ${bdg(od.hodStatus)}" style="font-size:11px;padding:2px 10px;margin-left:6px">${od.hodStatus || 'Pending'}</span>
                     </p>
+                    ${od.isGroupOd ? renderMemberChipsHod(od) : ''}
                 </div>
                 ${od.hodStatus === 'Pending' ? `
                 <div class="card-actions">
@@ -97,6 +98,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>
                 </div>` : ''}
             </div>`).join('');
+    }
+
+    // ── Render group member chips for HOD (view faculty rejections, allow override) ──
+    function renderMemberChipsHod(od) {
+        const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+        const rejected = (od.facultyRejectedRegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+        const overridden = (od.hodApprovedRegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+
+        if (members.length === 0) return '';
+
+        const chips = members.map(reg => {
+            const wasRejected = rejected.some(r => r.toLowerCase() === reg.toLowerCase());
+            const isOverridden = overridden.some(r => r.toLowerCase() === reg.toLowerCase());
+            const showAsRejected = wasRejected && !isOverridden;
+
+            return `
+                <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
+                    <button class="member-chip" ${showAsRejected ? `onclick="toggleMemberMenuHod(this, ${od.odId}, '${esc(reg)}')"` : ''}
+                        style="padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;
+                               cursor:${showAsRejected ? 'pointer' : 'default'};
+                               border:1px solid ${showAsRejected ? 'rgba(239,68,68,0.4)' : isOverridden ? 'rgba(16,185,129,0.4)' : 'rgba(14,165,233,0.3)'};
+                               background:${showAsRejected ? 'rgba(239,68,68,0.15)' : isOverridden ? 'rgba(16,185,129,0.15)' : 'rgba(14,165,233,0.1)'};
+                               color:${showAsRejected ? '#ef4444' : isOverridden ? '#10b981' : '#7dd3fc'}">
+                        ${showAsRejected ? '✕ ' : isOverridden ? '✓ ' : ''}${reg}
+                    </button>
+                    ${showAsRejected ? `
+                    <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
+                         background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;
+                         box-shadow:0 8px 20px rgba(0,0,0,0.4);white-space:nowrap">
+                        <button onclick="hodOverrideMember(${od.odId}, '${esc(reg)}')" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Approve Anyway</button>
+                    </div>` : ''}
+                </div>`;
+        }).join('');
+
+        return `<div style="margin-top:10px"><strong style="font-size:12px;color:#94a3b8">Group Members:</strong><div style="margin-top:6px">${chips}</div></div>`;
     }
 
     // ── Nav filters ──
@@ -157,6 +193,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else showToast('error', 'Failed to update');
         } catch (err) { console.error(err); showToast('error', 'Network error'); }
     }
+
+    window.toggleMemberMenuHod = (btn, odId, reg) => {
+        document.querySelectorAll('.member-menu').forEach(m => {
+            if (m !== btn.nextElementSibling) m.style.display = 'none';
+        });
+        const menu = btn.nextElementSibling;
+        if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window.hodOverrideMember = async (odId, reg) => {
+        if (!confirm(`Approve ${reg} despite faculty rejection?`)) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/HodOverrideMember?registerNumber=${encodeURIComponent(reg)}`, {
+                method: 'PUT'
+            });
+            if (res.ok) { showToast('success', `${reg} approved by HOD override`); loadODs(); }
+            else showToast('error', 'Failed to override');
+        } catch (err) { console.error(err); showToast('error', 'Network error'); }
+    };
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.member-chip-wrap')) {
+            document.querySelectorAll('.member-menu').forEach(m => m.style.display = 'none');
+        }
+    });
 
     function bdg(s) { return s === 'Approved' ? 'approved' : s === 'Rejected' ? 'rejected' : 'pending'; }
     function fmtDate(d) { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB'); } catch { return d; } }

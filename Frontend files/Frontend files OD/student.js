@@ -433,6 +433,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (empty) empty.style.display = 'none';
 
+            const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toLowerCase();
+
             list.innerHTML = ods.map(od => {
                 const facultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
                 const hodStatus     = od.HodStatus     ?? od.hodStatus     ?? 'Pending';
@@ -443,21 +445,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const numDays       = od.NumberOfDays  ?? od.numberOfDays  ?? '';
                 const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
                 const groupName     = od.GroupName     ?? od.groupName     ?? '';
-                const odId          = od.OdId          ?? od.odId          ?? '';
+                const facRejected   = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
+                                        .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+                const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
+                                        .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
 
-                const overall = overallKey(facultyStatus, hodStatus);
+                const iAmRejected = isGroup && facRejected.includes(myRegNo) && !hodOverridden.includes(myRegNo);
+
+                const overall = iAmRejected ? 'rejected' : overallKey(facultyStatus, hodStatus);
                 const groupTag = isGroup
                     ? `<span class="status-program" style="margin-left:8px">Group: ${groupName}</span>`
                     : '';
+                const myStatusTag = iAmRejected
+                    ? `<span class="badge-rejected" style="margin-left:6px">Your OD: Rejected</span>`
+                    : '';
+
+                // One-time alert for this student's rejection on this OD
+                if (iAmRejected) {
+                    const alertKey = `odRejectSeen_${od.OdId ?? od.odId}_${myRegNo}`;
+                    if (!localStorage.getItem(alertKey)) {
+                        localStorage.setItem(alertKey, '1');
+                        setTimeout(() => alert(`Your OD request (${eventName}) was rejected by faculty.`), 100);
+                    }
+                }
 
                 return `
-                <div class="od-status-card" data-overall="${overall}" data-odid="${odId}" style="cursor:pointer">
+                <div class="od-status-card" data-overall="${overall}">
                     <div class="card-top">
                         <div>
-                            <h4>${eventName} ${groupTag}</h4>
+                            <h4>${eventName} ${groupTag} ${myStatusTag}</h4>
                             <p>${college}</p>
                         </div>
-                        <span class="badge-${overall}">${overallLabel(facultyStatus, hodStatus)}</span>
+                        <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(facultyStatus, hodStatus)}</span>
                     </div>
                     <div class="card-meta">
                         <span><strong>From:</strong> ${fmtDate(fromDate)}</span>
@@ -476,18 +495,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>`;
             }).join('');
-
-            // Wire up click handlers to open the modal
-            document.querySelectorAll('.od-status-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const odId = card.dataset.odid;
-                    const match = (window.currentOdList || []).find(o => {
-                        const id = o.OdId ?? o.odId ?? '';
-                        return String(id) === String(odId);
-                    });
-                    if (match) openOdModal(match);
-                });
-            });
 
             const activeFilter = document.querySelector('.filter-btn.active');
             if (activeFilter) filterCards(activeFilter.dataset.filter);
