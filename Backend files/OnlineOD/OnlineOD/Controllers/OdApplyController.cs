@@ -135,6 +135,54 @@ namespace OnlineOD.Controllers
             return Ok(result);
         }
 
+        // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX
+        [HttpPut("{odId}/RejectMember")]
+        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber)
+        {
+            if (string.IsNullOrWhiteSpace(registerNumber))
+                return BadRequest("registerNumber is required");
+
+            var od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim());
+            if (od == null) return NotFound("OD request not found");
+            return Ok(od);
+        }
+
+        // PUT /api/OdApply/{odId}/UnrejectMember?registerNumber=XXX
+        // Faculty undoing their own rejection
+        [HttpPut("{odId}/UnrejectMember")]
+        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber)
+        {
+            if (string.IsNullOrWhiteSpace(registerNumber))
+                return BadRequest("registerNumber is required");
+
+            var od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim());
+            if (od == null) return NotFound("OD request not found");
+            return Ok(od);
+        }
+
+        // PUT /api/OdApply/{odId}/HodOverrideMember?registerNumber=XXX
+        // HOD approving a member that faculty rejected
+        [HttpPut("{odId}/HodOverrideMember")]
+        public async Task<IActionResult> HodOverrideMember(int odId, [FromQuery] string registerNumber)
+        {
+            if (string.IsNullOrWhiteSpace(registerNumber))
+                return BadRequest("registerNumber is required");
+
+            var od = await _service.HodOverrideGroupMemberAsync(odId, registerNumber.Trim());
+            if (od == null) return NotFound("OD request not found");
+            return Ok(od);
+        }
+
+        
+        // DELETE /api/OdApply/{odId}
+        [HttpDelete("{odId}")]
+        public async Task<IActionResult> DeleteOdApply(int odId)
+        {
+            var result = await _service.DeleteOdApplyAsync(odId);
+            if (!result) return NotFound();
+            return Ok(result);
+        }
+
         // POST /api/OdApply/{odId}/UploadCertificate
         [HttpPost("{odId}/UploadCertificate")]
         public async Task<IActionResult> UploadCertificate(int odId,

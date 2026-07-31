@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
-                        <h3>${od.studentName || ''}</h3>
+                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">GROUP: ${od.groupName || ''}</span>` : ''}</h3>
                         <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}</p>
                     </div>
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <strong>HOD Status:</strong>
                         <span class="status-badge ${bdg(od.hodStatus)}" style="font-size:11px;padding:2px 10px;margin-left:6px">${od.hodStatus || 'Pending'}</span>
                     </p>
+                    ${od.isGroupOd ? renderMemberChips(od) : ''}
                 </div>
                 ${od.facultyStatus === 'Pending' ? `
                 <div class="card-actions">
@@ -105,6 +106,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>
                 </div>` : ''}
             </div>`).join('');
+    }
+
+    // ── Render group member chips with per-member reject/unreject ──
+    function renderMemberChips(od) {
+        const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+        const rejected = (od.facultyRejectedRegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+
+        if (members.length === 0) return '';
+
+        const chips = members.map(reg => {
+            const isRejected = rejected.some(r => r.toLowerCase() === reg.toLowerCase());
+            return `
+                <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
+                    <button class="member-chip ${isRejected ? 'rejected' : ''}"
+                        onclick="toggleMemberMenu(this, ${od.odId}, '${esc(reg)}')"
+                        style="padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;
+                               border:1px solid ${isRejected ? 'rgba(239,68,68,0.4)' : 'rgba(99,102,241,0.3)'};
+                               background:${isRejected ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.1)'};
+                               color:${isRejected ? '#ef4444' : '#a5b4fc'}">
+                        ${isRejected ? '✕ ' : ''}${reg}
+                    </button>
+                    <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
+                         background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;
+                         box-shadow:0 8px 20px rgba(0,0,0,0.4);white-space:nowrap">
+                        ${isRejected
+                            ? `<button onclick="unrejectMember(${od.odId}, '${esc(reg)}')" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Undo Reject</button>`
+                            : `<button onclick="rejectMember(${od.odId}, '${esc(reg)}')" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Reject This Member</button>`
+                        }
+                    </div>
+                </div>`;
+        }).join('');
+
+        return `<div style="margin-top:10px"><strong style="font-size:12px;color:#94a3b8">Group Members:</strong><div style="margin-top:6px">${chips}</div></div>`;
     }
 
     // ── Nav filters ──
@@ -152,6 +186,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             else showToast('error', 'Failed to update');
         } catch (err) { console.error(err); showToast('error', 'Network error'); }
     }
+
+    // ── Group member menu toggle ──
+    window.toggleMemberMenu = (btn, odId, reg) => {
+        document.querySelectorAll('.member-menu').forEach(m => {
+            if (m !== btn.nextElementSibling) m.style.display = 'none';
+        });
+        const menu = btn.nextElementSibling;
+        if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window.rejectMember = async (odId, reg) => {
+        if (!confirm(`Reject register number ${reg} from this group OD?`)) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/RejectMember?registerNumber=${encodeURIComponent(reg)}`, {
+                method: 'PUT'
+            });
+            if (res.ok) { showToast('success', `${reg} rejected`); loadODs(); }
+            else showToast('error', 'Failed to reject member');
+        } catch (err) { console.error(err); showToast('error', 'Network error'); }
+    };
+
+    window.unrejectMember = async (odId, reg) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/UnrejectMember?registerNumber=${encodeURIComponent(reg)}`, {
+                method: 'PUT'
+            });
+            if (res.ok) { showToast('success', `${reg} rejection undone`); loadODs(); }
+            else showToast('error', 'Failed to undo rejection');
+        } catch (err) { console.error(err); showToast('error', 'Network error'); }
+    };
+
+    // Close member menus when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.member-chip-wrap')) {
+            document.querySelectorAll('.member-menu').forEach(m => m.style.display = 'none');
+        }
+    });
 
     function bdg(s) { return s === 'Approved' ? 'approved' : s === 'Rejected' ? 'rejected' : 'pending'; }
     function fmtDate(d) { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB'); } catch { return d; } }
