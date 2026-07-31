@@ -119,10 +119,69 @@ namespace OnlineOD.Service
         }
 
         // In OdApplyService.cs
+        // In OdApplyService.cs
         public async Task UpdateCertificateAsync(OdApply od)
         {
             _context.OdApplies.Update(od);
             await _context.SaveChangesAsync();
         }
+
+        // ── Group member per-register-number status ──
+
+        private static List<string> ParseList(string? csv) =>
+            (csv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                       .Select(r => r.Trim())
+                       .Where(r => r.Length > 0)
+                       .ToList();
+
+        private static string JoinList(List<string> list) => string.Join(",", list);
+
+        public async Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return null;
+
+            var rejected = ParseList(od.FacultyRejectedRegisterNumbers);
+            if (!rejected.Any(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase)))
+                rejected.Add(registerNumber);
+            od.FacultyRejectedRegisterNumbers = JoinList(rejected);
+
+            // If HOD had previously overridden this member, clear that override
+            // since faculty is now actively re-rejecting it
+            var hodApproved = ParseList(od.HodApprovedRegisterNumbers);
+            hodApproved.RemoveAll(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase));
+            od.HodApprovedRegisterNumbers = JoinList(hodApproved);
+
+            await _context.SaveChangesAsync();
+            return od;
+        }
+
+        public async Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return null;
+
+            var rejected = ParseList(od.FacultyRejectedRegisterNumbers);
+            rejected.RemoveAll(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase));
+            od.FacultyRejectedRegisterNumbers = JoinList(rejected);
+
+            await _context.SaveChangesAsync();
+            return od;
+        }
+
+        public async Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return null;
+
+            var hodApproved = ParseList(od.HodApprovedRegisterNumbers);
+            if (!hodApproved.Any(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase)))
+                hodApproved.Add(registerNumber);
+            od.HodApprovedRegisterNumbers = JoinList(hodApproved);
+
+            await _context.SaveChangesAsync();
+            return od;
+        }
     }
 }
+    

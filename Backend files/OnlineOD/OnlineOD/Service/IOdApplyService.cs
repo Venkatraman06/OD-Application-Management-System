@@ -15,5 +15,8 @@ namespace OnlineOD.Service
         Task<OdApply?> UpdateFacultyStatusAsync(int odId, string status);
         Task<OdApply?> UpdateHodStatusAsync(int odId, string status);
         Task UpdateCertificateAsync(OdApply od);
+        Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber);
+        Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber);
+        Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber);
     }
 }
