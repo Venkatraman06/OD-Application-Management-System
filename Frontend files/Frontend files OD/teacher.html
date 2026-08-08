@@ -71,6 +71,18 @@
                     <span class="nav-text">Rejected</span>
                     <span class="nav-badge rejected" id="rejectedCount">1</span>
                 </button>
+
+                <div class="nav-label" style="margin-top:20px">Certificates</div>
+                <button class="nav-item" data-filter="certificates" id="navCertificates">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="8" r="6"/>
+                            <path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Certificates</span>
+                    <span class="nav-badge certificates" id="certificatesCount">0</span>
+                </button>
             </nav>
 
             <div class="sidebar-footer">
@@ -147,11 +159,11 @@
 
             <div class="section-title" id="sectionTitle">
                 <h2>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="sectionTitleIcon">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
-                    Pending OD Requests
+                    <span id="sectionTitleText">Pending OD Requests</span>
                 </h2>
                 <div class="section-actions">
                     <span class="section-count" id="sectionCount">4 requests</span>
@@ -165,7 +177,7 @@
                 </div>
             </div>
 
-            <!-- Search Box (shown only for approved/rejected) -->
+            <!-- Search Box (shown for approved/rejected/certificates) -->
             <div class="search-box" id="searchBox" style="display:none">
                 <div class="search-input-wrap">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -176,7 +188,7 @@
                 </div>
             </div>
 
-            <!-- OD Request Cards -->
+            <!-- OD Request Cards / Certificate Cards -->
             <div class="requests-container" id="requestsContainer">
                 <!-- Cards populated by JS -->
             </div>
@@ -191,8 +203,8 @@
                         <line x1="16" y1="17" x2="8" y2="17"/>
                     </svg>
                 </div>
-                <h3>No OD Requests Here</h3>
-                <p>No requests found in this category.</p>
+                <h3 id="emptyStateTitle">No OD Requests Here</h3>
+                <p id="emptyStateText">No requests found in this category.</p>
             </div>
 
         </div>
@@ -212,6 +224,15 @@
                 <button class="modal-btn cancel" id="modalCancel">Cancel</button>
                 <button class="modal-btn confirm" id="modalConfirm">Confirm</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Certificate Preview Modal (view-only, image opens larger) -->
+    <div class="modal-overlay" id="certPreviewOverlay">
+        <div class="modal cert-preview-modal" id="certPreviewModal">
+            <button class="modal-close" id="certPreviewCloseBtn" type="button">&times;</button>
+            <h3 id="certPreviewTitle">Certificate</h3>
+            <img id="certPreviewImage" class="cert-preview-image" alt="Certificate" />
         </div>
     </div>
 

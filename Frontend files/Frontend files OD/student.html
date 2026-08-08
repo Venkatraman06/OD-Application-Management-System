@@ -513,6 +513,14 @@
                     <img id="modalCertImage" class="modal-cert-img" style="display:none" alt="Certificate" />
                 </div>
                 <div class="modal-row full modal-actions">
+                    <button type="button" class="modal-cert-upload-btn" id="modalCertUploadBtn" style="display:none">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Upload Certificate
+                    </button>
                     <button type="button" class="modal-print-btn" id="modalPrintBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                             <polyline points="6 9 6 2 18 2 18 9"/>
@@ -523,6 +531,43 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Certificate Upload Modal -->
+    <div class="modal-overlay" id="certUploadModal" style="display:none">
+        <div class="modal-box cert-modal-box">
+            <button class="modal-close" id="certModalCloseBtn" type="button">&times;</button>
+            <div class="modal-header">
+                <h3>Upload Certificate</h3>
+            </div>
+            <form id="certUploadForm" class="modal-body">
+                <div class="modal-row">
+                    <label class="modal-label" for="certWinningStatus">Winning / Participation Status</label>
+                    <input type="text" id="certWinningStatus" class="cert-text-input"
+                           placeholder="e.g. Winner - 1st Prize, Participated">
+                </div>
+                <div class="modal-row">
+                    <label class="modal-label" for="certFile">Certificate File <span class="required">*</span></label>
+                    <label class="cert-file-drop" for="certFile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span id="certFileName">No file chosen</span>
+                    </label>
+                    <input type="file" id="certFile" accept="image/*,.pdf" style="display:none" required>
+                </div>
+                <div class="modal-row full modal-actions">
+                    <button type="submit" class="btn-primary" id="certUploadSubmitBtn">
+                        <span class="btn-text">Upload</span>
+                        <span class="btn-loader" style="display:none">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
