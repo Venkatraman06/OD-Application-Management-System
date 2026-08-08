@@ -19,17 +19,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statPendingEl = document.querySelector('#statPending .stat-number') || document.getElementById('statPending');
 
     let allODs = [];
+    let allCerts = [];
+    let certsLoaded = false;
     let currentFilter = 'pending';
 
-    // ── Load ODs ──
+    const sectionMeta = {
+        pending: {
+            title: 'Pending OD Requests',
+            emptyTitle: 'No OD Requests Here',
+            emptyText: 'No requests found in this category.',
+            icon: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+        },
+        approved: {
+            title: 'Accepted OD Requests',
+            emptyTitle: 'No OD Requests Here',
+            emptyText: 'No requests found in this category.',
+            icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+        },
+        rejected: {
+            title: 'Rejected OD Requests',
+            emptyTitle: 'No OD Requests Here',
+            emptyText: 'No requests found in this category.',
+            icon: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'
+        },
+        certificates: {
+            title: 'Finished OD Certificates',
+            emptyTitle: 'No Finished ODs Yet',
+            emptyText: 'Once an approved OD\'s dates are finished, it will appear here.',
+            icon: '<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>'
+        }
+    };
+
+    // ── Load OD requests (pending/approved/rejected) ──
     async function loadODs() {
         try {
-            const res = await fetch(`${API_BASE}/api/Faculty/PendingODs/${encodeURIComponent(dept)}`);
+            const res = await fetch(`${API_BASE}/api/Faculty/PendingODs/${encodeURIComponent(dept)}?_=${Date.now()}`, { cache: 'no-store' });
             if (!res.ok) { console.error('Load ODs failed:', res.status); return; }
             allODs = await res.json();
             updateCounts(allODs);
-            applyFilter(currentFilter);
+            if (currentFilter !== 'certificates') applyFilter(currentFilter);
         } catch (err) { console.error(err); showToast('error', 'Failed to load ODs'); }
+    }
+
+    // ── Load certificates (view-only) — faculty-approved ODs whose dates have finished ──
+    // Shows BOTH uploaded and not-yet-uploaded, same as HOD page.
+    async function loadCertificates() {
+        try {
+            // Cache-bust: avoids a stale cached response masking a certificate
+            // the student just uploaded.
+            const res = await fetch(`${API_BASE}/api/Faculty/PendingODs/${encodeURIComponent(dept)}?_=${Date.now()}`, { cache: 'no-store' });
+            if (!res.ok) { console.error('Load certificates failed:', res.status); return; }
+            const data = await res.json();
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            allCerts = data.filter(o => {
+                if (o.facultyStatus !== 'Approved') return false;
+                const to = o.toDate ? new Date(o.toDate) : null;
+                if (!to || isNaN(to.getTime())) return false;
+                to.setHours(0, 0, 0, 0);
+                return to < today;
+            });
+            certsLoaded = true;
+            setEl('certificatesCount', allCerts.length);
+            if (currentFilter === 'certificates') renderCertificates(searchFilterCerts(allCerts));
+        } catch (err) { console.error(err); showToast('error', 'Failed to load certificates'); }
     }
 
     function updateCounts(ods) {
@@ -45,9 +97,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('rejectedCount', rejected);
     }
 
+    function searchFilterCerts(certs) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput && searchInput.value.trim()) {
+            const q = searchInput.value.trim().toLowerCase();
+            return certs.filter(c => (c.registerNumber || '').toLowerCase().includes(q));
+        }
+        return certs;
+    }
+
+    function applySectionMeta(filter) {
+        const meta = sectionMeta[filter] || sectionMeta.pending;
+        setEl('sectionTitleText', meta.title);
+        setEl('emptyStateTitle', meta.emptyTitle);
+        setEl('emptyStateText', meta.emptyText);
+        const iconEl = document.getElementById('sectionTitleIcon');
+        if (iconEl) iconEl.innerHTML = meta.icon;
+    }
+
     function applyFilter(filter) {
         currentFilter = filter;
         const searchBox = document.getElementById('searchBox');
+        applySectionMeta(filter);
+
+        if (filter === 'certificates') {
+            if (searchBox) searchBox.style.display = 'block';
+            if (certsLoaded) {
+                renderCertificates(searchFilterCerts(allCerts));
+            } else {
+                if (document.getElementById('requestsContainer')) {
+                    document.getElementById('requestsContainer').innerHTML =
+                        '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:14px">Loading certificates...</div>';
+                }
+                loadCertificates();
+            }
+            return;
+        }
 
         // show search only for approved/rejected
         if (searchBox) searchBox.style.display = (filter === 'approved' || filter === 'rejected') ? 'block' : 'none';
@@ -108,6 +193,83 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>`).join('');
     }
 
+    // ── Render certificate cards (view-only — shows BOTH uploaded and not-yet-uploaded) ──
+    function renderCertificates(certs) {
+        const container = document.getElementById('requestsContainer');
+        const empty     = document.getElementById('emptyState');
+        setEl('sectionCount', `${certs.length} finished OD${certs.length !== 1 ? 's' : ''}`);
+
+        if (!certs || certs.length === 0) {
+            if (container) container.innerHTML = '';
+            if (empty) empty.style.display = 'flex';
+            return;
+        }
+        if (empty) empty.style.display = 'none';
+
+        if (container) container.innerHTML = certs.map(od => {
+            const rawUrl = od.certificatePhotoUrl || '';
+            const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
+            // Cache-bust so a re-uploaded certificate never shows the browser's
+            // cached copy of the old file.
+            const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
+            const isImage = /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
+
+            return `
+            <div class="request-card cert-card">
+                <div class="card-header">
+                    <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
+                    <div class="student-info">
+                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">GROUP: ${od.groupName || ''}</span>` : ''}</h3>
+                        <p>${od.registerNumber || ''} &bull; ${od.department || ''}</p>
+                    </div>
+                    <span class="status-badge cert-badge">${rawUrl ? 'Certificate Uploaded' : 'Not Uploaded'}</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Event:</strong> ${od.event || ''}</p>
+                    <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
+                    <p><strong>OD Finished:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)}</p>
+                </div>
+                ${certUrl ? `
+                <div class="cert-preview-row">
+                    ${isImage
+                        ? `<img src="${certUrl}" alt="Certificate" class="cert-thumb" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">`
+                        : `<div class="cert-file-icon" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">
+                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                   <polyline points="14 2 14 8 20 8"/>
+                               </svg>
+                           </div>`
+                    }
+                    <a href="${certUrl}" target="_blank" rel="noopener" class="cert-view-link">View Full Certificate ↗</a>
+                </div>` : `<p class="cert-none-text">OD finished — student has not uploaded a certificate yet.</p>`}
+            </div>`;
+        }).join('');
+    }
+
+    // ── Certificate preview modal (view-only, no download/upload controls) ──
+    const certPreviewOverlay = document.getElementById('certPreviewOverlay');
+    window.openCertPreview = (url, studentName) => {
+        setEl('certPreviewTitle', `${studentName || 'Student'}'s Certificate`);
+        const img = document.getElementById('certPreviewImage');
+        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(url);
+        if (img) {
+            if (isImage) {
+                img.src = url;
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+                window.open(url, '_blank');
+            }
+        }
+        if (certPreviewOverlay) certPreviewOverlay.classList.add('active');
+    };
+    document.getElementById('certPreviewCloseBtn')?.addEventListener('click', () => {
+        certPreviewOverlay?.classList.remove('active');
+    });
+    certPreviewOverlay?.addEventListener('click', (e) => {
+        if (e.target === certPreviewOverlay) certPreviewOverlay.classList.remove('active');
+    });
+
     // ── Render group member chips with per-member reject/unreject ──
     function renderMemberChips(od) {
         const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
@@ -141,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `<div style="margin-top:10px"><strong style="font-size:12px;color:#94a3b8">Group Members:</strong><div style="margin-top:6px">${chips}</div></div>`;
     }
 
-    // ── Nav filters ──
+    // ── Nav filters (Pending / Accepted / Rejected / Certificates) ──
     document.querySelectorAll('.nav-item[data-filter]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -149,11 +311,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const f = btn.dataset.filter;
             const searchInput = document.getElementById('searchInput');
             if (searchInput) searchInput.value = '';
+            const clearBtn = document.getElementById('clearSearch');
+            if (clearBtn) clearBtn.style.display = 'none';
             applyFilter(f);
         });
     });
 
-    // ── Search ──
+    // ── Search (works for OD requests and for certificates) ──
     const searchInput = document.getElementById('searchInput');
     const clearBtn    = document.getElementById('clearSearch');
     if (searchInput) {
@@ -170,9 +334,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    document.getElementById('refreshBtn')?.addEventListener('click', loadODs);
+    document.getElementById('refreshBtn')?.addEventListener('click', () => {
+        if (currentFilter === 'certificates') loadCertificates();
+        else loadODs();
+    });
+
     // ── Auto-refresh so HOD/email-approved changes reflect without manual refresh ──
-    setInterval(loadODs, 15000);
+    setInterval(() => {
+        loadODs();
+        if (certsLoaded) loadCertificates();
+    }, 15000);
 
     window.approveOD = async (odId, name) => { if (confirm(`Approve OD for ${name}?`)) await updateStatus(odId, 'Approved'); };
     window.rejectOD  = async (odId, name) => { if (confirm(`Reject OD for ${name}?`))  await updateStatus(odId, 'Rejected'); };
@@ -238,4 +409,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('logoutBtn')?.addEventListener('click', () => { localStorage.clear(); window.location.href = 'index.html'; });
 
     loadODs();
+    // Load the certificates badge count in the background too, so it's ready before the tab is clicked
+    loadCertificates();
 });

@@ -50,37 +50,106 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (err) { console.error('Student load error:', err); }
 
-    // ── Auto-calculate days (solo OD) ──
+    // ============================================
+    // Working-days-only helpers
+    // OD can only be applied for working days (Mon–Fri).
+    // Weekends (Sat/Sun) are blocked on date pick and
+    // the day count only counts working days in range.
+    // ============================================
+
+    /** true if the given YYYY-MM-DD date string falls on Sat or Sun */
+    function isWeekend(dateStr) {
+        if (!dateStr) return false;
+        const d = new Date(dateStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return false;
+        const day = d.getDay(); // 0 = Sunday, 6 = Saturday
+        return day === 0 || day === 6;
+    }
+
+    /** counts only Mon–Fri days (inclusive) between two YYYY-MM-DD strings */
+    function countWorkingDays(fromStr, toStr) {
+        const from = new Date(fromStr + 'T00:00:00');
+        const to   = new Date(toStr + 'T00:00:00');
+        if (isNaN(from.getTime()) || isNaN(to.getTime()) || from > to) return 0;
+        let count = 0;
+        const cur = new Date(from);
+        while (cur <= to) {
+            const day = cur.getDay();
+            if (day !== 0 && day !== 6) count++;
+            cur.setDate(cur.getDate() + 1);
+        }
+        return count;
+    }
+
+    /**
+     * Guards a date input against weekend selection.
+     * If the picked date is a Saturday/Sunday, clears the field,
+     * shows an inline error, and shows a toast.
+     * Returns true if the value was valid (or empty), false if it was cleared.
+     */
+    function guardWeekendInput(inputEl, errorElId, label) {
+        if (!inputEl) return true;
+        const val = inputEl.value;
+        if (!val) { clearFieldError(inputEl, errorElId); return true; }
+        if (isWeekend(val)) {
+            inputEl.value = '';
+            showFieldError(inputEl, errorElId, `${label} cannot be a weekend (Sat/Sun) — OD is only for working days.`);
+            showToast('error', `${label} must be a working day (Mon–Fri).`);
+            return false;
+        }
+        clearFieldError(inputEl, errorElId);
+        return true;
+    }
+
+    function showFieldError(inputEl, errorElId, msg) {
+        const group = inputEl.closest('.input-group');
+        if (group) group.classList.add('error');
+        const errEl = document.getElementById(errorElId);
+        if (errEl) errEl.textContent = msg;
+    }
+
+    function clearFieldError(inputEl, errorElId) {
+        const group = inputEl.closest('.input-group');
+        if (group) group.classList.remove('error');
+        const errEl = document.getElementById(errorElId);
+        if (errEl) errEl.textContent = '';
+    }
+
+    // ── Auto-calculate days (solo OD) — working days only ──
     const fromEl = document.getElementById('fromDate');
     const toEl   = document.getElementById('toDate');
     const daysEl = document.getElementById('numberOfDays');
 
     function calcDays() {
         if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value <= toEl.value) {
-            const d = Math.floor((new Date(toEl.value) - new Date(fromEl.value)) / 86400000) + 1;
-            if (daysEl) daysEl.value = d + (d === 1 ? ' day' : ' days');
+            const d = countWorkingDays(fromEl.value, toEl.value);
+            if (daysEl) {
+                daysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers only weekends)';
+            }
         } else {
             if (daysEl) daysEl.value = '';
         }
     }
-    if (fromEl) fromEl.addEventListener('change', calcDays);
-    if (toEl)   toEl.addEventListener('change', calcDays);
+    if (fromEl) fromEl.addEventListener('change', () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date'); calcDays(); });
+    if (toEl)   toEl.addEventListener('change',   () => { guardWeekendInput(toEl,   'toDate-error',   'To Date');   calcDays(); });
 
-    // ── Auto-calculate days (group OD) ──
+    // ── Auto-calculate days (group OD) — working days only ──
     const groupFromEl = document.getElementById('groupFromDate');
     const groupToEl   = document.getElementById('groupToDate');
     const groupDaysEl = document.getElementById('groupNumberOfDays');
 
     function calcGroupDays() {
         if (groupFromEl && groupToEl && groupFromEl.value && groupToEl.value && groupFromEl.value <= groupToEl.value) {
-            const d = Math.floor((new Date(groupToEl.value) - new Date(groupFromEl.value)) / 86400000) + 1;
-            if (groupDaysEl) groupDaysEl.value = d + (d === 1 ? ' day' : ' days');
+            const d = countWorkingDays(groupFromEl.value, groupToEl.value);
+            if (groupDaysEl) {
+                groupDaysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers only weekends)';
+            }
         } else {
             if (groupDaysEl) groupDaysEl.value = '';
         }
     }
-    if (groupFromEl) groupFromEl.addEventListener('change', calcGroupDays);
-    if (groupToEl)   groupToEl.addEventListener('change', calcGroupDays);
+    if (groupFromEl) groupFromEl.addEventListener('change', () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date'); calcGroupDays(); });
+    if (groupToEl)   groupToEl.addEventListener('change',   () => { guardWeekendInput(groupToEl,   'groupToDate-error',   'To Date');   calcGroupDays(); });
 
     // ── Tab switching ──
     const tabIndicator = document.getElementById('tabIndicator');
@@ -121,6 +190,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     startStatusPolling();
 
+    // ── Force a fresh reload when returning to this page via browser
+    //    back/forward cache (bfcache). Without this, the browser can restore
+    //    the exact DOM/state from before a certificate upload, making it look
+    //    like the upload never happened — the classic trigger for the
+    //    "upload certificate shows again / old certificate lost" bug. ──
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted && document.getElementById('apply-status')?.classList.contains('active')) {
+            loadODStatus();
+        }
+    });
+
     // ── Filter buttons ──
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -154,11 +234,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fromDate > toDate) {
             showToast('error', 'To date must be after from date'); return;
         }
+        // Final guard — re-check weekends at submit time in case of manual typing/paste
+        if (isWeekend(fromDate)) {
+            showFieldError(fromEl, 'fromDate-error', 'From Date cannot be a weekend — OD is only for working days.');
+            showToast('error', 'From Date must be a working day (Mon–Fri).'); return;
+        }
+        if (isWeekend(toDate)) {
+            showFieldError(toEl, 'toDate-error', 'To Date cannot be a weekend — OD is only for working days.');
+            showToast('error', 'To Date must be a working day (Mon–Fri).'); return;
+        }
         if (reason.length < 5) {
             showToast('error', 'Reason too short'); return;
         }
 
-        const days = Math.floor((new Date(toDate) - new Date(fromDate)) / 86400000) + 1;
+        const days = countWorkingDays(fromDate, toDate);
+        if (days <= 0) {
+            showToast('error', 'Selected range contains no working days'); return;
+        }
 
         const odData = {
             studentId:       parsedStudentId,
@@ -221,6 +313,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fromDate > toDate) {
             showToast('error', 'To date must be after from date'); return;
         }
+        // Final guard — re-check weekends at submit time in case of manual typing/paste
+        if (isWeekend(fromDate)) {
+            showFieldError(groupFromEl, 'groupFromDate-error', 'From Date cannot be a weekend — OD is only for working days.');
+            showToast('error', 'From Date must be a working day (Mon–Fri).'); return;
+        }
+        if (isWeekend(toDate)) {
+            showFieldError(groupToEl, 'groupToDate-error', 'To Date cannot be a weekend — OD is only for working days.');
+            showToast('error', 'To Date must be a working day (Mon–Fri).'); return;
+        }
         if (reason.length < 5) {
             showToast('error', 'Reason too short'); return;
         }
@@ -238,7 +339,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             regNumbers.push(myRegNo);
         }
 
-        const days = Math.floor((new Date(toDate) - new Date(fromDate)) / 86400000) + 1;
+        const days = countWorkingDays(fromDate, toDate);
+        if (days <= 0) {
+            showToast('error', 'Selected range contains no working days'); return;
+        }
 
         const odData = {
             studentId:       parsedStudentId,
@@ -300,7 +404,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === odModal) closeOdModal();
     });
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && odModal && odModal.style.display !== 'none') closeOdModal();
+        if (e.key === 'Escape') {
+            if (odModal && odModal.style.display !== 'none') closeOdModal();
+            if (certModal && certModal.style.display !== 'none') closeCertModal();
+        }
     });
 
     function closeOdModal() {
@@ -321,6 +428,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const regNumbersRaw = od.RegisterNumbers ?? od.registerNumbers ?? '';
         const winningStatus = od.WinningStatus ?? od.winningStatus ?? '';
         const certUrl       = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? '';
+        const certVerified  = !!(od.CertificateVerified ?? od.certificateVerified ?? false);
+        const odId          = od.OdId ?? od.odId ?? '';
 
         setEl('modalEventName', eventName || 'OD Request');
         setEl('modalCollege', college || '-');
@@ -370,11 +479,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Certificate / winning status section
         const certSection = document.getElementById('modalCertSection');
         if (winningStatus || certUrl) {
-            setEl('modalWinningStatus', winningStatus || 'Not submitted yet');
+            setEl('modalWinningStatus', (winningStatus || 'Not submitted yet') + (certVerified ? '  ✓ Verified by Staff' : ''));
             const certImg = document.getElementById('modalCertImage');
             if (certImg) {
                 if (certUrl) {
-                    certImg.src = certUrl.startsWith('http') ? certUrl : `${API_BASE}${certUrl}`;
+                    const resolvedCertUrl = certUrl.startsWith('http') ? certUrl : `${API_BASE}${certUrl}`;
+                    // Cache-bust the image itself so a re-uploaded certificate
+                    // never shows the browser's cached copy of the old file.
+                    certImg.src = `${resolvedCertUrl}${resolvedCertUrl.includes('?') ? '&' : '?'}_=${Date.now()}`;
                     certImg.style.display = 'block';
                 } else {
                     certImg.style.display = 'none';
@@ -384,6 +496,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (certSection) certSection.style.display = 'flex';
         } else {
             if (certSection) certSection.style.display = 'none';
+        }
+
+        // Certificate upload button inside the modal — only once the OD's dates have
+        // passed, AND only while the certificate has not yet been verified by staff.
+        // Once staff verifies it, the student can no longer replace it.
+        const modalCertUploadBtn = document.getElementById('modalCertUploadBtn');
+        if (modalCertUploadBtn) {
+            if (certVerified) {
+                modalCertUploadBtn.style.display = 'flex';
+                modalCertUploadBtn.textContent = '✓ Certificate Verified — Locked';
+                modalCertUploadBtn.disabled = true;
+                modalCertUploadBtn.classList.add('cert-locked');
+                modalCertUploadBtn.onclick = null;
+            } else if (isOdCompleted(toDate)) {
+                modalCertUploadBtn.style.display = 'flex';
+                modalCertUploadBtn.disabled = false;
+                modalCertUploadBtn.classList.remove('cert-locked');
+                modalCertUploadBtn.textContent = certUrl ? 'Update Certificate' : 'Upload Certificate';
+                modalCertUploadBtn.onclick = () => openCertModal(odId, winningStatus, !!certUrl);
+            } else {
+                modalCertUploadBtn.style.display = 'none';
+            }
         }
 
         // Wire the modal's print button to this OD's data
@@ -417,6 +551,112 @@ document.addEventListener('DOMContentLoaded', async () => {
         reportWindow.addEventListener('load', tryFill);
     }
 
+    // ── Certificate Upload Modal ──
+    // Posts multipart/form-data to:
+    //     POST {API_BASE}/api/OdApply/{odId}/UploadCertificate
+    //     fields: photo (file), winningStatus (text)
+    // Matches OdApplyController.UploadCertificate(int odId, [FromForm] string winningStatus, IFormFile photo)
+    const certModal = document.getElementById('certUploadModal');
+    let certUploadOdId = null;
+    let certUploadHasExisting = false;
+
+    document.getElementById('certModalCloseBtn')?.addEventListener('click', closeCertModal);
+    certModal?.addEventListener('click', (e) => {
+        if (e.target === certModal) closeCertModal();
+    });
+
+    function closeCertModal() {
+        if (certModal) certModal.style.display = 'none';
+        certUploadOdId = null;
+        certUploadHasExisting = false;
+    }
+
+    function openCertModal(odId, existingWinningStatus, hasExisting) {
+        // A certificate already exists for this OD — warn before letting the
+        // student open the replace form, so the old file is never lost by accident.
+        if (hasExisting) {
+            const confirmed = confirm(
+                'A certificate has already been uploaded for this OD.\n\n' +
+                'Uploading a new file will PERMANENTLY REPLACE the existing one — it cannot be recovered.\n\n' +
+                'Do you want to continue and replace it?'
+            );
+            if (!confirmed) return;
+        }
+        certUploadOdId = odId;
+        certUploadHasExisting = !!hasExisting;
+        const wsInput = document.getElementById('certWinningStatus');
+        if (wsInput) wsInput.value = existingWinningStatus || '';
+        const fileInput = document.getElementById('certFile');
+        if (fileInput) fileInput.value = '';
+        const fileNameLabel = document.getElementById('certFileName');
+        if (fileNameLabel) fileNameLabel.textContent = 'No file chosen';
+        if (certModal) certModal.style.display = 'flex';
+    }
+
+    document.getElementById('certFile')?.addEventListener('change', (e) => {
+        const fileNameLabel = document.getElementById('certFileName');
+        const file = e.target.files?.[0];
+        if (fileNameLabel) fileNameLabel.textContent = file ? file.name : 'No file chosen';
+    });
+
+    document.getElementById('certUploadForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!certUploadOdId) return;
+
+        const fileInput = document.getElementById('certFile');
+        const file = fileInput?.files?.[0];
+        const winningStatus = document.getElementById('certWinningStatus')?.value.trim() || '';
+
+        if (!file) { showToast('error', 'Please choose a certificate file'); return; }
+
+        const formData = new FormData();
+        formData.append('winningStatus', winningStatus);
+        formData.append('photo', file);
+
+        const submitBtn = document.getElementById('certUploadSubmitBtn');
+        const submitText = submitBtn?.querySelector('.btn-text');
+        const submitLoader = submitBtn?.querySelector('.btn-loader');
+        if (submitText) submitText.style.display = 'none';
+        if (submitLoader) submitLoader.style.display = 'inline';
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${certUploadOdId}/UploadCertificate`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                showToast('success', 'Certificate uploaded successfully!');
+                closeCertModal();
+                closeOdModal();
+                loadODStatus();
+            } else {
+                const errText = await res.text();
+                console.error('Certificate upload failed:', res.status, errText);
+                showToast('error', `Failed to upload certificate (${res.status})`);
+            }
+        } catch (err) {
+            console.error('Certificate upload network error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (submitText) submitText.style.display = 'inline';
+            if (submitLoader) submitLoader.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
+
+    // ── Has the OD's date range fully passed? (used to gate certificate upload) ──
+    function isOdCompleted(toDateRaw) {
+        if (!toDateRaw) return false;
+        const to = new Date(toDateRaw);
+        if (isNaN(to.getTime())) return false;
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        to.setHours(0, 0, 0, 0);
+        return to.getTime() < todayMidnight.getTime();
+    }
+
     // ── Load OD Status (solo + group, via register number) ──
     async function loadODStatus() {
         const list  = document.getElementById('statusList');
@@ -428,11 +668,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (empty) empty.style.display = 'none';
 
         const registerNumber = localStorage.getItem('registerNumber') || '';
-        const url = `${API_BASE}/api/OdApply/ByRegister/${encodeURIComponent(registerNumber)}`;
+        // Cache-bust: append a timestamp so browsers/proxies never serve a stale
+        // cached response (this was the cause of the "certificate disappears"
+        // bug — the student page would show a stale pre-upload snapshot after
+        // navigating back, making it look like the upload failed).
+        const url = `${API_BASE}/api/OdApply/ByRegister/${encodeURIComponent(registerNumber)}?_=${Date.now()}`;
         console.log('Fetching OD status from:', url);
 
         try {
-            const res = await fetch(url);
+            const res = await fetch(url, {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
             console.log('OD status response code:', res.status);
 
             if (!res.ok) {
@@ -468,6 +715,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
                 const groupName     = od.GroupName     ?? od.groupName     ?? '';
                 const odId          = od.OdId ?? od.odId ?? '';
+                const certUrl       = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? od.certificatephotourl ?? od.CertificatePhotoURL ?? '';
                 const facRejected   = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
                                         .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
                 const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
@@ -491,6 +739,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                         setTimeout(() => alert(`Your OD request (${eventName}) was rejected by faculty.`), 100);
                     }
                 }
+
+                // Certificate upload is only offered once the OD's own dates have passed,
+                // and never once staff has verified the certificate.
+                const completed = isOdCompleted(toDate);
+                const certVerified = !!(od.CertificateVerified ?? od.certificateVerified ?? false);
+                const certBtnHtml = certVerified
+                    ? `<span class="cert-locked-badge" title="Certificate verified by staff — can no longer be changed">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            Certificate Verified
+                        </span>`
+                    : completed
+                    ? `<button type="button" class="upload-cert-btn ${certUrl ? 'has-cert' : ''}" data-odid="${odId}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            ${certUrl ? 'Update Certificate' : 'Upload Certificate'}
+                        </button>`
+                    : '';
 
                 return `
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
@@ -526,6 +797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </svg>
                             Print Report
                         </button>
+                        ${certBtnHtml}
                     </div>
                 </div>`;
             }).join('');
@@ -540,7 +812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ── Delegated clicks on the status list: view details + print report ──
+    // ── Delegated clicks on the status list: view details + print report + upload certificate ──
     document.getElementById('statusList')?.addEventListener('click', (e) => {
         const odId = e.target.closest('[data-odid]')?.dataset.odid;
         if (odId === undefined) return;
@@ -553,6 +825,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.closest('.print-report-btn')) {
             e.stopPropagation();
             printOdReport(od);
+            return;
+        }
+
+        if (e.target.closest('.upload-cert-btn')) {
+            e.stopPropagation();
+            const winningStatus = od.WinningStatus ?? od.winningStatus ?? '';
+            const certUrl = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? '';
+            openCertModal(odId, winningStatus, !!certUrl);
             return;
         }
 
