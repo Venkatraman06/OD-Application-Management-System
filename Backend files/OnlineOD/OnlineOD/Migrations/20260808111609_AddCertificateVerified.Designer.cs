@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnlineOD.Data;
 
@@ -11,9 +12,11 @@ using OnlineOD.Data;
 namespace OnlineOD.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260808111609_AddCertificateVerified")]
+    partial class AddCertificateVerified
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,9 +109,6 @@ namespace OnlineOD.Migrations
                     b.Property<string>("RegisterNumbers")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Section")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("StudentId")
                         .HasColumnType("int");
 
@@ -130,38 +130,6 @@ namespace OnlineOD.Migrations
                     b.HasKey("OdId");
 
                     b.ToTable("OdApplies");
-                });
-
-            modelBuilder.Entity("OnlineOD.Models.OdCertificate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CertificatePhotoUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("CertificateVerified")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("OdId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RegisterNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UploadedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("WinningStatus")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("OdCertificates");
                 });
 
             modelBuilder.Entity("OnlineOD.Models.Staff", b =>
@@ -190,9 +158,6 @@ namespace OnlineOD.Migrations
 
                     b.Property<string>("RollNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Section")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("StaffId");
@@ -225,9 +190,6 @@ namespace OnlineOD.Migrations
 
                     b.Property<string>("RegisterNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Section")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Year")

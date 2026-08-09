@@ -67,7 +67,8 @@ namespace OnlineOD.Controllers
             .OrderByDescending(o => o.AppliedDate)
             .ToList();
 
-            return Ok(matched);
+            var withCerts = await _service.AttachCertificatesAsync(matched);
+            return Ok(withCerts);
         }
 
         // ── NEW: GET /api/OdApply/WithCertificates
@@ -91,13 +92,19 @@ namespace OnlineOD.Controllers
 
             var result = await _service.CreateOdApplyAsync(dto);
 
-            // Send email to ALL faculty in same department
+            // Send email to the staff in the SAME department AND section as
+            // the applying student — this is what routes a Section-B
+            // student's OD only to their Section-B class teacher, instead of
+            // every staff member in the department.
             try
             {
                 var staffList = await _staffService.GetAllStaffAsync();
                 var deptStaff = staffList.Where(s =>
                     s.Department != null &&
                     s.Department.Trim().ToLower() == (dto.department ?? "").Trim().ToLower() &&
+                    !string.IsNullOrWhiteSpace(dto.Section) &&
+                    s.Section != null &&
+                    s.Section.Trim().ToLower() == dto.Section.Trim().ToLower() &&
                     !string.IsNullOrEmpty(s.Email)
                 ).ToList();
 
@@ -173,7 +180,7 @@ namespace OnlineOD.Controllers
             return Ok(od);
         }
 
-        
+
         // DELETE /api/OdApply/{odId}
         [HttpDelete("{odId}")]
         public async Task<IActionResult> DeleteOdApply(int odId)
@@ -184,26 +191,64 @@ namespace OnlineOD.Controllers
         }
 
         // POST /api/OdApply/{odId}/UploadCertificate
+        // Each student (identified by registerNumber) gets their own certificate
+        // row for this OD — required for group ODs where multiple members each
+        // upload their own certificate without overwriting each other's.
         [HttpPost("{odId}/UploadCertificate")]
         public async Task<IActionResult> UploadCertificate(int odId,
             [FromForm] string winningStatus,
+            [FromForm] string registerNumber,
             IFormFile photo)
         {
+            if (string.IsNullOrWhiteSpace(registerNumber))
+                return BadRequest("registerNumber is required");
+
             var od = await _service.GetOdApplyByIdAsync(odId);
             if (od == null) return NotFound();
 
+            var existingCerts = await _service.GetCertificatesForOdAsync(odId);
+            var mine = existingCerts.FirstOrDefault(c =>
+                c.RegisterNumber.Equals(registerNumber.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (mine != null && mine.CertificateVerified)
+                return BadRequest("This certificate has already been verified by staff and can no longer be changed.");
+
             var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
             Directory.CreateDirectory(uploadsDir);
-            var fileName = $"{odId}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+            var fileName = $"{odId}_{registerNumber.Trim()}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
             var filePath = Path.Combine(uploadsDir, fileName);
             using var stream = System.IO.File.Create(filePath);
             await photo.CopyToAsync(stream);
 
-            od.WinningStatus = winningStatus;
-            od.CertificatePhotoUrl = $"/uploads/{fileName}";
-            await _service.UpdateCertificateAsync(od);
+            var certUrl = $"/uploads/{fileName}";
+            var cert = await _service.UploadMemberCertificateAsync(odId, registerNumber.Trim(), winningStatus, certUrl);
 
-            return Ok(new { url = od.CertificatePhotoUrl });
+            return Ok(cert);
+        }
+
+        // GET /api/OdApply/{odId}/Certificates
+        // Returns every group member's certificate for this OD (one entry per
+        // register number who has uploaded so far).
+        [HttpGet("{odId}/Certificates")]
+        public async Task<IActionResult> GetCertificates(int odId)
+        {
+            var certs = await _service.GetCertificatesForOdAsync(odId);
+            return Ok(certs);
+        }
+
+        // PUT /api/OdApply/{odId}/VerifyCertificate?registerNumber=XXX
+        // Staff verifies ONE specific member's certificate — once verified,
+        // that student (and only that student) can no longer replace it.
+        [HttpPut("{odId}/VerifyCertificate")]
+        public async Task<IActionResult> VerifyCertificate(int odId, [FromQuery] string registerNumber)
+        {
+            if (string.IsNullOrWhiteSpace(registerNumber))
+                return BadRequest("registerNumber is required");
+
+            var cert = await _service.VerifyMemberCertificateAsync(odId, registerNumber.Trim());
+            if (cert == null) return NotFound("Certificate not found for this student on this OD");
+
+            return Ok(cert);
         }
     }
 }

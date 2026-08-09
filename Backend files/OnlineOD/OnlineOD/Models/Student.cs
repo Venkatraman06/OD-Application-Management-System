@@ -6,7 +6,7 @@ namespace OnlineOD.Models
     public class Student
     {
 
-        
+
         [Key]
         public int StudentId { get; set; }
 
@@ -18,6 +18,11 @@ namespace OnlineOD.Models
 
         [Required]
         public string Department { get; set; }
+
+        // Class section (e.g. "A", "B") — routes this student's OD requests
+        // to only the staff assigned to the same Department + Section.
+        public string? Section { get; set; }
+
         [Required]
         public int Year { get; set; }
 
@@ -29,6 +34,6 @@ namespace OnlineOD.Models
 
         // Store HASH, not plain password
         [Required]
-        public string Password{ get; set; }
+        public string Password { get; set; }
     }
 }
