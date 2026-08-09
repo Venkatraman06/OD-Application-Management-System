@@ -18,6 +18,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     let certsLoaded = false;
     let currentFilter = 'pending';
 
+    // ── Register number → student lookup (name, department, year) ──
+    // Group OD data only carries register numbers for non-applicant members,
+    // so we fetch the full student list once and use it to resolve each
+    // member's name/class for the certificate details table.
+    let studentLookup = {};
+    async function loadStudentLookup() {
+        try {
+            const res = await fetch(`${API_BASE}/api/Student?_=${Date.now()}`, { cache: 'no-store' });
+            if (!res.ok) return;
+            const students = await res.json();
+            studentLookup = {};
+            students.forEach(s => {
+                const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
+                if (reg) studentLookup[reg] = {
+                    name: s.name || s.Name || '',
+                    department: s.department || s.Department || '',
+                    year: s.year || s.Year || ''
+                };
+            });
+            if (currentFilter === 'certificates' && certsLoaded) {
+                renderCertificates(searchFilterCerts(allCerts));
+            }
+        } catch (err) { console.error('Student lookup load error:', err); }
+    }
+    function lookupStudent(reg) {
+        return studentLookup[(reg || '').trim().toLowerCase()] || null;
+    }
+
     const sectionMeta = {
         pending: {
             title: 'Pending HOD Approval',
@@ -94,9 +122,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const searchInput = document.getElementById('searchInput');
         if (searchInput && searchInput.value.trim()) {
             const q = searchInput.value.trim().toLowerCase();
-            return certs.filter(c => (c.registerNumber || '').toLowerCase().includes(q));
+            return certs.filter(o => {
+                if ((o.registerNumber || '').toLowerCase().includes(q)) return true;
+                const members = (o.registerNumbers || '').split(',').map(r => r.trim().toLowerCase());
+                return members.some(m => m.includes(q));
+            });
         }
         return certs;
+    }
+
+    /**
+     * Returns [{ registerNumber, cert }] for one OD — the member list for a
+     * group OD, or a single-entry list for a solo OD.
+     */
+    function getMemberCertRows(od) {
+        const certList = od.certificates ?? od.Certificates ?? [];
+        const findCert = (reg) => certList.find(c =>
+            ((c.registerNumber ?? c.RegisterNumber ?? '').trim().toLowerCase()) === reg.trim().toLowerCase()
+        ) || null;
+
+        if (od.isGroupOd) {
+            const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+            return members.map(reg => ({ registerNumber: reg, cert: findCert(reg) }));
+        }
+        const reg = od.registerNumber || '';
+        return [{ registerNumber: reg, cert: findCert(reg) }];
     }
 
     function applySectionMeta(filter) {
@@ -159,8 +209,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             filtered = filtered.filter(o => (o.registerNumber||'').toLowerCase().includes(q));
         }
 
+        // Pending requests are sorted by soonest-starting OD first, so the
+        // most time-sensitive requests bubble to the top.
+        if (filter === 'pending') {
+            filtered = [...filtered].sort((a, b) => {
+                const da = a.fromDate ? new Date(a.fromDate).getTime() : Infinity;
+                const db = b.fromDate ? new Date(b.fromDate).getTime() : Infinity;
+                return da - db;
+            });
+        }
+
         renderODs(filtered, filter);
     }
+
+    // Keeps full OD objects addressable by id so the "View Details" modal can
+    // look up complete data (including group members) without stuffing it all
+    // into onclick attributes.
+    let odsById = {};
 
     function renderODs(ods, filter) {
         const container = document.getElementById('requestsContainer');
@@ -173,8 +238,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         if (empty) empty.style.display = 'none';
-        if (container) container.innerHTML = ods.map(od => `
-            <div class="request-card">
+        ods.forEach(od => { odsById[od.odId] = od; });
+        if (container) container.innerHTML = ods.map(od => {
+            const countdown = odDateCountdownLabel(od.fromDate, od.toDate);
+            return `
+            <div class="request-card" data-odid="${od.odId}">
+                ${countdown.text ? `<div class="od-countdown-banner ${countdown.cls}">${countdown.text}</div>` : ''}
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
@@ -195,15 +264,84 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </p>
                     ${od.isGroupOd ? renderMemberChipsHod(od) : ''}
                 </div>
-                ${od.hodStatus === 'Pending' ? `
                 <div class="card-actions">
+                    <button type="button" class="view-details-btn" data-odid="${od.odId}">View Details</button>
+                    ${od.hodStatus === 'Pending' ? `
                     <button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Final Approve</button>
-                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>
-                </div>` : ''}
-            </div>`).join('');
+                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>` : ''}
+                </div>
+            </div>`;
+        }).join('');
     }
 
-    // ── Render certificate cards (view-only — HOD/staff cannot upload) ──
+    // ── OD Full Details modal (view-only, mirrors the student page's modal) ──
+    const odDetailOverlay = document.getElementById('odDetailOverlay');
+    function openOdDetailModal(od) {
+        if (!od) return;
+        const overall = od.hodStatus === 'Approved' ? 'approved'
+            : (od.hodStatus === 'Rejected' || od.facultyStatus === 'Rejected') ? 'rejected'
+            : 'pending';
+        const overallLabel = od.hodStatus === 'Approved' ? 'Fully Approved ✓'
+            : od.hodStatus === 'Rejected' ? 'Rejected by HOD'
+            : od.facultyStatus === 'Rejected' ? 'Rejected by Faculty'
+            : od.facultyStatus === 'Approved' ? 'Awaiting HOD'
+            : 'Pending';
+
+        setEl('odDetailEvent', od.event || '');
+        const overallBadge = document.getElementById('odDetailOverallBadge');
+        if (overallBadge) { overallBadge.className = `status-badge ${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
+
+        setEl('odDetailStudent', od.studentName || '');
+        setEl('odDetailRegNo', od.registerNumber || '');
+        setEl('odDetailDeptSection', [od.department, od.section ? `Section ${od.section}` : ''].filter(Boolean).join(' • '));
+        setEl('odDetailYear', od.year || '-');
+        setEl('odDetailCollege', od.collegeIndustry || '');
+        setEl('odDetailFromDate', fmtDate(od.fromDate));
+        setEl('odDetailToDate', fmtDate(od.toDate));
+        const countdown = odDateCountdownLabel(od.fromDate, od.toDate);
+        setEl('odDetailDays', od.numberOfDays ? `${od.numberOfDays}${countdown.text ? ' (' + countdown.text + ')' : ''}` : '-');
+        setEl('odDetailApplied', fmtDT(od.appliedDate));
+        setEl('odDetailReason', od.reason || 'No reason provided');
+
+        const facBadge = document.getElementById('odDetailFacultyStatus');
+        if (facBadge) { facBadge.className = `status-badge ${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
+        const hodBadge = document.getElementById('odDetailHodStatus');
+        if (hodBadge) { hodBadge.className = `status-badge ${bdg(od.hodStatus)}`; hodBadge.textContent = od.hodStatus || 'Pending'; }
+
+        const groupSection = document.getElementById('odDetailGroupSection');
+        if (od.isGroupOd) {
+            setEl('odDetailGroupName', od.groupName || '-');
+            const membersDiv = document.getElementById('odDetailMembers');
+            if (membersDiv) {
+                const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+                membersDiv.innerHTML = members.length
+                    ? members.map(m => `<span>${escHtml(m)}</span>`).join('')
+                    : '<span>No members listed</span>';
+            }
+            if (groupSection) groupSection.style.display = 'flex';
+        } else if (groupSection) {
+            groupSection.style.display = 'none';
+        }
+
+        odDetailOverlay?.classList.add('active');
+    }
+    function closeOdDetailModal() { odDetailOverlay?.classList.remove('active'); }
+    document.getElementById('odDetailCloseBtn')?.addEventListener('click', closeOdDetailModal);
+    odDetailOverlay?.addEventListener('click', (e) => { if (e.target === odDetailOverlay) closeOdDetailModal(); });
+
+    document.getElementById('requestsContainer')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.view-details-btn');
+        if (btn) {
+            const odId = parseInt(btn.dataset.odid, 10);
+            openOdDetailModal(odsById[odId]);
+        }
+    });
+
+    // ── Render certificate cards (view-only — HOD/staff cannot upload/verify) ──
+    // ONE card per OD. Solo ODs show a single certificate row. Group ODs show
+    // a summary ("2/4 uploaded") with a "View Member Details" toggle that
+    // expands a table listing every member's register number, name, and
+    // upload status.
     function renderCertificates(certs) {
         const container = document.getElementById('requestsContainer');
         const empty     = document.getElementById('emptyState');
@@ -217,44 +355,125 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (empty) empty.style.display = 'none';
 
         if (container) container.innerHTML = certs.map(od => {
-            const rawUrl = od.certificatePhotoUrl || '';
-            const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
-            // Cache-bust so a re-uploaded certificate never shows the browser's
-            // cached copy of the old file.
-            const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
-            const isImage = /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
+            const rows = getMemberCertRows(od);
+
+            if (!od.isGroupOd) {
+                // ── Solo OD: same single-member layout as before ──
+                const { cert } = rows[0];
+                const rawUrl = cert ? (cert.certificatePhotoUrl ?? cert.CertificatePhotoUrl ?? '') : '';
+                const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
+                const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
+                const isImage = /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
+                const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
+                const badgeText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Certificate Uploaded';
+                const badgeClass = !rawUrl ? 'cert-badge' : isVerified ? 'cert-badge cert-badge-verified' : 'cert-badge';
+
+                return `
+                <div class="request-card cert-card">
+                    <div class="card-header">
+                        <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
+                        <div class="student-info">
+                            <h3>${od.studentName || ''}</h3>
+                            <p>${od.registerNumber || ''} &bull; ${od.department || ''}</p>
+                        </div>
+                        <span class="status-badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Event:</strong> ${od.event || ''}</p>
+                        <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
+                        <p><strong>OD Finished:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)}</p>
+                    </div>
+                    ${certUrl ? `
+                    <div class="cert-preview-row">
+                        ${isImage
+                            ? `<img src="${certUrl}" alt="Certificate" class="cert-thumb" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">`
+                            : `<div class="cert-file-icon" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">
+                                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                       <polyline points="14 2 14 8 20 8"/>
+                                   </svg>
+                               </div>`
+                        }
+                        <a href="${certUrl}" target="_blank" rel="noopener" class="cert-view-link">View Full Certificate ↗</a>
+                    </div>` : `<p class="cert-none-text">OD finished — student has not uploaded a certificate yet.</p>`}
+                </div>`;
+            }
+
+            // ── Group OD: one summary card + expandable member table ──
+            const uploadedCount = rows.filter(r => r.cert && (r.cert.certificatePhotoUrl ?? r.cert.CertificatePhotoUrl)).length;
+            const verifiedCount = rows.filter(r => r.cert && (r.cert.certificateVerified ?? r.cert.CertificateVerified)).length;
+
+            const memberRows = rows.map(({ registerNumber, cert }) => {
+                const rawUrl = cert ? (cert.certificatePhotoUrl ?? cert.CertificatePhotoUrl ?? '') : '';
+                const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
+                const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
+                const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
+                const known = registerNumber === od.registerNumber
+                    ? { name: od.studentName, department: od.department }
+                    : lookupStudent(registerNumber);
+                const displayName = known?.name || '';
+                const className = known ? [known.department, known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ') : '';
+                const statusText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Uploaded';
+                const statusClass = !rawUrl ? 'cert-mrow-status' : isVerified ? 'cert-mrow-status cert-mrow-verified' : 'cert-mrow-status cert-mrow-uploaded';
+                const actionHtml = rawUrl
+                    ? `<a href="${certUrl}" target="_blank" rel="noopener" class="cert-mrow-view">View</a>`
+                    : `<span class="cert-mrow-none">—</span>`;
+
+                return `
+                    <div class="cert-member-row">
+                        <div class="cert-mrow-name">
+                            <span class="cert-mrow-reg">${registerNumber}${displayName ? ` — ${escHtml(displayName)}` : ''}</span>
+                            <span class="cert-mrow-fullname">${className ? escHtml(className) : ''}</span>
+                        </div>
+                        <span class="${statusClass}">${statusText}</span>
+                        <div class="cert-mrow-actions">${actionHtml}</div>
+                    </div>`;
+            }).join('');
 
             return `
-            <div class="request-card cert-card">
+            <div class="request-card cert-card cert-card-group">
                 <div class="card-header">
-                    <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
+                    <div class="student-avatar">G</div>
                     <div class="student-info">
-                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(14,165,233,0.15);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3)">GROUP: ${od.groupName || ''}</span>` : ''}</h3>
-                        <p>${od.registerNumber || ''} &bull; ${od.department || ''}</p>
+                        <h3>Group: ${od.groupName || ''}</h3>
+                        <p>${rows.length} member${rows.length !== 1 ? 's' : ''} &bull; ${od.department || ''}</p>
                     </div>
-                    <span class="status-badge cert-badge">${rawUrl ? 'Certificate Uploaded' : 'Not Uploaded'}</span>
+                    <span class="status-badge cert-badge">${uploadedCount}/${rows.length} uploaded${verifiedCount ? `, ${verifiedCount} verified` : ''}</span>
                 </div>
                 <div class="card-body">
                     <p><strong>Event:</strong> ${od.event || ''}</p>
                     <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
                     <p><strong>OD Finished:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)}</p>
                 </div>
-                ${certUrl ? `
-                <div class="cert-preview-row">
-                    ${isImage
-                        ? `<img src="${certUrl}" alt="Certificate" class="cert-thumb" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">`
-                        : `<div class="cert-file-icon" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">
-                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
-                                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                   <polyline points="14 2 14 8 20 8"/>
-                               </svg>
-                           </div>`
-                    }
-                    <a href="${certUrl}" target="_blank" rel="noopener" class="cert-view-link">View Full Certificate ↗</a>
-                </div>` : `<p class="cert-none-text">OD finished — student has not uploaded a certificate yet.</p>`}
+                <button type="button" class="cert-expand-btn" onclick="toggleGroupCertDetails(this)">
+                    <span>View Member Details</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" class="cert-expand-icon">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                <div class="cert-group-details" style="display:none">
+                    <div class="cert-member-row cert-member-row-head">
+                        <div class="cert-mrow-name">Register Number / Name</div>
+                        <span class="cert-mrow-status">Certificate</span>
+                        <div class="cert-mrow-actions">Action</div>
+                    </div>
+                    ${memberRows}
+                </div>
             </div>`;
         }).join('');
     }
+
+    // ── Toggle the expandable member-details table on a group cert card ──
+    window.toggleGroupCertDetails = (btn) => {
+        const card = btn.closest('.cert-card-group');
+        const details = card?.querySelector('.cert-group-details');
+        if (!details) return;
+        const opening = details.style.display === 'none';
+        details.style.display = opening ? 'block' : 'none';
+        btn.classList.toggle('expanded', opening);
+        const label = btn.querySelector('span');
+        if (label) label.textContent = opening ? 'Hide Member Details' : 'View Member Details';
+    };
 
     // ── Certificate preview modal (view-only, no download/upload controls) ──
     const certPreviewOverlay = document.getElementById('certPreviewOverlay');
@@ -413,7 +632,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     function bdg(s) { return s === 'Approved' ? 'approved' : s === 'Rejected' ? 'rejected' : 'pending'; }
     function fmtDate(d) { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB'); } catch { return d; } }
     function fmtDT(d)   { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB') + ' ' + dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); } catch { return d; } }
+
+    // ── Human-readable "how many days until/since this OD" label ──
+    // Shown at the top of every OD card so HOD can immediately see which
+    // requests are urgent (starting soon) without opening each one.
+    function odDateCountdownLabel(fromDateRaw, toDateRaw) {
+        const from = fromDateRaw ? new Date(fromDateRaw) : null;
+        const to   = toDateRaw   ? new Date(toDateRaw)   : null;
+        if (!from || isNaN(from.getTime()) || !to || isNaN(to.getTime())) return { text: '', cls: '' };
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        to.setHours(0, 0, 0, 0);
+
+        const msPerDay = 24 * 60 * 60 * 1000;
+
+        if (today < from) {
+            const daysUntilStart = Math.round((from - today) / msPerDay);
+            const text = daysUntilStart === 1 ? 'Starts tomorrow' : `Starts in ${daysUntilStart} days`;
+            const cls = daysUntilStart <= 1 ? 'od-countdown-urgent' : daysUntilStart <= 7 ? 'od-countdown-soon' : 'od-countdown-normal';
+            return { text, cls };
+        }
+        if (today >= from && today <= to) {
+            return { text: 'Ongoing', cls: 'od-countdown-ongoing' };
+        }
+        const daysSinceEnd = Math.round((today - to) / msPerDay);
+        const text = daysSinceEnd === 1 ? 'Completed yesterday' : `Completed ${daysSinceEnd} days ago`;
+        return { text, cls: 'od-countdown-done' };
+    }
+
     function esc(s) { return (s||'').replace(/'/g, "\\'"); }
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
     function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? ''; }
     function showToast(type, msg) {
         const c = document.getElementById('toastContainer'); if (!c) return;
@@ -426,4 +676,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadODs();
     // Load certificate badge count in background so it's ready before the tab is clicked
     loadCertificates();
+    loadStudentLookup();
 });
