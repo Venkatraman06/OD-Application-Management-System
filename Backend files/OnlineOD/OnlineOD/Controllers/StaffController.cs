@@ -74,15 +74,22 @@ namespace OnlineOD.Controllers
             {
                 facultyId = staff.StaffId,
                 name = staff.Name,
-                department = staff.Department
+                department = staff.Department,
+                section = staff.Section
             });
         }
 
+        // GET /api/Faculty/PendingODs/{department}?section=B
+        // The optional section filter restricts results to only the OD
+        // requests from students in that exact class section — this is what
+        // makes a Section-B student's request visible only to Section-B
+        // staff instead of every staff member in the department.
         [HttpGet("PendingODs/{department}")]
-        public async Task<IActionResult> GetPendingODs(string department)
+        public async Task<IActionResult> GetPendingODs(string department, [FromQuery] string? section = null)
         {
-            var ods = await _odService.GetByDepartmentAsync(department);
-            return Ok(ods);
+            var ods = await _odService.GetByDepartmentAsync(department, section);
+            var withCerts = await _odService.AttachCertificatesAsync(ods);
+            return Ok(withCerts);
         }
 
         // Approve/Reject by faculty — then email HOD with clickable buttons

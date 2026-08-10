@@ -14,5 +14,6 @@ namespace OnlineOD.Data
         public DbSet<Staff> Staffs { get; set; }
         public DbSet<Hod> Hods { get; set; }
         public DbSet<OdApply> OdApplies { get; set; }
+        public DbSet<OdCertificate> OdCertificates { get; set; }
     }
 }

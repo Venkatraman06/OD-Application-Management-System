@@ -90,7 +90,8 @@ namespace OnlineOD.Controllers
         public async Task<IActionResult> GetApprovedByFaculty(string department)
         {
             var ods = await _odService.GetApprovedByFacultyAsync(department);
-            return Ok(ods);
+            var withCerts = await _odService.AttachCertificatesAsync(ods);
+            return Ok(withCerts);
         }
 
 

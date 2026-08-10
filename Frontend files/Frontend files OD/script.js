@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('studentId', studentResult.data.studentId);
             localStorage.setItem('userName', studentResult.data.name);
             localStorage.setItem('userDept', studentResult.data.department);
+            // Class section (e.g. "A", "B") — used to route this student's OD
+            // requests to only the staff assigned to the same section.
+            localStorage.setItem('userSection', studentResult.data.section || '');
             localStorage.setItem('registerNumber', studentResult.data.registerNumber);
             showToast('success', 'Student login successful!');
             setTimeout(() => window.location.href = 'student.html', 1200);
@@ -68,6 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('facultyId', facultyResult.data.facultyId);
             localStorage.setItem('userName', facultyResult.data.name);
             localStorage.setItem('userDept', facultyResult.data.department);
+            // The class section this staff member teaches — restricts which
+            // OD requests they see/get emailed about to just their own class.
+            localStorage.setItem('userSection', facultyResult.data.section || '');
             showToast('success', 'Faculty login successful!');
             setTimeout(() => window.location.href = 'teacher.html', 1200);
             return;

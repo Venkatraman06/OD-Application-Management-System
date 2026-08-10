@@ -20,13 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const s = await res.json();
             const name  = s.name           || s.Name           || '';
             const dept  = s.department     || s.Department     || '';
+            const sect  = s.section        || s.Section        || '';
             const regNo = s.registerNumber || s.RegisterNumber || '';
             const yr    = s.year           || s.Year           || '';
             const sem   = s.semester       || s.Semester       || '';
             const dob   = s.dob            || s.Dob            || s.DOB || '';
 
             setEl('studentName',   name);
-            setEl('studentDept',   dept);
+            setEl('studentDept',   sect ? `${dept} • Section ${sect}` : dept);
             setEl('studentRollNo', regNo);
             setEl('studentYear',   `Year ${yr} / Sem ${sem}`);
 
@@ -47,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('userName',       name);
             localStorage.setItem('registerNumber', regNo);
             localStorage.setItem('userDept',       dept);
+            localStorage.setItem('userSection',    sect);
         }
     } catch (err) { console.error('Student load error:', err); }
 
@@ -257,6 +259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             studentName:     localStorage.getItem('userName')       || '',
             registerNumber:  localStorage.getItem('registerNumber') || '',
             department:      localStorage.getItem('userDept')       || '',
+            Section:         localStorage.getItem('userSection')    || '',
             fromDate,
             toDate,
             numberOfDays:    days,
@@ -349,6 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             studentName:     localStorage.getItem('userName')       || '',
             registerNumber:  localStorage.getItem('registerNumber') || '',
             department:      localStorage.getItem('userDept')       || '',
+            Section:         localStorage.getItem('userSection')    || '',
             fromDate,
             toDate,
             numberOfDays:    days,
@@ -414,6 +418,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (odModal) odModal.style.display = 'none';
     }
 
+    /**
+     * Finds "my own" certificate row for this OD out of the per-member
+     * certificates[] array attached by the backend (one row per group
+     * member, so my upload/verify state never gets mixed up with another
+     * member's).
+     */
+    function findMyCertificate(od) {
+        const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toLowerCase();
+        const certs = od.Certificates ?? od.certificates ?? [];
+        return certs.find(c =>
+            ((c.RegisterNumber ?? c.registerNumber ?? '').trim().toLowerCase()) === myRegNo
+        ) || null;
+    }
+
     function openOdModal(od) {
         const facultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
         const hodStatus     = od.HodStatus     ?? od.hodStatus     ?? 'Pending';
@@ -426,29 +444,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
         const groupName     = od.GroupName     ?? od.groupName     ?? '';
         const regNumbersRaw = od.RegisterNumbers ?? od.registerNumbers ?? '';
-        const winningStatus = od.WinningStatus ?? od.winningStatus ?? '';
-        const certUrl       = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? '';
-        const certVerified  = !!(od.CertificateVerified ?? od.certificateVerified ?? false);
-        const odId          = od.OdId ?? od.odId ?? '';
+
+        // Same per-member rejection check used in the status list — a group OD
+        // can be "Approved" overall while THIS student was specifically rejected
+        // by faculty. The modal must reflect that, not the raw OD-level status.
+        const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toLowerCase();
+        const facRejected = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+        const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+        const iAmRejected = isGroup && facRejected.includes(myRegNo) && !hodOverridden.includes(myRegNo);
+
+        // My own certificate — read from the per-member certificates[] array,
+        // not the old shared CertificatePhotoUrl field, so one group member's
+        // upload/verify state never bleeds into another member's view.
+        const myCert         = findMyCertificate(od);
+        const winningStatus  = myCert ? (myCert.WinningStatus ?? myCert.winningStatus ?? '') : '';
+        const certUrl        = myCert ? (myCert.CertificatePhotoUrl ?? myCert.certificatePhotoUrl ?? '') : '';
+        const certVerified   = !!(myCert && (myCert.CertificateVerified ?? myCert.certificateVerified ?? false));
+        const odId           = od.OdId ?? od.odId ?? '';
 
         setEl('modalEventName', eventName || 'OD Request');
         setEl('modalCollege', college || '-');
         setEl('modalFromDate', fmtDate(fromDate));
         setEl('modalToDate', fmtDate(toDate));
-        setEl('modalDays', numDays || '-');
+        setEl('modalDays', numDays ? `${numDays}${odDateCountdownLabel(fromDate, toDate) ? ' (' + odDateCountdownLabel(fromDate, toDate) + ')' : ''}` : '-');
         setEl('modalReason', reason || 'No reason provided');
 
-        const overall = overallKey(facultyStatus, hodStatus);
+        const overall = iAmRejected ? 'rejected' : overallKey(facultyStatus, hodStatus);
         const overallBadge = document.getElementById('modalOverallBadge');
         if (overallBadge) {
             overallBadge.className = `badge-${overall}`;
-            overallBadge.textContent = overallLabel(facultyStatus, hodStatus);
+            overallBadge.textContent = iAmRejected ? 'Rejected (You)' : overallLabel(facultyStatus, hodStatus);
         }
 
         const facBadge = document.getElementById('modalFacultyStatus');
         if (facBadge) {
-            facBadge.className = `badge-${bdg(facultyStatus)}`;
-            facBadge.textContent = facultyStatus;
+            // Show MY rejection here even though the OD-level facultyStatus
+            // field says "Approved" (because other group members were approved).
+            facBadge.className = `badge-${iAmRejected ? 'rejected' : bdg(facultyStatus)}`;
+            facBadge.textContent = iAmRejected ? 'Rejected' : facultyStatus;
         }
 
         const hodBadge = document.getElementById('modalHodStatus');
@@ -457,7 +492,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             hodBadge.textContent = hodStatus;
         }
 
-        // Group section
+        // Group section — the rejected member's chip is shown in red so it's
+        // clear at a glance which member(s) faculty rejected from this group OD.
         const groupSection = document.getElementById('modalGroupSection');
         if (isGroup) {
             setEl('modalGroupName', groupName || '-');
@@ -468,7 +504,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .map(r => r.trim())
                     .filter(r => r.length > 0);
                 membersDiv.innerHTML = members.length
-                    ? members.map(m => `<span>${escapeHtml(m)}</span>`).join('')
+                    ? members.map(m => {
+                        const isMemberRejected = facRejected.includes(m.toLowerCase()) && !hodOverridden.includes(m.toLowerCase());
+                        return `<span class="${isMemberRejected ? 'member-rejected' : ''}">${escapeHtml(m)}${isMemberRejected ? ' ✕' : ''}</span>`;
+                    }).join('')
                     : '<span>No members listed</span>';
             }
             if (groupSection) groupSection.style.display = 'flex';
@@ -498,18 +537,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (certSection) certSection.style.display = 'none';
         }
 
-        // Certificate upload button inside the modal — only once the OD's dates have
-        // passed, AND only while the certificate has not yet been verified by staff.
+        // Certificate upload button inside the modal — only once the OD is FULLY
+        // APPROVED (both staff and HOD) AND the OD's dates have passed, AND
+        // only while the certificate has not yet been verified by staff.
         // Once staff verifies it, the student can no longer replace it.
         const modalCertUploadBtn = document.getElementById('modalCertUploadBtn');
         if (modalCertUploadBtn) {
-            if (certVerified) {
+            const modalFullyApproved = overall === 'approved' && !iAmRejected;
+            if (iAmRejected) {
+                modalCertUploadBtn.style.display = 'none';
+            } else if (certVerified) {
                 modalCertUploadBtn.style.display = 'flex';
                 modalCertUploadBtn.textContent = '✓ Certificate Verified — Locked';
                 modalCertUploadBtn.disabled = true;
                 modalCertUploadBtn.classList.add('cert-locked');
                 modalCertUploadBtn.onclick = null;
-            } else if (isOdCompleted(toDate)) {
+            } else if (modalFullyApproved && isOdCompleted(toDate)) {
                 modalCertUploadBtn.style.display = 'flex';
                 modalCertUploadBtn.disabled = false;
                 modalCertUploadBtn.classList.remove('cert-locked');
@@ -520,9 +563,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Wire the modal's print button to this OD's data
+        // Print Report only makes sense for an OD that was actually approved for
+        // you — a rejected member shouldn't be able to generate an approval report.
         const modalPrintBtn = document.getElementById('modalPrintBtn');
-        if (modalPrintBtn) modalPrintBtn.onclick = () => printOdReport(od);
+        if (modalPrintBtn) {
+            if (iAmRejected) {
+                modalPrintBtn.style.display = 'none';
+            } else {
+                modalPrintBtn.style.display = '';
+                modalPrintBtn.onclick = () => printOdReport(od);
+            }
+        }
 
         if (odModal) odModal.style.display = 'flex';
     }
@@ -609,8 +660,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!file) { showToast('error', 'Please choose a certificate file'); return; }
 
+        const myRegNo = localStorage.getItem('registerNumber') || '';
         const formData = new FormData();
         formData.append('winningStatus', winningStatus);
+        formData.append('registerNumber', myRegNo);
         formData.append('photo', file);
 
         const submitBtn = document.getElementById('certUploadSubmitBtn');
@@ -655,6 +708,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         todayMidnight.setHours(0, 0, 0, 0);
         to.setHours(0, 0, 0, 0);
         return to.getTime() < todayMidnight.getTime();
+    }
+
+    // ── Human-readable "how many days until/since this OD" label ──
+    // Shown on the status card so a student can see at a glance whether an
+    // OD hasn't started yet, is happening today/now, or already finished —
+    // based on the OD's own From/To dates, independent of approval status.
+    function odDateCountdownLabel(fromDateRaw, toDateRaw) {
+        const from = fromDateRaw ? new Date(fromDateRaw) : null;
+        const to   = toDateRaw   ? new Date(toDateRaw)   : null;
+        if (!from || isNaN(from.getTime()) || !to || isNaN(to.getTime())) return '';
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        to.setHours(0, 0, 0, 0);
+
+        const msPerDay = 24 * 60 * 60 * 1000;
+
+        if (today < from) {
+            const daysUntilStart = Math.round((from - today) / msPerDay);
+            return daysUntilStart === 1 ? 'Starts tomorrow' : `Starts in ${daysUntilStart} days`;
+        }
+        if (today >= from && today <= to) {
+            return 'Ongoing';
+        }
+        const daysSinceEnd = Math.round((today - to) / msPerDay);
+        return daysSinceEnd === 1 ? 'Completed yesterday' : `Completed ${daysSinceEnd} days ago`;
     }
 
     // ── Load OD Status (solo + group, via register number) ──
@@ -715,7 +795,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const isGroup       = od.IsGroupOd     ?? od.isGroupOd     ?? false;
                 const groupName     = od.GroupName     ?? od.groupName     ?? '';
                 const odId          = od.OdId ?? od.odId ?? '';
-                const certUrl       = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? od.certificatephotourl ?? od.CertificatePhotoURL ?? '';
+                // My own certificate for this OD — per-member, from certificates[].
+                const myCertRow     = findMyCertificate(od);
+                const certUrl       = myCertRow ? (myCertRow.CertificatePhotoUrl ?? myCertRow.certificatePhotoUrl ?? '') : '';
                 const facRejected   = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
                                         .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
                 const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
@@ -731,19 +813,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? `<span class="badge-rejected" style="margin-left:6px">Your OD: Rejected</span>`
                     : '';
 
-                // One-time alert for this student's rejection on this OD
+                // One-time alert for this student's rejection on this OD.
+                // Guarded with localStorage so it fires exactly once ever —
+                // never again on login, page refresh, or the 5s status poll.
                 if (iAmRejected) {
-                    const alertKey = `odRejectSeen_${od.OdId ?? od.odId}_${myRegNo}`;
+                    const alertKey = `odRejectSeen_${odId}_${myRegNo}`;
                     if (!localStorage.getItem(alertKey)) {
                         localStorage.setItem(alertKey, '1');
                         setTimeout(() => alert(`Your OD request (${eventName}) was rejected by faculty.`), 100);
                     }
+                } else if (hodStatus === 'Rejected') {
+                    // Whole OD (solo or group) rejected at the HOD stage.
+                    const alertKey = `odHodRejectSeen_${odId}_${myRegNo}`;
+                    if (!localStorage.getItem(alertKey)) {
+                        localStorage.setItem(alertKey, '1');
+                        setTimeout(() => alert(`Your OD request (${eventName}) was rejected by HOD.`), 100);
+                    }
                 }
 
-                // Certificate upload is only offered once the OD's own dates have passed,
-                // and never once staff has verified the certificate.
+                // Certificate upload is only offered once the OD is FULLY
+                // APPROVED (both staff and HOD) AND the OD's own dates have
+                // passed — and never once staff has verified the certificate.
+                const fullyApproved = overall === 'approved' && !iAmRejected;
                 const completed = isOdCompleted(toDate);
-                const certVerified = !!(od.CertificateVerified ?? od.certificateVerified ?? false);
+                const dateCountdownText = odDateCountdownLabel(fromDate, toDate);
+                const certVerified = !!(myCertRow && (myCertRow.CertificateVerified ?? myCertRow.certificateVerified ?? false));
                 const certBtnHtml = certVerified
                     ? `<span class="cert-locked-badge" title="Certificate verified by staff — can no longer be changed">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
@@ -752,7 +846,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </svg>
                             Certificate Verified
                         </span>`
-                    : completed
+                    : (fullyApproved && completed)
                     ? `<button type="button" class="upload-cert-btn ${certUrl ? 'has-cert' : ''}" data-odid="${odId}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -776,6 +870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span><strong>From:</strong> ${fmtDate(fromDate)}</span>
                         <span><strong>To:</strong> ${fmtDate(toDate)}</span>
                         <span><strong>Days:</strong> ${numDays}</span>
+                        ${dateCountdownText ? `<span class="od-countdown-tag">${dateCountdownText}</span>` : ''}
                     </div>
                     <div class="status-row">
                         <div class="status-item">
@@ -789,6 +884,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="card-actions">
                         <button type="button" class="view-details-btn" data-odid="${odId}">View Details</button>
+                        ${iAmRejected ? '' : `
                         <button type="button" class="print-report-btn" data-odid="${odId}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                                 <polyline points="6 9 6 2 18 2 18 9"/>
@@ -796,7 +892,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <rect x="6" y="14" width="12" height="8"/>
                             </svg>
                             Print Report
-                        </button>
+                        </button>`}
                         ${certBtnHtml}
                     </div>
                 </div>`;
@@ -830,8 +926,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (e.target.closest('.upload-cert-btn')) {
             e.stopPropagation();
-            const winningStatus = od.WinningStatus ?? od.winningStatus ?? '';
-            const certUrl = od.CertificatePhotoUrl ?? od.certificatePhotoUrl ?? '';
+            const myCert = findMyCertificate(od);
+            const winningStatus = myCert ? (myCert.WinningStatus ?? myCert.winningStatus ?? '') : '';
+            const certUrl = myCert ? (myCert.CertificatePhotoUrl ?? myCert.certificatePhotoUrl ?? '') : '';
             openCertModal(odId, winningStatus, !!certUrl);
             return;
         }
@@ -894,7 +991,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        // Preserve the "rejection alert already seen" markers across logout —
+        // otherwise clearing localStorage wipes them out and the rejection
+        // popup incorrectly fires again the next time this student logs in.
+        const seenEntries = Object.keys(localStorage)
+            .filter(k => k.startsWith('odRejectSeen_') || k.startsWith('odHodRejectSeen_'))
+            .map(k => [k, localStorage.getItem(k)]);
+
         localStorage.clear();
+
+        seenEntries.forEach(([k, v]) => localStorage.setItem(k, v));
+
         window.location.href = 'index.html';
     });
 });

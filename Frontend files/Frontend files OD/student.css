@@ -345,10 +345,6 @@ body {
     box-shadow: 0 4px 12px rgba(99,102,241,0.3);
 }
 
-/* NOTE: tab-btn.active already paints its own background (see above),
-   which is what actually gives each clicked tab its highlight.
-   The tab-indicator below is a secondary sliding highlight layer;
-   fixed here to match 3 tabs instead of the old 2-tab (50%) math. */
 .tab-indicator {
     position: absolute;
     top: 6px;
@@ -1276,6 +1272,12 @@ textarea:focus-visible {
     border-radius: 100px;
     font-size: 0.78rem;
 }
+.modal-members span.member-rejected {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.4);
+    color: #ef4444;
+    font-weight: 600;
+}
 
 .modal-cert-img {
     margin-top: 10px;
@@ -1294,6 +1296,7 @@ textarea:focus-visible {
     margin-top: 14px;
     padding-top: 12px;
     border-top: 1px solid rgba(255,255,255,0.06);
+    flex-wrap: wrap;
 }
 
 .od-status-card .view-details-btn,
@@ -1397,6 +1400,41 @@ textarea:focus-visible {
 .od-status-card .upload-cert-btn.has-cert:hover {
     background: rgba(99, 102, 241, 0.2);
     border-color: rgba(99, 102, 241, 0.45);
+}
+
+/* ============================================
+   Certificate Verified — locked badge (replaces
+   the upload button once staff has verified it)
+   ============================================ */
+.od-status-card .cert-locked-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-family: var(--font-family);
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: var(--success);
+    cursor: default;
+}
+
+/* Disabled "locked" state for the modal's certificate button */
+.modal-cert-upload-btn.cert-locked,
+.modal-cert-upload-btn:disabled {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.modal-cert-upload-btn.cert-locked:hover,
+.modal-cert-upload-btn:disabled:hover {
+    transform: none;
+    background: rgba(16, 185, 129, 0.08);
 }
 
 /* ============================================

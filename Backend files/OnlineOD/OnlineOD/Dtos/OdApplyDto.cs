@@ -6,6 +6,7 @@
         public string? StudentName { get; set; }
         public string? registerNumber { get; set; }
         public string? department { get; set; }
+        public string? Section { get; set; }
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
         public int NumberOfDays { get; set; }

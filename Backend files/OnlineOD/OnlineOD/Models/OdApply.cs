@@ -10,6 +10,12 @@ namespace OnlineOD.Models
         public string? StudentName { get; set; }
         public string? registerNumber { get; set; }
         public string? department { get; set; }
+
+        // Class section this OD request belongs to (copied from the applying
+        // student at submit time) — used to route the request to only the
+        // staff assigned to this Department + Section.
+        public string? Section { get; set; }
+
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
         public int NumberOfDays { get; set; }
@@ -30,5 +36,6 @@ namespace OnlineOD.Models
         // Feature 3 — Winning certificate
         public string? WinningStatus { get; set; }
         public string? CertificatePhotoUrl { get; set; }
+        public bool CertificateVerified { get; set; } = false; // staff has verified the uploaded certificate — locks it from further student edits
     }
 }

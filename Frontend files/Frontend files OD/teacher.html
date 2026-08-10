@@ -236,10 +236,77 @@
         </div>
     </div>
 
+    <!-- OD Full Details Modal (view-only) -->
+    <div class="modal-overlay" id="odDetailOverlay">
+        <div class="modal od-detail-modal" id="odDetailModal">
+            <button class="modal-close" id="odDetailCloseBtn" type="button">&times;</button>
+            <div class="od-detail-header">
+                <h3 id="odDetailEvent">Event Name</h3>
+                <span class="status-badge" id="odDetailOverallBadge">Pending</span>
+            </div>
+            <div class="od-detail-body">
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Student</span>
+                    <span class="od-detail-value" id="odDetailStudent">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Register Number</span>
+                    <span class="od-detail-value" id="odDetailRegNo">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Department / Section</span>
+                    <span class="od-detail-value" id="odDetailDeptSection">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Year</span>
+                    <span class="od-detail-value" id="odDetailYear">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">College / Industry</span>
+                    <span class="od-detail-value" id="odDetailCollege">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">From</span>
+                    <span class="od-detail-value" id="odDetailFromDate">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">To</span>
+                    <span class="od-detail-value" id="odDetailToDate">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Number of Days</span>
+                    <span class="od-detail-value" id="odDetailDays">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Applied On</span>
+                    <span class="od-detail-value" id="odDetailApplied">-</span>
+                </div>
+                <div class="od-detail-row full">
+                    <span class="od-detail-label">Reason</span>
+                    <p class="od-detail-value" id="odDetailReason">-</p>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Faculty Status</span>
+                    <span class="status-badge" id="odDetailFacultyStatus">Pending</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">HOD Status</span>
+                    <span class="status-badge" id="odDetailHodStatus">Pending</span>
+                </div>
+                <div class="od-detail-row full" id="odDetailGroupSection" style="display:none">
+                    <span class="od-detail-label">Group Name</span>
+                    <span class="od-detail-value" id="odDetailGroupName">-</span>
+                    <span class="od-detail-label" style="margin-top:10px">Group Members</span>
+                    <div class="od-detail-members" id="odDetailMembers"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="store.js"></script>
-    <script src="teacher.js"></script>
+    <script src="store.js?v=20260810"></script>
+    <script src="teacher.js?v=20260810"></script>
 </body>
 </html>

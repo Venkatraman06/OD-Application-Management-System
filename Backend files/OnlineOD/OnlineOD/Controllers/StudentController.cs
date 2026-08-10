@@ -84,6 +84,7 @@ namespace OnlineOD.Controllers
                 name = student.Name,
                 registerNumber = student.RegisterNumber,
                 department = student.Department,
+                section = student.Section,
                 year = student.Year,
                 dob = student.DOB,
                 semester = student.semester
