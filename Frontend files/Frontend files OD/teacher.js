@@ -149,9 +149,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     /**
-     * Returns [{ registerNumber, cert }] for one OD — the member list for a
-     * group OD, or a single-entry list for a solo OD. Used both for the
-     * summary count on the collapsed group card and for the expanded table.
+     * Returns [{ registerNumber, cert, isRejected }] for one OD — the member
+     * list for a group OD, or a single-entry list for a solo OD. isRejected
+     * is true when faculty rejected that member and HOD has not overridden
+     * it back — such members don't need a certificate since they aren't
+     * actually attending the OD.
      */
     function getMemberCertRows(od) {
         const certList = od.certificates ?? od.Certificates ?? [];
@@ -159,12 +161,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             ((c.registerNumber ?? c.RegisterNumber ?? '').trim().toLowerCase()) === reg.trim().toLowerCase()
         ) || null;
 
+        const rejectedList = (od.facultyRejectedRegisterNumbers ?? od.FacultyRejectedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+        const overriddenList = (od.hodApprovedRegisterNumbers ?? od.HodApprovedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+        const isRejected = (reg) => {
+            const r = reg.trim().toLowerCase();
+            return rejectedList.includes(r) && !overriddenList.includes(r);
+        };
+
         if (od.isGroupOd) {
             const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
-            return members.map(reg => ({ registerNumber: reg, cert: findCert(reg) }));
+            return members.map(reg => ({ registerNumber: reg, cert: findCert(reg), isRejected: isRejected(reg) }));
         }
         const reg = od.registerNumber || '';
-        return [{ registerNumber: reg, cert: findCert(reg) }];
+        return [{ registerNumber: reg, cert: findCert(reg), isRejected: isRejected(reg) }];
     }
 
     function applySectionMeta(filter) {
@@ -417,10 +428,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // ── Group OD: one summary card + expandable member table ──
-            const uploadedCount = rows.filter(r => r.cert && (r.cert.certificatePhotoUrl ?? r.cert.CertificatePhotoUrl)).length;
-            const verifiedCount = rows.filter(r => r.cert && (r.cert.certificateVerified ?? r.cert.CertificateVerified)).length;
+            // Rejected members (faculty rejected, not overridden by HOD) are
+            // excluded from the counts and don't need a certificate — they
+            // never actually attended the OD.
+            const activeRows = rows.filter(r => !r.isRejected);
+            const uploadedCount = activeRows.filter(r => r.cert && (r.cert.certificatePhotoUrl ?? r.cert.CertificatePhotoUrl)).length;
+            const verifiedCount = activeRows.filter(r => r.cert && (r.cert.certificateVerified ?? r.cert.CertificateVerified)).length;
 
-            const memberRows = rows.map(({ registerNumber, cert }) => {
+            const memberRows = rows.map(({ registerNumber, cert, isRejected }) => {
                 const rawUrl = cert ? (cert.certificatePhotoUrl ?? cert.CertificatePhotoUrl ?? '') : '';
                 const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
                 const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
@@ -430,6 +445,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : lookupStudent(registerNumber);
                 const displayName = known?.name || '';
                 const className = known ? [known.department, known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ') : '';
+
+                if (isRejected) {
+                    return `
+                        <div class="cert-member-row cert-member-row-rejected">
+                            <div class="cert-mrow-name">
+                                <span class="cert-mrow-reg">${registerNumber}${displayName ? ` — ${escHtml(displayName)}` : ''}</span>
+                                <span class="cert-mrow-fullname">${className ? escHtml(className) : ''}</span>
+                            </div>
+                            <span class="cert-mrow-status cert-mrow-rejected">Rejected — Not Attending</span>
+                            <div class="cert-mrow-actions"><span class="cert-mrow-none">No certificate needed</span></div>
+                        </div>`;
+                }
+
                 const statusText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Uploaded';
                 const statusClass = !rawUrl ? 'cert-mrow-status' : isVerified ? 'cert-mrow-status cert-mrow-verified' : 'cert-mrow-status cert-mrow-uploaded';
 
@@ -457,9 +485,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="student-avatar">G</div>
                     <div class="student-info">
                         <h3>Group: ${od.groupName || ''}</h3>
-                        <p>${rows.length} member${rows.length !== 1 ? 's' : ''} &bull; ${od.department || ''}</p>
+                        <p>${activeRows.length} member${activeRows.length !== 1 ? 's' : ''} &bull; ${od.department || ''}</p>
                     </div>
-                    <span class="status-badge cert-badge">${uploadedCount}/${rows.length} uploaded${verifiedCount ? `, ${verifiedCount} verified` : ''}</span>
+                    <span class="status-badge cert-badge">${uploadedCount}/${activeRows.length} uploaded${verifiedCount ? `, ${verifiedCount} verified` : ''}</span>
                 </div>
                 <div class="card-body">
                     <p><strong>Event:</strong> ${od.event || ''}</p>
