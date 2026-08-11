@@ -60,6 +60,35 @@ namespace OnlineOD.Controllers
             return Ok(result);
         }
 
+        // GET /api/Faculty/ByDepartmentSection?department=CS&section=B
+        // Finds the class staff assigned to a specific Department + Section
+        // (the same routing rule used for PendingODs). Used by the printed
+        // OD report to show the actual class staff's name in the Staff
+        // Signature line, instead of just the department name.
+        [HttpGet("ByDepartmentSection")]
+        public async Task<IActionResult> GetByDepartmentSection([FromQuery] string department, [FromQuery] string? section = null)
+        {
+            if (string.IsNullOrWhiteSpace(department))
+                return BadRequest("department is required");
+
+            var allStaff = await _staffService.GetAllStaffAsync();
+            var dept = department.Trim().ToLower();
+            var sec = (section ?? "").Trim().ToLower();
+
+            var match = allStaff.FirstOrDefault(s =>
+                (s.Department ?? "").Trim().ToLower() == dept &&
+                (string.IsNullOrEmpty(sec)
+                    ? string.IsNullOrEmpty(s.Section)
+                    : (s.Section ?? "").Trim().ToLower() == sec));
+
+            // Fall back to any staff in the department if no exact section match
+            match ??= allStaff.FirstOrDefault(s => (s.Department ?? "").Trim().ToLower() == dept);
+
+            if (match == null) return NotFound();
+
+            return Ok(new { name = match.Name, department = match.Department, section = match.Section });
+        }
+
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] StaffLoginDto dto)
         {
@@ -105,6 +134,12 @@ namespace OnlineOD.Controllers
             var od = await _odService.UpdateFacultyStatusAsync(odId, status);
             if (od == null) return NotFound("OD request not found");
 
+            // Tracks whether the HOD notification email actually went out, and
+            // why not if it didn't — this used to be swallowed silently, so
+            // staff had no way of knowing the HOD was never notified.
+            string emailStatus = "not_applicable";
+            string emailDetail = null;
+
             if (status == "Approved")
             {
                 try
@@ -114,7 +149,20 @@ namespace OnlineOD.Controllers
                         h.Department != null &&
                         h.Department.Trim().ToLower() == (od.department ?? "").Trim().ToLower());
 
-                    if (hod != null && !string.IsNullOrEmpty(hod.Email))
+                    if (hod == null)
+                    {
+                        emailStatus = "failed";
+                        emailDetail = $"No HOD record found for department '{od.department}'. " +
+                                      "Check that a HOD exists with this exact department name.";
+                        Console.WriteLine($"[Email] HOD notify skipped — {emailDetail}");
+                    }
+                    else if (string.IsNullOrWhiteSpace(hod.Email))
+                    {
+                        emailStatus = "failed";
+                        emailDetail = $"HOD '{hod.Name}' (department '{hod.Department}') has no Email set on their account.";
+                        Console.WriteLine($"[Email] HOD notify skipped — {emailDetail}");
+                    }
+                    else
                     {
                         await _emailService.SendOdApprovalEmailAsync(
                             toEmail: hod.Email,
@@ -127,17 +175,35 @@ namespace OnlineOD.Controllers
                             toDate: od.ToDate ?? "",
                             odId: od.OdId,
                             isGroup: od.IsGroupOd,
-                            groupName: od.GroupName ?? ""
+                            groupName: od.GroupName ?? "",
+                            registerNumbers: od.RegisterNumbers ?? "",
+                            collegeIndustry: od.CollegeIndustry ?? ""
                         );
+                        emailStatus = "sent";
+                        Console.WriteLine($"[Email] HOD notify sent to {hod.Email} for OD #{od.OdId}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Email error: {ex.Message}");
+                    emailStatus = "failed";
+                    // Include the inner exception too — SMTP auth/connection
+                    // failures (e.g. a revoked Gmail app password) usually put
+                    // the real reason there, not in ex.Message.
+                    emailDetail = ex.InnerException != null
+                        ? $"{ex.Message} | Inner: {ex.InnerException.Message}"
+                        : ex.Message;
+                    Console.WriteLine($"[Email] HOD notify FAILED — {emailDetail}");
                 }
             }
 
-            return Ok(od);
+            return Ok(new
+            {
+                od.OdId,
+                od.FacultyStatus,
+                od.HodStatus,
+                emailStatus,
+                emailDetail
+            });
         }
     }
 }

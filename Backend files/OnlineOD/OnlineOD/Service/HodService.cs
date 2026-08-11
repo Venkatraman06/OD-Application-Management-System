@@ -45,6 +45,7 @@ namespace OnlineOD.Service
             existing.Name = hod.Name;
             existing.Department = hod.Department;
             existing.Password = hod.Password;
+            existing.Email = hod.Email;
 
             await _context.SaveChangesAsync();
             return existing;

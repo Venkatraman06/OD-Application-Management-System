@@ -82,21 +82,36 @@ namespace OnlineOD.Services
         private string OdRows(string studentName, string registerNumber,
                               string department, string eventName,
                               string fromDate, string toDate,
-                              bool isGroup = false, string groupName = "")
+                              bool isGroup = false, string groupName = "",
+                              string registerNumbers = "", string collegeIndustry = "")
         {
-            var groupRow = isGroup && !string.IsNullOrEmpty(groupName)
-                ? $"<tr><td style='padding:6px 0;color:#6b7280;width:140px'>Group / Members</td><td style='color:#111827'>{groupName}</td></tr>"
+            // "Group Name" shows the group's label; "Members" shows the actual
+            // register numbers of everyone in the group — these were being
+            // conflated into one row before, so the email only ever showed
+            // the group name and never who was actually in it.
+            var membersFormatted = string.IsNullOrWhiteSpace(registerNumbers)
+                ? ""
+                : string.Join(", ", registerNumbers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+            var groupRows = isGroup
+                ? (string.IsNullOrEmpty(groupName) ? "" : $"<tr><td style='padding:6px 0;color:#6b7280;width:140px'>Group Name</td><td style='color:#111827'>{groupName}</td></tr>")
+                  + (string.IsNullOrEmpty(membersFormatted) ? "" : $"<tr><td style='padding:6px 0;color:#6b7280;width:140px;vertical-align:top'>Members</td><td style='color:#111827'>{membersFormatted}</td></tr>")
                 : "";
+
+            var collegeRow = string.IsNullOrEmpty(collegeIndustry)
+                ? ""
+                : $"<tr><td style='padding:6px 0;color:#6b7280;width:140px'>College / Industry</td><td style='color:#111827'>{collegeIndustry}</td></tr>";
 
             return $@"
             <table style='width:100%;border-collapse:collapse;font-size:14px'>
                 <tr><td style='padding:6px 0;color:#6b7280;width:140px'>Student Name</td><td style='color:#111827'><b>{studentName}</b></td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280'>Register Number</td><td style='color:#111827'>{registerNumber}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280'>Department</td><td style='color:#111827'>{department}</td></tr>
+                {collegeRow}
                 <tr><td style='padding:6px 0;color:#6b7280'>Event</td><td style='color:#111827'>{eventName}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280'>From Date</td><td style='color:#111827'>{fromDate}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280'>To Date</td><td style='color:#111827'>{toDate}</td></tr>
-                {groupRow}
+                {groupRows}
             </table>";
         }
 
@@ -139,14 +154,16 @@ namespace OnlineOD.Services
             string fromDate, string toDate,
             int odId,
             bool isGroup = false,
-            string groupName = "")
+            string groupName = "",
+            string registerNumbers = "",
+            string collegeIndustry = "")
         {
             var subjectTag = isGroup ? "[Group OD]" : "";
             var intro = isGroup
                 ? "A <b>Group OD</b> request has been submitted and requires your approval."
                 : "A student has submitted a new OD request that requires your approval.";
 
-            var rows = OdRows(studentName, registerNumber, department, eventName, fromDate, toDate, isGroup, groupName);
+            var rows = OdRows(studentName, registerNumber, department, eventName, fromDate, toDate, isGroup, groupName, registerNumbers, collegeIndustry);
             var buttons = ActionButtons(odId, "faculty");
             var body = Wrap(staffName, intro, rows, buttons, isGroup);
 
@@ -162,14 +179,16 @@ namespace OnlineOD.Services
             string fromDate, string toDate,
             int odId,
             bool isGroup = false,
-            string groupName = "")
+            string groupName = "",
+            string registerNumbers = "",
+            string collegeIndustry = "")
         {
             var subjectTag = isGroup ? "[Group OD] " : "";
             var intro = isGroup
                 ? "A <b>Group OD</b> request has been <b style='color:#10b981'>approved by Faculty</b> and is waiting for your final approval."
                 : "A student OD request has been <b style='color:#10b981'>approved by Faculty</b> and is waiting for your final approval.";
 
-            var rows = OdRows(studentName, registerNumber, department, eventName, fromDate, toDate, isGroup, groupName);
+            var rows = OdRows(studentName, registerNumber, department, eventName, fromDate, toDate, isGroup, groupName, registerNumbers, collegeIndustry);
             var buttons = ActionButtons(odId, "hod");
             var body = Wrap(hodName, intro, rows, buttons, isGroup);
 

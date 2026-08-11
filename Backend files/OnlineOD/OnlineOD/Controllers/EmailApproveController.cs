@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Service;
 using OnlineOD.Services;
+using System.Linq;
 
 namespace OnlineOD.Controllers
 {
@@ -10,11 +11,13 @@ namespace OnlineOD.Controllers
     {
         private readonly IOdApplyService _odService;
         private readonly EmailService _emailService;
+        private readonly IHodService _hodService;
 
-        public EmailApproveController(IOdApplyService odService, EmailService emailService)
+        public EmailApproveController(IOdApplyService odService, EmailService emailService, IHodService hodService)
         {
             _odService = odService;
             _emailService = emailService;
+            _hodService = hodService;
         }
 
         // GET /api/EmailApprove?odId=5&action=Approved&role=faculty&token=xyz
@@ -33,11 +36,77 @@ namespace OnlineOD.Controllers
             if (action != "Approved" && action != "Rejected")
                 return Content(Page("❌ Unknown action.", "", false), "text/html");
 
+            // ── Lock: once faculty/HOD has already made a decision, the same
+            // (or the other) email link can no longer change it. This stops
+            // someone re-clicking Approve after Reject (or vice versa), or the
+            // same link being used twice.
+            var existingOd = await _odService.GetOdApplyByIdAsync(odId);
+            if (existingOd == null)
+                return Content(Page("❌ Not found.", "This OD request no longer exists.", false), "text/html");
+
+            var currentStatus = role == "hod" ? existingOd.HodStatus : existingOd.FacultyStatus;
+            if (!string.IsNullOrEmpty(currentStatus) && currentStatus != "Pending")
+            {
+                var roleLabelLocked = role == "hod" ? "HOD" : "Faculty";
+                return Content(Page("⚠️ Already decided.",
+                    $"OD #{odId} has already been <b>{currentStatus}</b> by {roleLabelLocked}. " +
+                    "This decision cannot be changed.", false), "text/html");
+            }
+
             // ── Apply the status update ────────────────────────────────────
             if (role == "hod")
+            {
                 await _odService.UpdateHodStatusAsync(odId, action);
+            }
             else
-                await _odService.UpdateFacultyStatusAsync(odId, action);
+            {
+                var od = await _odService.UpdateFacultyStatusAsync(odId, action);
+
+                // When faculty approves via the email link (this endpoint),
+                // the HOD must be notified too — same as when faculty approves
+                // from the staff webpage (see StaffController.Approve).
+                // Without this block, approving from the email silently never
+                // emailed the HOD at all.
+                if (od != null && action == "Approved")
+                {
+                    try
+                    {
+                        var hods = await _hodService.GetAllHodAsync();
+                        var hod = hods.FirstOrDefault(h =>
+                            h.Department != null &&
+                            h.Department.Trim().ToLower() == (od.department ?? "").Trim().ToLower());
+
+                        if (hod != null && !string.IsNullOrWhiteSpace(hod.Email))
+                        {
+                            await _emailService.SendOdApprovalEmailAsync(
+                                toEmail: hod.Email,
+                                hodName: hod.Name,
+                                studentName: od.StudentName ?? "",
+                                registerNumber: od.registerNumber ?? "",
+                                eventName: od.Event ?? "",
+                                department: od.department ?? "",
+                                fromDate: od.FromDate ?? "",
+                                toDate: od.ToDate ?? "",
+                                odId: od.OdId,
+                                isGroup: od.IsGroupOd,
+                                groupName: od.GroupName ?? ""
+                            );
+                            Console.WriteLine($"[Email] HOD notify sent to {hod.Email} for OD #{od.OdId} (via email-approve link)");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Email] HOD notify skipped (via email-approve link) — " +
+                                (hod == null
+                                    ? $"No HOD record found for department '{od.department}'."
+                                    : $"HOD '{hod.Name}' has no Email set."));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Email] HOD notify FAILED (via email-approve link) — {ex.Message}");
+                    }
+                }
+            }
 
             var roleLabel = role == "hod" ? "HOD" : "Faculty";
             var actionLabel = action == "Approved" ? "approved ✓" : "rejected ✕";
@@ -91,4 +160,3 @@ namespace OnlineOD.Controllers
 </html>";
     }
 }
-

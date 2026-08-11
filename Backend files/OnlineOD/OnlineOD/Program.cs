@@ -21,7 +21,11 @@ builder.Services.AddCors(options =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              // Without this, the browser silently drops these custom
+              // headers even though the server sent them — response.headers
+              // .get('X-Email-Status') would always return null cross-origin.
+              .WithExposedHeaders("X-Email-Status", "X-Email-Detail");
     });
 });
 

@@ -96,6 +96,8 @@ namespace OnlineOD.Controllers
             // the applying student — this is what routes a Section-B
             // student's OD only to their Section-B class teacher, instead of
             // every staff member in the department.
+            string emailStatus = "not_applicable";
+            string emailDetail = null;
             try
             {
                 var staffList = await _staffService.GetAllStaffAsync();
@@ -108,27 +110,53 @@ namespace OnlineOD.Controllers
                     !string.IsNullOrEmpty(s.Email)
                 ).ToList();
 
-                foreach (var staff in deptStaff)
+                if (deptStaff.Count == 0)
                 {
-                    await _emailService.SendOdSubmissionEmailAsync(
-                        toEmail: staff.Email,
-                        staffName: staff.Name,
-                        studentName: dto.StudentName ?? "",
-                        registerNumber: dto.registerNumber ?? "",
-                        eventName: dto.Event ?? "",
-                        department: dto.department ?? "",
-                        fromDate: dto.FromDate ?? "",
-                        toDate: dto.ToDate ?? "",
-                        odId: result.OdId,
-                        isGroup: dto.IsGroupOd,
-                        groupName: dto.GroupName ?? ""
-                    );
+                    emailStatus = "failed";
+                    emailDetail = string.IsNullOrWhiteSpace(dto.Section)
+                        ? "No Section was set on this OD, so no matching staff could be found."
+                        : $"No staff found for department '{dto.department}' + section '{dto.Section}' with an Email set.";
+                    Console.WriteLine($"[Email] Staff notify skipped — {emailDetail}");
+                }
+                else
+                {
+                    foreach (var staff in deptStaff)
+                    {
+                        await _emailService.SendOdSubmissionEmailAsync(
+                            toEmail: staff.Email,
+                            staffName: staff.Name,
+                            studentName: dto.StudentName ?? "",
+                            registerNumber: dto.registerNumber ?? "",
+                            eventName: dto.Event ?? "",
+                            department: dto.department ?? "",
+                            fromDate: dto.FromDate ?? "",
+                            toDate: dto.ToDate ?? "",
+                            odId: result.OdId,
+                            isGroup: dto.IsGroupOd,
+                            groupName: dto.GroupName ?? "",
+                            registerNumbers: dto.RegisterNumbers ?? "",
+                            collegeIndustry: dto.CollegeIndustry ?? ""
+                        );
+                    }
+                    emailStatus = "sent";
+                    Console.WriteLine($"[Email] Staff notify sent to {deptStaff.Count} staff for OD #{result.OdId}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Email error: {ex.Message}");
+                emailStatus = "failed";
+                emailDetail = ex.InnerException != null
+                    ? $"{ex.Message} | Inner: {ex.InnerException.Message}"
+                    : ex.Message;
+                Console.WriteLine($"[Email] Staff notify FAILED — {emailDetail}");
             }
+
+            // Surface the email outcome via a response header instead of
+            // changing the JSON shape, so nothing that reads `result`'s
+            // fields elsewhere breaks.
+            Response.Headers["X-Email-Status"] = emailStatus;
+            if (!string.IsNullOrEmpty(emailDetail))
+                Response.Headers["X-Email-Detail"] = emailDetail;
 
             return Ok(result);
         }
