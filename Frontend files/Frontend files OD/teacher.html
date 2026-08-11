@@ -233,16 +233,17 @@
             <button class="modal-close" id="certPreviewCloseBtn" type="button">&times;</button>
             <h3 id="certPreviewTitle">Certificate</h3>
             <img id="certPreviewImage" class="cert-preview-image" alt="Certificate" />
+            <a id="certPreviewOpenLink" href="#" target="_blank" rel="noopener" class="cert-view-link" style="display:none;margin-top:12px">Open in new tab ↗</a>
         </div>
     </div>
 
     <!-- OD Full Details Modal (view-only) -->
     <div class="modal-overlay" id="odDetailOverlay">
-        <div class="modal od-detail-modal" id="odDetailModal">
-            <button class="modal-close" id="odDetailCloseBtn" type="button">&times;</button>
+        <div class="od-detail-modal" id="odDetailModal">
             <div class="od-detail-header">
                 <h3 id="odDetailEvent">Event Name</h3>
-                <span class="status-badge" id="odDetailOverallBadge">Pending</span>
+                <span class="badge-pending" id="odDetailOverallBadge">Pending</span>
+                <button class="modal-close" id="odDetailCloseBtn" type="button">&times;</button>
             </div>
             <div class="od-detail-body">
                 <div class="od-detail-row">
@@ -281,19 +282,19 @@
                     <span class="od-detail-label">Applied On</span>
                     <span class="od-detail-value" id="odDetailApplied">-</span>
                 </div>
-                <div class="od-detail-row full">
+                <div class="od-detail-row">
                     <span class="od-detail-label">Reason</span>
                     <p class="od-detail-value" id="odDetailReason">-</p>
                 </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">Faculty Status</span>
-                    <span class="status-badge" id="odDetailFacultyStatus">Pending</span>
+                    <span class="badge-pending" id="odDetailFacultyStatus">Pending</span>
                 </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">HOD Status</span>
-                    <span class="status-badge" id="odDetailHodStatus">Pending</span>
+                    <span class="badge-pending" id="odDetailHodStatus">Pending</span>
                 </div>
-                <div class="od-detail-row full" id="odDetailGroupSection" style="display:none">
+                <div class="od-detail-row" id="odDetailGroupSection" style="display:none">
                     <span class="od-detail-label">Group Name</span>
                     <span class="od-detail-value" id="odDetailGroupName">-</span>
                     <span class="od-detail-label" style="margin-top:10px">Group Members</span>

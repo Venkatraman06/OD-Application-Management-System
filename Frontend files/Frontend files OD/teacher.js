@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         setEl('odDetailEvent', od.event || '');
         const overallBadge = document.getElementById('odDetailOverallBadge');
-        if (overallBadge) { overallBadge.className = `status-badge ${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
+        if (overallBadge) { overallBadge.className = `badge-${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
 
         setEl('odDetailStudent', od.studentName || '');
         setEl('odDetailRegNo', od.registerNumber || '');
@@ -317,9 +317,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('odDetailReason', od.reason || 'No reason provided');
 
         const facBadge = document.getElementById('odDetailFacultyStatus');
-        if (facBadge) { facBadge.className = `status-badge ${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
+        if (facBadge) { facBadge.className = `badge-${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
         const hodBadge = document.getElementById('odDetailHodStatus');
-        if (hodBadge) { hodBadge.className = `status-badge ${bdg(od.hodStatus)}`; hodBadge.textContent = od.hodStatus || 'Pending'; }
+        if (hodBadge) { hodBadge.className = `badge-${bdg(od.hodStatus)}`; hodBadge.textContent = od.hodStatus || 'Pending'; }
 
         const groupSection = document.getElementById('odDetailGroupSection');
         if (od.isGroupOd) {
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const rawUrl = cert ? (cert.certificatePhotoUrl ?? cert.CertificatePhotoUrl ?? '') : '';
                 const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
                 const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
-                const isImage = /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
+                const isImage = /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(rawUrl);
                 const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
                 const uploadedBadge = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Certificate Uploaded';
                 const badgeClass = !rawUrl ? 'cert-badge' : isVerified ? 'cert-badge cert-badge-verified' : 'cert-badge';
@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const actionHtml = !rawUrl
                     ? `<span class="cert-mrow-none">—</span>`
-                    : `<a href="${certUrl}" target="_blank" rel="noopener" class="cert-mrow-view">View</a>` +
+                    : `<a href="#" onclick="event.preventDefault(); openCertPreview('${certUrl}','${esc(displayName || registerNumber)}')" class="cert-mrow-view">View</a>` +
                       (isVerified
                         ? `<span class="cert-mrow-verified-tag">✓ Verified</span>`
                         : `<button type="button" class="cert-mrow-verify-btn" onclick="verifyCertificate(${odId}, '${esc(registerNumber)}', '${esc(displayName || registerNumber)}')">Verify</button>`);
@@ -529,14 +529,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openCertPreview = (url, studentName) => {
         setEl('certPreviewTitle', `${studentName || 'Student'}'s Certificate`);
         const img = document.getElementById('certPreviewImage');
-        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(url);
+        const openLink = document.getElementById('certPreviewOpenLink');
+        const isImage = /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(url);
+
+        if (openLink) { openLink.href = url; openLink.style.display = 'inline-block'; }
+
         if (img) {
             if (isImage) {
-                img.src = url;
                 img.style.display = 'block';
+                img.src = url;
+                // If the image URL turns out not to actually load (wrong path,
+                // deleted file, etc.), fall back to the "open in new tab" link
+                // instead of leaving a blank box in the modal.
+                img.onerror = () => { img.style.display = 'none'; };
             } else {
                 img.style.display = 'none';
-                window.open(url, '_blank');
             }
         }
         if (certPreviewOverlay) certPreviewOverlay.classList.add('active');
@@ -647,7 +654,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${API_BASE}/api/Faculty/Approve/${odId}?status=${status}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }
             });
-            if (res.ok) { showToast('success', `OD ${status.toLowerCase()}!`); loadODs(); }
+            if (res.ok) {
+                const data = await res.json().catch(() => null);
+                showToast('success', `OD ${status.toLowerCase()}!`);
+                // Surface HOD email failures instead of hiding them — the OD
+                // status itself still updated fine, but the HOD was never
+                // notified, so staff should know to follow up manually.
+                if (data && data.emailStatus === 'failed') {
+                    showToast('error', `Warning: HOD was not emailed — ${data.emailDetail || 'unknown error'}`);
+                }
+                loadODs();
+            }
             else showToast('error', 'Failed to update');
         } catch (err) { console.error(err); showToast('error', 'Network error'); }
     }

@@ -23,9 +23,14 @@
         box-shadow: 0 0 12px rgba(0,0,0,0.15);
     }
 
-    /* ===== Header ===== */
+    /* ===== Header =====
+       Was flex: logo (fixed width) + text (flex:1), which centers the text
+       only within the space AFTER the logo — visually shifting it right of
+       true page-center. Grid with a matching spacer column on the right
+       balances it so the text centers on the whole page width. */
     .report-header {
-        display: flex;
+        display: grid;
+        grid-template-columns: 90px 1fr 90px;
         align-items: center;
         gap: 18px;
         border-bottom: 3px solid #1a3c8c;
@@ -41,7 +46,6 @@
 
     .header-text {
         text-align: center;
-        flex: 1;
     }
 
     .header-text h1 {
@@ -380,7 +384,7 @@
             <span class="box-label">Group Members</span>
             <table>
                 <thead>
-                    <tr><th>#</th><th>Register Number</th></tr>
+                    <tr><th>#</th><th>Register Number</th><th>Name</th></tr>
                 </thead>
                 <tbody id="groupMembersBody">
                     <!-- rows inserted dynamically -->
@@ -415,7 +419,7 @@
             <div class="sign-block">
                 <div class="sign-line"></div>
                 <div class="sign-label">Staff Signature</div>
-                <div class="sign-sub" id="signStudentName">-</div>
+                <div class="sign-sub" id="signStaffName">Class Advisor</div>
             </div>
             <div class="sign-block">
                 <div class="sign-line"></div>
@@ -483,11 +487,52 @@
             return 'status-pending';
         }
 
-        function fillOdReport(od) {
+        const API_BASE = 'http://localhost:5088';
+
+        // Looks up the actual class staff (advisor) assigned to this
+        // Department + Section, so the Staff Signature line shows a real
+        // name (e.g. "John B") instead of just the department.
+        async function fetchClassStaffName(department, section) {
+            try {
+                const params = new URLSearchParams({ department });
+                if (section) params.set('section', section);
+                const res = await fetch(`${API_BASE}/api/Faculty/ByDepartmentSection?${params.toString()}`);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.name || null;
+            } catch (err) {
+                console.error('Failed to fetch class staff name:', err);
+                return null;
+            }
+        }
+
+        // Group OD data only carries register numbers for members — fetch
+        // the full student list once and build a register-number → name
+        // lookup so the report's Group Members table can show real names
+        // next to each register number, not just bare numbers.
+        async function fetchStudentNameLookup() {
+            try {
+                const res = await fetch(`${API_BASE}/api/Student`);
+                if (!res.ok) return {};
+                const students = await res.json();
+                const lookup = {};
+                students.forEach(s => {
+                    const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
+                    if (reg) lookup[reg] = s.name || s.Name || '';
+                });
+                return lookup;
+            } catch (err) {
+                console.error('Failed to fetch student name lookup:', err);
+                return {};
+            }
+        }
+
+        async function fillOdReport(od) {
             const odId          = od.OdId ?? od.odId ?? '';
             const studentName   = od.StudentName ?? od.studentName ?? '';
             const registerNumber= od.registerNumber ?? od.RegisterNumber ?? '';
             const department    = od.department ?? od.Department ?? '';
+            const section       = od.Section ?? od.section ?? '';
             const fromDate      = od.FromDate ?? od.fromDate ?? '';
             const toDate        = od.ToDate ?? od.toDate ?? '';
             const numberOfDays  = od.NumberOfDays ?? od.numberOfDays ?? '';
@@ -518,7 +563,14 @@
             setText('toDate', fmtDate(toDate));
             setText('numberOfDays', numberOfDays);
             setText('reason', reason);
-            setText('signStudentName', studentName);
+
+            // Staff Signature line was incorrectly showing the STUDENT's name.
+            // Show a department fallback immediately, then replace it with the
+            // real class staff (advisor) name once the lookup resolves — this
+            // is the same staff assigned to this student's Department+Section.
+            setText('signStaffName', department ? `${department} Department` : 'Class Advisor');
+            const staffName = await fetchClassStaffName(department, section);
+            if (staffName) setText('signStaffName', staffName);
 
             // Report generated date = today, whenever this report is opened/printed
             const today = new Date();
@@ -537,10 +589,12 @@
             const groupBody = document.getElementById('groupMembersBody');
             if (isGroupOd && registerNumbers) {
                 const members = registerNumbers.split(',').map(r => r.trim()).filter(r => r);
+                const nameLookup = await fetchStudentNameLookup();
                 if (groupBody) {
-                    groupBody.innerHTML = members.map((m, i) =>
-                        `<tr><td>${i + 1}</td><td>${m}</td></tr>`
-                    ).join('');
+                    groupBody.innerHTML = members.map((m, i) => {
+                        const name = nameLookup[m.toLowerCase()] || (m.toLowerCase() === registerNumber.toLowerCase() ? studentName : '') || '-';
+                        return `<tr><td>${i + 1}</td><td>${m}</td><td>${name}</td></tr>`;
+                    }).join('');
                 }
                 if (groupSection) groupSection.style.display = 'block';
             } else {
@@ -549,9 +603,9 @@
         }
 
         // Optional: auto-load if opened as od_report.html?odId=12
-        // Uncomment and adjust API_BASE if you want this page to self-fetch.
+        // Uncomment if you want this page to self-fetch (API_BASE already
+        // declared above in fetchClassStaffName).
         /*
-        const API_BASE = 'http://localhost:5088';
         async function autoLoadFromQueryString() {
             const params = new URLSearchParams(window.location.search);
             const odId = params.get('odId');

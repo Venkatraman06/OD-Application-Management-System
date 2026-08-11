@@ -1,6 +1,25 @@
 const API_BASE = 'http://localhost:5088';
 
+// Register number → student name lookup, used to show real names next to
+// register numbers in the Group Members list (group OD data only ever
+// carries register numbers for non-applicant members).
+let studentNameLookup = {};
+async function loadStudentNameLookup() {
+    try {
+        const res = await fetch(`${API_BASE}/api/Student`);
+        if (!res.ok) return;
+        const students = await res.json();
+        students.forEach(s => {
+            const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
+            if (reg) studentNameLookup[reg] = s.name || s.Name || '';
+        });
+    } catch (err) {
+        console.error('Failed to load student name lookup:', err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    loadStudentNameLookup();
 
     // ── Guard: must be logged in ──
     const studentId = localStorage.getItem('studentId');
@@ -282,6 +301,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const created = await res.json();
                 console.log('OD created successfully:', created);
                 showToast('success', 'OD submitted successfully!');
+                // The OD itself always saves fine even if the notification
+                // email fails (e.g. no matching class teacher, SMTP error) —
+                // surface that separately so the student knows to follow up.
+                if (res.headers.get('X-Email-Status') === 'failed') {
+                    showToast('error', `OD saved, but staff wasn't emailed — ${res.headers.get('X-Email-Detail') || 'unknown error'}. Contact your class teacher directly.`);
+                }
                 document.getElementById('odForm').reset();
                 if (daysEl) daysEl.value = '';
                 switchTab('apply-status');
@@ -382,6 +407,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (res.ok) {
                 showToast('success', 'Group OD submitted successfully!');
+                if (res.headers.get('X-Email-Status') === 'failed') {
+                    showToast('error', `OD saved, but staff wasn't emailed — ${res.headers.get('X-Email-Detail') || 'unknown error'}. Contact your class teacher directly.`);
+                }
                 document.getElementById('groupOdForm').reset();
                 if (groupDaysEl) groupDaysEl.value = '';
                 switchTab('apply-status');
@@ -506,7 +534,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 membersDiv.innerHTML = members.length
                     ? members.map(m => {
                         const isMemberRejected = facRejected.includes(m.toLowerCase()) && !hodOverridden.includes(m.toLowerCase());
-                        return `<span class="${isMemberRejected ? 'member-rejected' : ''}">${escapeHtml(m)}${isMemberRejected ? ' ✕' : ''}</span>`;
+                        const memberName = studentNameLookup[m.toLowerCase()] || '';
+                        const label = memberName ? `${m} — ${escapeHtml(memberName)}` : escapeHtml(m);
+                        return `<span class="${isMemberRejected ? 'member-rejected' : ''}">${label}${isMemberRejected ? ' ✕' : ''}</span>`;
                     }).join('')
                     : '<span>No members listed</span>';
             }
