@@ -328,7 +328,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (membersDiv) {
                 const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
                 membersDiv.innerHTML = members.length
-                    ? members.map(m => `<span>${escHtml(m)}</span>`).join('')
+                    ? members.map(m => {
+                        const known = m.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                            ? { name: od.studentName }
+                            : lookupStudent(m);
+                        const label = known?.name ? `${m} — ${known.name}` : m;
+                        return `<span>${escHtml(label)}</span>`;
+                    }).join('')
                     : '<span>No members listed</span>';
             }
             if (groupSection) groupSection.style.display = 'flex';
@@ -564,6 +570,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const chips = members.map(reg => {
             const isRejected = rejected.some(r => r.toLowerCase() === reg.toLowerCase());
+            const known = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                ? { name: od.studentName }
+                : lookupStudent(reg);
+            const label = known?.name ? `${reg} — ${known.name}` : reg;
             return `
                 <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
                     <button class="member-chip ${isRejected ? 'rejected' : ''}"
@@ -572,7 +582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                border:1px solid ${isRejected ? 'rgba(239,68,68,0.4)' : 'rgba(99,102,241,0.3)'};
                                background:${isRejected ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.1)'};
                                color:${isRejected ? '#ef4444' : '#a5b4fc'}">
-                        ${isRejected ? '✕ ' : ''}${reg}
+                        ${isRejected ? '✕ ' : ''}${escHtml(label)}
                     </button>
                     <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
                          background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;

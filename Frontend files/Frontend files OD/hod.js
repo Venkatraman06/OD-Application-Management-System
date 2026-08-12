@@ -325,7 +325,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (membersDiv) {
                 const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
                 membersDiv.innerHTML = members.length
-                    ? members.map(m => `<span>${escHtml(m)}</span>`).join('')
+                    ? members.map(m => {
+                        const known = m.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                            ? { name: od.studentName }
+                            : lookupStudent(m);
+                        const label = known?.name ? `${m} — ${known.name}` : m;
+                        return `<span>${escHtml(label)}</span>`;
+                    }).join('')
                     : '<span>No members listed</span>';
             }
             if (groupSection) groupSection.style.display = 'flex';
@@ -547,6 +553,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const wasRejected = rejected.some(r => r.toLowerCase() === reg.toLowerCase());
             const isOverridden = overridden.some(r => r.toLowerCase() === reg.toLowerCase());
             const showAsRejected = wasRejected && !isOverridden;
+            const known = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                ? { name: od.studentName }
+                : lookupStudent(reg);
+            const label = known?.name ? `${reg} — ${known.name}` : reg;
 
             return `
                 <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
@@ -556,7 +566,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                border:1px solid ${showAsRejected ? 'rgba(239,68,68,0.4)' : isOverridden ? 'rgba(16,185,129,0.4)' : 'rgba(14,165,233,0.3)'};
                                background:${showAsRejected ? 'rgba(239,68,68,0.15)' : isOverridden ? 'rgba(16,185,129,0.15)' : 'rgba(14,165,233,0.1)'};
                                color:${showAsRejected ? '#ef4444' : isOverridden ? '#10b981' : '#7dd3fc'}">
-                        ${showAsRejected ? '✕ ' : isOverridden ? '✓ ' : ''}${reg}
+                        ${showAsRejected ? '✕ ' : isOverridden ? '✓ ' : ''}${escHtml(label)}
                     </button>
                     ${showAsRejected ? `
                     <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
