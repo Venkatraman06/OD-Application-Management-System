@@ -31,6 +31,7 @@ namespace OnlineOD.Models
         public string? GroupName { get; set; }
         public string? RegisterNumbers { get; set; } // comma-separated list of member register numbers
         public string? FacultyRejectedRegisterNumbers { get; set; } // comma-separated — members faculty rejected
+        public string? FacultyApprovedRegisterNumbers { get; set; } // comma-separated — members whose OWN section-staff has approved them (needed when a group spans multiple sections, since each section's staff can only decide on their own members)
         public string? HodApprovedRegisterNumbers { get; set; }     // comma-separated — members HOD overrode back to approved
 
         // Feature 3 — Winning certificate

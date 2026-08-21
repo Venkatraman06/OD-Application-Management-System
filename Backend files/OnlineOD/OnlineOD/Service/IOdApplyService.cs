@@ -12,7 +12,20 @@ namespace OnlineOD.Service
         Task<List<OdApply>> GetByStudentIdAsync(int studentId);
         Task<List<OdApply>> GetByDepartmentAsync(string department, string? section = null);
         Task<List<OdApply>> GetApprovedByFacultyAsync(string department);
-        Task<OdApply?> UpdateFacultyStatusAsync(int odId, string status);
+
+        // Returns the distinct class sections actually involved in this OD —
+        // for a group OD, this looks up each member's REAL current Section
+        // from the Students table (not just the applicant's own Section),
+        // since a group can span multiple sections.
+        Task<List<string>> GetInvolvedSectionsAsync(OdApply od);
+
+        // Section-aware faculty decision. A group OD can span multiple class
+        // sections (e.g. Section A + Section B students in one group) — this
+        // makes sure a staff member can only decide on the members from their
+        // OWN section, and the overall FacultyStatus only becomes "Approved"
+        // once every section involved has made its decision.
+        Task<OdApply?> ApproveByStaffAsync(int odId, string status, int staffId);
+
         Task<OdApply?> UpdateHodStatusAsync(int odId, string status);
         Task UpdateCertificateAsync(OdApply od);
 

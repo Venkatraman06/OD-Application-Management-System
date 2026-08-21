@@ -121,9 +121,12 @@ namespace OnlineOD.Controllers
             return Ok(withCerts);
         }
 
-        // Approve/Reject by faculty — then email HOD with clickable buttons
+        // Approve/Reject by faculty — then email HOD with clickable buttons.
+        // staffId identifies WHICH staff is deciding — required for group ODs
+        // spanning multiple sections, so a Section-A staff can only decide on
+        // Section-A members, and Section-B staff only on Section-B members.
         [HttpPut("Approve/{odId}")]
-        public async Task<IActionResult> Approve(int odId, [FromQuery] string status)
+        public async Task<IActionResult> Approve(int odId, [FromQuery] string status, [FromQuery] int staffId)
         {
             if (string.IsNullOrEmpty(status))
                 return BadRequest("Status is required");
@@ -131,7 +134,28 @@ namespace OnlineOD.Controllers
             if (status != "Approved" && status != "Rejected")
                 return BadRequest("Status must be Approved or Rejected");
 
-            var od = await _odService.UpdateFacultyStatusAsync(odId, status);
+            if (staffId <= 0)
+                return BadRequest("staffId is required");
+
+            // Block approve/reject once the OD is already ongoing (today falls
+            // within its From/To range) — the decision window is meant to
+            // close once the OD has actually started, not just once it ends.
+            var existing = await _odService.GetOdApplyByIdAsync(odId);
+            if (existing == null) return NotFound("OD request not found");
+            if (IsOdOngoing(existing.FromDate, existing.ToDate))
+                return BadRequest("This OD is already ongoing and can no longer be approved or rejected.");
+
+            OdApply? od;
+            try
+            {
+                od = await _odService.ApproveByStaffAsync(odId, status, staffId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Thrown when this staff has no students from their own
+                // section on this OD — nothing for them to decide.
+                return BadRequest(ex.Message);
+            }
             if (od == null) return NotFound("OD request not found");
 
             // Tracks whether the HOD notification email actually went out, and
@@ -140,7 +164,11 @@ namespace OnlineOD.Controllers
             string emailStatus = "not_applicable";
             string emailDetail = null;
 
-            if (status == "Approved")
+            // Only notify HOD once the OD's OVERALL FacultyStatus has actually
+            // become "Approved" — for a multi-section group OD, that only
+            // happens after EVERY involved section has made its own decision,
+            // not just this one staff's own section.
+            if (od.FacultyStatus == "Approved")
             {
                 try
                 {
@@ -204,6 +232,16 @@ namespace OnlineOD.Controllers
                 emailStatus,
                 emailDetail
             });
+        }
+
+        // True while today falls within the OD's own From/To date range —
+        // used to lock out approve/reject once the OD has actually started.
+        private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
+        {
+            if (!DateTime.TryParse(fromDateRaw, out var from) || !DateTime.TryParse(toDateRaw, out var to))
+                return false;
+            var today = DateTime.Today;
+            return today >= from.Date && today <= to.Date;
         }
     }
 }

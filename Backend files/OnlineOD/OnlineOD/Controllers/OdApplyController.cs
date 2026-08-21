@@ -92,30 +92,36 @@ namespace OnlineOD.Controllers
 
             var result = await _service.CreateOdApplyAsync(dto);
 
-            // Send email to the staff in the SAME department AND section as
-            // the applying student — this is what routes a Section-B
-            // student's OD only to their Section-B class teacher, instead of
-            // every staff member in the department.
+            // Send email to every staff whose Department + Section matches ANY
+            // section actually involved in this OD — for a group OD spanning
+            // multiple sections (e.g. Section A + Section B students in one
+            // group), this notifies BOTH class staffs, not just the section of
+            // whichever student happened to create the group.
             string emailStatus = "not_applicable";
             string emailDetail = null;
             try
             {
+                var involvedSections = await _service.GetInvolvedSectionsAsync(result);
+                if (involvedSections.Count == 0 && !string.IsNullOrWhiteSpace(dto.Section))
+                    involvedSections.Add(dto.Section.Trim());
+
+                var involvedSectionsLower = involvedSections.Select(s => s.ToLower()).ToHashSet();
+
                 var staffList = await _staffService.GetAllStaffAsync();
                 var deptStaff = staffList.Where(s =>
                     s.Department != null &&
                     s.Department.Trim().ToLower() == (dto.department ?? "").Trim().ToLower() &&
-                    !string.IsNullOrWhiteSpace(dto.Section) &&
                     s.Section != null &&
-                    s.Section.Trim().ToLower() == dto.Section.Trim().ToLower() &&
+                    involvedSectionsLower.Contains(s.Section.Trim().ToLower()) &&
                     !string.IsNullOrEmpty(s.Email)
                 ).ToList();
 
                 if (deptStaff.Count == 0)
                 {
                     emailStatus = "failed";
-                    emailDetail = string.IsNullOrWhiteSpace(dto.Section)
+                    emailDetail = involvedSections.Count == 0
                         ? "No Section was set on this OD, so no matching staff could be found."
-                        : $"No staff found for department '{dto.department}' + section '{dto.Section}' with an Email set.";
+                        : $"No staff found for department '{dto.department}' + section(s) '{string.Join(", ", involvedSections)}' with an Email set.";
                     Console.WriteLine($"[Email] Staff notify skipped — {emailDetail}");
                 }
                 else
@@ -132,6 +138,7 @@ namespace OnlineOD.Controllers
                             fromDate: dto.FromDate ?? "",
                             toDate: dto.ToDate ?? "",
                             odId: result.OdId,
+                            staffId: staff.StaffId,
                             isGroup: dto.IsGroupOd,
                             groupName: dto.GroupName ?? "",
                             registerNumbers: dto.RegisterNumbers ?? "",
@@ -139,7 +146,7 @@ namespace OnlineOD.Controllers
                         );
                     }
                     emailStatus = "sent";
-                    Console.WriteLine($"[Email] Staff notify sent to {deptStaff.Count} staff for OD #{result.OdId}");
+                    Console.WriteLine($"[Email] Staff notify sent to {deptStaff.Count} staff (sections: {string.Join(", ", involvedSections)}) for OD #{result.OdId}");
                 }
             }
             catch (Exception ex)

@@ -28,6 +28,7 @@ namespace OnlineOD.Dtos
         public string? GroupName { get; set; }
         public string? RegisterNumbers { get; set; }
         public string? FacultyRejectedRegisterNumbers { get; set; }
+        public string? FacultyApprovedRegisterNumbers { get; set; }
         public string? HodApprovedRegisterNumbers { get; set; }
 
         // Old single-certificate fields — kept for backward compatibility with

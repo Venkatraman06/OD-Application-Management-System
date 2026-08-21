@@ -49,13 +49,17 @@ namespace OnlineOD.Services
         }
 
         // ── Approve/Reject button block ───────────────────────────────────────
-        private string ActionButtons(int odId, string role)
+        // staffId is embedded for role=="faculty" links only — it's what lets
+        // EmailApproveController know WHICH staff clicked, so it can decide
+        // only that staff's own section's members on a multi-section group OD.
+        private string ActionButtons(int odId, string role, int staffId = 0)
         {
             var baseUrl = _config["EmailSettings:AppBaseUrl"] ?? "http://localhost:5088";
             var approveToken = GenerateToken(odId, "Approved");
             var rejectToken = GenerateToken(odId, "Rejected");
-            var approveUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Approved&role={role}&token={approveToken}";
-            var rejectUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Rejected&role={role}&token={rejectToken}";
+            var staffIdParam = role == "faculty" ? $"&staffId={staffId}" : "";
+            var approveUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
+            var rejectUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
 
             return $@"
             <div style='text-align:center;margin:24px 0'>
@@ -153,6 +157,7 @@ namespace OnlineOD.Services
             string eventName, string department,
             string fromDate, string toDate,
             int odId,
+            int staffId = 0,
             bool isGroup = false,
             string groupName = "",
             string registerNumbers = "",
@@ -164,7 +169,7 @@ namespace OnlineOD.Services
                 : "A student has submitted a new OD request that requires your approval.";
 
             var rows = OdRows(studentName, registerNumber, department, eventName, fromDate, toDate, isGroup, groupName, registerNumbers, collegeIndustry);
-            var buttons = ActionButtons(odId, "faculty");
+            var buttons = ActionButtons(odId, "faculty", staffId);
             var body = Wrap(staffName, intro, rows, buttons, isGroup);
 
             await SendAsync(toEmail, staffName,

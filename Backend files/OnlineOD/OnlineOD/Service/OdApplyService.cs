@@ -36,22 +36,71 @@ namespace OnlineOD.Service
         }
 
         // Get OD applications by department
+        // Section filtering (when provided) determines visibility PER STAFF:
+        // - Solo OD: matches the single applicant's own Section, as before.
+        // - Group OD: matches if ANY member's ACTUAL current Section (looked
+        //   up from the Students table) equals the target — not just the
+        //   Section of whichever student originally created the group. This
+        //   is what makes a mixed Section-A + Section-B group visible to
+        //   BOTH class staffs instead of only the applicant's own staff.
         public async Task<List<OdApply>> GetByDepartmentAsync(string department, string? section = null)
         {
-            var query = _context.OdApplies.Where(o => o.department == department);
-
-            // When a section is provided, only return ODs from students in that
-            // exact class section — this is what routes a request to only the
-            // matching class teacher instead of every staff member in the dept.
-            if (!string.IsNullOrWhiteSpace(section))
-            {
-                var target = section.Trim().ToLower();
-                query = query.Where(o => o.Section != null && o.Section.Trim().ToLower() == target);
-            }
-
-            return await query
+            var deptOds = await _context.OdApplies
+                .Where(o => o.department == department)
                 .OrderByDescending(o => o.AppliedDate)
                 .ToListAsync();
+
+            if (string.IsNullOrWhiteSpace(section))
+                return deptOds;
+
+            var target = section.Trim().ToLower();
+
+            var allRegNumbers = deptOds
+                .Where(o => o.IsGroupOd)
+                .SelectMany(o => ParseList(o.RegisterNumbers))
+                .Select(r => r.ToLower())
+                .Distinct()
+                .ToList();
+
+            var studentSections = allRegNumbers.Count == 0
+                ? new Dictionary<string, string>()
+                : await _context.Students
+                    .Where(s => allRegNumbers.Contains(s.RegisterNumber.ToLower()))
+                    .ToDictionaryAsync(s => s.RegisterNumber.ToLower(), s => s.Section ?? "");
+
+            return deptOds.Where(o =>
+            {
+                if (!o.IsGroupOd)
+                    return o.Section != null && o.Section.Trim().ToLower() == target;
+
+                return ParseList(o.RegisterNumbers).Any(reg =>
+                    studentSections.TryGetValue(reg.ToLower(), out var sec) &&
+                    sec.Trim().ToLower() == target);
+            }).ToList();
+        }
+
+        public async Task<List<string>> GetInvolvedSectionsAsync(OdApply od)
+        {
+            if (!od.IsGroupOd)
+            {
+                return string.IsNullOrWhiteSpace(od.Section)
+                    ? new List<string>()
+                    : new List<string> { od.Section.Trim() };
+            }
+
+            var regs = ParseList(od.RegisterNumbers).Select(r => r.ToLower()).ToHashSet();
+            if (regs.Count == 0) return new List<string>();
+
+            var sections = await _context.Students
+                .Where(s => regs.Contains(s.RegisterNumber.ToLower()))
+                .Select(s => s.Section)
+                .ToListAsync();
+
+            return sections
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         // Get OD applications approved by faculty for a department
@@ -98,12 +147,79 @@ namespace OnlineOD.Service
             return od;
         }
 
-        // Update faculty status of an OD application
-        public async Task<OdApply?> UpdateFacultyStatusAsync(int odId, string status)
+        // Section-aware faculty decision. A group OD can include students
+        // from multiple class sections (e.g. Section A + Section B) — each
+        // section's staff can only decide on the members from THEIR OWN
+        // section, and the OD's overall FacultyStatus only becomes
+        // "Approved"/"Rejected" once every involved section has decided.
+        // Throws InvalidOperationException if the given staff has no
+        // students from their own section on this OD (nothing for them to
+        // decide) — the controller turns this into a clear 400 response.
+        public async Task<OdApply?> ApproveByStaffAsync(int odId, string status, int staffId)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
-            od.FacultyStatus = status;
+
+            // Solo OD: single applicant, single decision — unchanged behavior.
+            if (!od.IsGroupOd)
+            {
+                od.FacultyStatus = status;
+                await _context.SaveChangesAsync();
+                return od;
+            }
+
+            var staff = await _context.Staffs.FindAsync(staffId);
+            var staffSection = (staff?.Section ?? "").Trim().ToLower();
+
+            var allMembers = ParseList(od.RegisterNumbers);
+            var memberRegsLower = allMembers.Select(r => r.ToLower()).ToList();
+
+            var studentSections = memberRegsLower.Count == 0
+                ? new Dictionary<string, string>()
+                : await _context.Students
+                    .Where(s => memberRegsLower.Contains(s.RegisterNumber.ToLower()))
+                    .ToDictionaryAsync(s => s.RegisterNumber.ToLower(), s => (s.Section ?? "").Trim().ToLower());
+
+            var myMembers = allMembers.Where(reg =>
+                studentSections.TryGetValue(reg.ToLower(), out var sec) && sec == staffSection
+            ).ToList();
+
+            if (myMembers.Count == 0)
+                throw new InvalidOperationException("You have no students from your own class section on this OD.");
+
+            var approved = ParseList(od.FacultyApprovedRegisterNumbers);
+            var rejected = ParseList(od.FacultyRejectedRegisterNumbers);
+
+            foreach (var reg in myMembers)
+            {
+                approved.RemoveAll(r => r.Equals(reg, StringComparison.OrdinalIgnoreCase));
+                rejected.RemoveAll(r => r.Equals(reg, StringComparison.OrdinalIgnoreCase));
+                if (status == "Approved") approved.Add(reg);
+                else rejected.Add(reg);
+            }
+
+            od.FacultyApprovedRegisterNumbers = JoinList(approved);
+            od.FacultyRejectedRegisterNumbers = JoinList(rejected);
+
+            var decidedCount = approved.Select(r => r.ToLower())
+                .Union(rejected.Select(r => r.ToLower()))
+                .Distinct()
+                .Count();
+
+            if (decidedCount >= allMembers.Count)
+            {
+                // Only if every single member across every section ended up
+                // rejected does the whole OD get marked Rejected — otherwise
+                // it proceeds to HOD with the rejected members flagged
+                // individually (same as the existing single-section behavior).
+                od.FacultyStatus = rejected.Count >= allMembers.Count ? "Rejected" : "Approved";
+            }
+            else
+            {
+                // Still waiting on at least one other section's staff to decide.
+                od.FacultyStatus = "Pending";
+            }
+
             await _context.SaveChangesAsync();
             return od;
         }
@@ -219,6 +335,7 @@ namespace OnlineOD.Service
                 GroupName = od.GroupName,
                 RegisterNumbers = od.RegisterNumbers,
                 FacultyRejectedRegisterNumbers = od.FacultyRejectedRegisterNumbers,
+                FacultyApprovedRegisterNumbers = od.FacultyApprovedRegisterNumbers,
                 HodApprovedRegisterNumbers = od.HodApprovedRegisterNumbers,
                 WinningStatus = od.WinningStatus,
                 CertificatePhotoUrl = od.CertificatePhotoUrl,

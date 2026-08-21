@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
 using System.Linq;
@@ -20,13 +21,14 @@ namespace OnlineOD.Controllers
             _hodService = hodService;
         }
 
-        // GET /api/EmailApprove?odId=5&action=Approved&role=faculty&token=xyz
+        // GET /api/EmailApprove?odId=5&action=Approved&role=faculty&staffId=3&token=xyz
         [HttpGet]
         public async Task<ContentResult> Handle(
             [FromQuery] int odId,
             [FromQuery] string action,
             [FromQuery] string token,
-            [FromQuery] string role = "faculty")
+            [FromQuery] string role = "faculty",
+            [FromQuery] int staffId = 0)
         {
             // ── Validate token ─────────────────────────────────────────────
             if (!_emailService.ValidateToken(odId, action, token))
@@ -53,6 +55,17 @@ namespace OnlineOD.Controllers
                     "This decision cannot be changed.", false), "text/html");
             }
 
+            // ── Lock: once the OD is already ongoing (today falls within its
+            // From/To range), the one-click email link can no longer approve
+            // or reject it either — same rule enforced on the staff/HOD
+            // webpages, so this can't be used to bypass that restriction.
+            if (IsOdOngoing(existingOd.FromDate, existingOd.ToDate))
+            {
+                return Content(Page("⚠️ OD already ongoing.",
+                    $"OD #{odId} is already in progress (its dates have started). " +
+                    "It can no longer be approved or rejected.", false), "text/html");
+            }
+
             // ── Apply the status update ────────────────────────────────────
             if (role == "hod")
             {
@@ -60,14 +73,28 @@ namespace OnlineOD.Controllers
             }
             else
             {
-                var od = await _odService.UpdateFacultyStatusAsync(odId, action);
+                if (staffId <= 0)
+                {
+                    return Content(Page("❌ Outdated link.",
+                        "This approval link is missing staff information and can't be used. " +
+                        "Please ask the student to resubmit the OD, or use the staff dashboard instead.",
+                        false), "text/html");
+                }
 
-                // When faculty approves via the email link (this endpoint),
-                // the HOD must be notified too — same as when faculty approves
-                // from the staff webpage (see StaffController.Approve).
-                // Without this block, approving from the email silently never
-                // emailed the HOD at all.
-                if (od != null && action == "Approved")
+                OdApply? od;
+                try
+                {
+                    od = await _odService.ApproveByStaffAsync(odId, action, staffId);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Content(Page("❌ Not your section.", ex.Message, false), "text/html");
+                }
+
+                // When the OD's OVERALL FacultyStatus becomes "Approved" (for a
+                // multi-section group OD, only once EVERY section has decided),
+                // the HOD must be notified — same as StaffController.Approve.
+                if (od != null && od.FacultyStatus == "Approved")
                 {
                     try
                     {
@@ -117,6 +144,16 @@ namespace OnlineOD.Controllers
                 $"OD #{odId} has been <b style='color:{color}'>{actionLabel}</b> by {roleLabel}.<br>" +
                 $"The student's status page will reflect this immediately.",
                 true), "text/html");
+        }
+
+        // True while today falls within the OD's own From/To date range —
+        // used to lock out approve/reject once the OD has actually started.
+        private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
+        {
+            if (!DateTime.TryParse(fromDateRaw, out var from) || !DateTime.TryParse(toDateRaw, out var to))
+                return false;
+            var today = DateTime.Today;
+            return today >= from.Date && today <= to.Date;
         }
 
         // ── Simple confirmation HTML page ──────────────────────────────────
