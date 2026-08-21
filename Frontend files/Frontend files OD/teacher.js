@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (reg) studentLookup[reg] = {
                     name: s.name || s.Name || '',
                     department: s.department || s.Department || '',
+                    section: s.section || s.Section || '',
                     year: s.year || s.Year || ''
                 };
             });
@@ -52,6 +53,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function lookupStudent(reg) {
         return studentLookup[(reg || '').trim().toLowerCase()] || null;
+    }
+
+    // For a group OD, figures out which members belong to THIS staff's own
+    // Department + Section, and whether every one of them already has a
+    // faculty decision recorded — used to hide the Approve/Reject buttons
+    // once this staff's own class is done, even while the OD as a whole
+    // stays "Pending" waiting on another section's staff.
+    function getMyDecisionState(od) {
+        if (!od.isGroupOd) {
+            return { mineTotal: 1, mineDecided: od.facultyStatus !== 'Pending' };
+        }
+        const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+        const approved = (od.facultyApprovedRegisterNumbers || '').split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
+        const rejected = (od.facultyRejectedRegisterNumbers || '').split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
+
+        const mine = members.filter(reg => {
+            const isApplicant = reg.toLowerCase() === (od.registerNumber || '').toLowerCase();
+            const memberDept = isApplicant ? (od.department || '') : (lookupStudent(reg)?.department || '');
+            const memberSection = isApplicant ? (od.section || od.Section || '') : (lookupStudent(reg)?.section || '');
+            return memberDept.trim().toLowerCase() === (dept || '').trim().toLowerCase()
+                && memberSection.trim().toLowerCase() === (section || '').trim().toLowerCase();
+        });
+
+        const mineDecided = mine.length > 0 && mine.every(reg =>
+            approved.includes(reg.toLowerCase()) || rejected.includes(reg.toLowerCase())
+        );
+        return { mineTotal: mine.length, mineDecided };
     }
 
     const sectionMeta = {
@@ -279,12 +307,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div class="card-actions">
                     <button type="button" class="view-details-btn" data-odid="${od.odId}">View Details</button>
-                    ${od.facultyStatus === 'Pending'
-                        ? (countdown.cls === 'od-countdown-ongoing'
-                            ? `<p class="od-ongoing-lock-note">This OD is already ongoing — it can no longer be approved or rejected.</p>`
-                            : `<button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Approve</button>
-                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>`)
-                        : ''}
+                    ${(() => {
+                        if (od.facultyStatus !== 'Pending') return '';
+                        if (countdown.cls === 'od-countdown-ongoing') {
+                            return `<p class="od-ongoing-lock-note">This OD is already ongoing — it can no longer be approved or rejected.</p>`;
+                        }
+                        const myState = getMyDecisionState(od);
+                        if (myState.mineTotal === 0) {
+                            return `<p class="od-ongoing-lock-note">None of these students are in your class.</p>`;
+                        }
+                        if (myState.mineDecided) {
+                            return `<p class="od-ongoing-lock-note">You've already decided for your class — waiting on another section's staff.</p>`;
+                        }
+                        const label = od.isGroupOd ? ' My Class' : '';
+                        return `<button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Approve${label}</button>
+                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject${label}</button>`;
+                    })()}
                 </div>
             </div>`;
         }).join('');
@@ -568,24 +606,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderMemberChips(od) {
         const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
         const rejected = (od.facultyRejectedRegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+        const approved = (od.facultyApprovedRegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
 
         if (members.length === 0) return '';
 
         const chips = members.map(reg => {
             const isRejected = rejected.some(r => r.toLowerCase() === reg.toLowerCase());
+            const isApproved = !isRejected && approved.some(r => r.toLowerCase() === reg.toLowerCase());
             const known = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
-                ? { name: od.studentName }
+                ? { name: od.studentName, department: od.department }
                 : lookupStudent(reg);
             const label = known?.name ? `${reg} — ${known.name}` : reg;
+
+            // Highlight members belonging to THIS staff's own class — makes it
+            // obvious at a glance which students in a multi-section group OD
+            // are actually this staff's to decide on. The applicant's own
+            // department/section already lives directly on the OD record;
+            // every other member is resolved via the student lookup.
+            const memberDept = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                ? (od.department || '')
+                : (known?.department || '');
+            const memberSection = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                ? (od.section || od.Section || '')
+                : (known?.section || '');
+            const isMine = memberDept.trim().toLowerCase() === (dept || '').trim().toLowerCase()
+                && memberSection.trim().toLowerCase() === (section || '').trim().toLowerCase();
+
+            const stateColor = isRejected ? '#ef4444' : isApproved ? '#10b981' : '#a5b4fc';
+            const stateBg = isRejected ? 'rgba(239,68,68,0.15)' : isApproved ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.1)';
+            const stateBorder = isRejected ? 'rgba(239,68,68,0.4)' : isApproved ? 'rgba(16,185,129,0.4)' : 'rgba(99,102,241,0.3)';
+            const stateIcon = isRejected ? '✕ ' : isApproved ? '✓ ' : '';
+
             return `
                 <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
                     <button class="member-chip ${isRejected ? 'rejected' : ''}"
                         onclick="toggleMemberMenu(this, ${od.odId}, '${esc(reg)}')"
+                        title="${isMine ? 'Your class' : 'Another section'}"
                         style="padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;
-                               border:1px solid ${isRejected ? 'rgba(239,68,68,0.4)' : 'rgba(99,102,241,0.3)'};
-                               background:${isRejected ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.1)'};
-                               color:${isRejected ? '#ef4444' : '#a5b4fc'}">
-                        ${isRejected ? '✕ ' : ''}${escHtml(label)}
+                               border:1px solid ${stateBorder};
+                               background:${stateBg};
+                               color:${stateColor};
+                               ${isMine ? 'box-shadow:0 0 0 1px rgba(255,255,255,0.25) inset;' : 'opacity:0.85;'}">
+                        ${stateIcon}${escHtml(label)}${isMine ? '' : ' <span style="opacity:0.6;font-weight:400">(other class)</span>'}
                     </button>
                     <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
                          background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;
