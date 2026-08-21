@@ -279,9 +279,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div class="card-actions">
                     <button type="button" class="view-details-btn" data-odid="${od.odId}">View Details</button>
-                    ${od.facultyStatus === 'Pending' ? `
-                    <button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Approve</button>
-                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>` : ''}
+                    ${od.facultyStatus === 'Pending'
+                        ? (countdown.cls === 'od-countdown-ongoing'
+                            ? `<p class="od-ongoing-lock-note">This OD is already ongoing — it can no longer be approved or rejected.</p>`
+                            : `<button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Approve</button>
+                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>`)
+                        : ''}
                 </div>
             </div>`;
         }).join('');
@@ -661,12 +664,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function updateStatus(odId, status) {
         try {
-            const res = await fetch(`${API_BASE}/api/Faculty/Approve/${odId}?status=${status}`, {
+            const res = await fetch(`${API_BASE}/api/Faculty/Approve/${odId}?status=${status}&staffId=${facultyId}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }
             });
             if (res.ok) {
                 const data = await res.json().catch(() => null);
-                showToast('success', `OD ${status.toLowerCase()}!`);
+                if (data && data.facultyStatus === 'Pending') {
+                    // Overall OD is still Pending — this group OD spans another
+                    // section too, and that section's staff hasn't decided yet.
+                    showToast('success', `Your decision (${status.toLowerCase()}) was recorded. Still waiting on another section's staff for this group OD.`);
+                } else {
+                    showToast('success', `OD ${status.toLowerCase()}!`);
+                }
                 // Surface HOD email failures instead of hiding them — the OD
                 // status itself still updated fine, but the HOD was never
                 // notified, so staff should know to follow up manually.
@@ -674,8 +683,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showToast('error', `Warning: HOD was not emailed — ${data.emailDetail || 'unknown error'}`);
                 }
                 loadODs();
+            } else {
+                // "Not your section" and other validation errors come back as
+                // plain text in the body — show the real reason, not a generic one.
+                const errText = await res.text().catch(() => '');
+                showToast('error', errText || 'Failed to update');
             }
-            else showToast('error', 'Failed to update');
         } catch (err) { console.error(err); showToast('error', 'Network error'); }
     }
 

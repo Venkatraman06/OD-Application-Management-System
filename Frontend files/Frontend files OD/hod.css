@@ -1266,6 +1266,19 @@ body {
 }
 .request-card .btn-reject:hover { opacity: 0.9; transform: translateY(-1px); }
 
+.od-ongoing-lock-note {
+    flex: 1;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #6ee7b7;
+}
+
 .request-card .view-details-btn {
     flex: 1; padding: 11px; border-radius: 10px; cursor: pointer;
     background: rgba(255,255,255,0.06);

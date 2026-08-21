@@ -276,9 +276,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div class="card-actions">
                     <button type="button" class="view-details-btn" data-odid="${od.odId}">View Details</button>
-                    ${od.hodStatus === 'Pending' ? `
-                    <button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Final Approve</button>
-                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>` : ''}
+                    ${od.hodStatus === 'Pending'
+                        ? (countdown.cls === 'od-countdown-ongoing'
+                            ? `<p class="od-ongoing-lock-note">This OD is already ongoing — it can no longer be approved or rejected.</p>`
+                            : `<button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Final Approve</button>
+                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>`)
+                        : ''}
                 </div>
             </div>`;
         }).join('');
