@@ -35,8 +35,11 @@ namespace OnlineOD.Service
         Task<OdCertificate?> VerifyMemberCertificateAsync(int odId, string registerNumber);
         Task<List<OdWithCertificatesDto>> AttachCertificatesAsync(List<OdApply> ods);
 
-        Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber);
-        Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber);
+        // staffId identifies WHICH staff is acting — required so a staff can
+        // only reject/unreject members from their OWN class section, never
+        // a member belonging to a different section's class staff.
+        Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber, int staffId);
+        Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber, int staffId);
         Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber);
     }
 }

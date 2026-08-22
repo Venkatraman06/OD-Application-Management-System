@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
+using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
 
@@ -177,27 +178,50 @@ namespace OnlineOD.Controllers
             return Ok(result);
         }
 
-        // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX
+        // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX&staffId=YYY
+        // staffId identifies which staff is rejecting — enforced server-side
+        // so only that student's OWN class section's staff can reject them,
+        // even on a group OD shared across multiple sections.
         [HttpPut("{odId}/RejectMember")]
-        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber)
+        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int staffId)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
+            if (staffId <= 0)
+                return BadRequest("staffId is required");
 
-            var od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim());
+            OdApply? od;
+            try
+            {
+                od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim(), staffId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             if (od == null) return NotFound("OD request not found");
             return Ok(od);
         }
 
-        // PUT /api/OdApply/{odId}/UnrejectMember?registerNumber=XXX
-        // Faculty undoing their own rejection
+        // PUT /api/OdApply/{odId}/UnrejectMember?registerNumber=XXX&staffId=YYY
+        // Faculty undoing their own rejection — same section-ownership rule.
         [HttpPut("{odId}/UnrejectMember")]
-        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber)
+        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int staffId)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
+            if (staffId <= 0)
+                return BadRequest("staffId is required");
 
-            var od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim());
+            OdApply? od;
+            try
+            {
+                od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim(), staffId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             if (od == null) return NotFound("OD request not found");
             return Ok(od);
         }

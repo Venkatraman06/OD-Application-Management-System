@@ -354,10 +354,30 @@ namespace OnlineOD.Service
 
         private static string JoinList(List<string> list) => string.Join(",", list);
 
-        public async Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber)
+        // Confirms the given student's ACTUAL current Section (looked up from
+        // the Students table) matches this staff's own Section — used to stop
+        // a Section-B staff from rejecting/unrejecting a Section-A member on
+        // a shared group OD, and vice versa.
+        private async Task<bool> IsMemberInStaffSectionAsync(string registerNumber, int staffId)
+        {
+            var staff = await _context.Staffs.FindAsync(staffId);
+            if (staff == null) return false;
+            var staffSection = (staff.Section ?? "").Trim().ToLower();
+
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.RegisterNumber.ToLower() == registerNumber.ToLower());
+            var studentSection = (student?.Section ?? "").Trim().ToLower();
+
+            return studentSection == staffSection;
+        }
+
+        public async Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber, int staffId)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
+
+            if (!await IsMemberInStaffSectionAsync(registerNumber, staffId))
+                throw new InvalidOperationException("This student is not in your class section — only their own class staff can reject them.");
 
             var rejected = ParseList(od.FacultyRejectedRegisterNumbers);
             if (!rejected.Any(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase)))
@@ -370,14 +390,23 @@ namespace OnlineOD.Service
             hodApproved.RemoveAll(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase));
             od.HodApprovedRegisterNumbers = JoinList(hodApproved);
 
+            // Also clear any prior approval for this member — a re-reject
+            // should always win over a stale approval from earlier.
+            var approved = ParseList(od.FacultyApprovedRegisterNumbers);
+            approved.RemoveAll(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase));
+            od.FacultyApprovedRegisterNumbers = JoinList(approved);
+
             await _context.SaveChangesAsync();
             return od;
         }
 
-        public async Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber)
+        public async Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber, int staffId)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
+
+            if (!await IsMemberInStaffSectionAsync(registerNumber, staffId))
+                throw new InvalidOperationException("This student is not in your class section — only their own class staff can undo their rejection.");
 
             var rejected = ParseList(od.FacultyRejectedRegisterNumbers);
             rejected.RemoveAll(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase));
