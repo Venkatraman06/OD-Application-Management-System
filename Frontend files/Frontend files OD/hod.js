@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (reg) studentLookup[reg] = {
                     name: s.name || s.Name || '',
                     department: s.department || s.Department || '',
+                    section: s.section || s.Section || '',
                     year: s.year || s.Year || ''
                 };
             });
@@ -433,10 +434,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
                 const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
                 const known = registerNumber === od.registerNumber
-                    ? { name: od.studentName, department: od.department }
+                    ? { name: od.studentName, department: od.department, section: od.section || od.Section || '' }
                     : lookupStudent(registerNumber);
                 const displayName = known?.name || '';
-                const className = known ? [known.department, known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ') : '';
+                const className = known
+                    ? [known.department, known.section ? `Sec ${known.section}` : '', known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ')
+                    : '';
 
                 if (isRejected) {
                     return `
@@ -557,9 +560,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isOverridden = overridden.some(r => r.toLowerCase() === reg.toLowerCase());
             const showAsRejected = wasRejected && !isOverridden;
             const known = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
-                ? { name: od.studentName }
+                ? { name: od.studentName, section: od.section || od.Section || '' }
                 : lookupStudent(reg);
-            const label = known?.name ? `${reg} — ${known.name}` : reg;
+            const memberSection = known?.section || '';
+            const label = `${reg}${known?.name ? ' — ' + known.name : ''}${memberSection ? ` (Sec ${memberSection})` : ''}`;
 
             return `
                 <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">

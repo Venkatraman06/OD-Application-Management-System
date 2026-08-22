@@ -372,6 +372,10 @@
                 <td id="department">-</td>
             </tr>
             <tr>
+                <td class="label">Section</td>
+                <td id="reportSection">-</td>
+            </tr>
+            <tr>
                 <td class="label">OD Type</td>
                 <td id="odType">Individual</td>
             </tr>
@@ -402,7 +406,7 @@
             <span class="box-label">Group Members</span>
             <table>
                 <thead>
-                    <tr><th>#</th><th>Register Number</th><th>Name</th></tr>
+                    <tr><th>#</th><th>Register Number</th><th>Name</th><th>Section</th></tr>
                 </thead>
                 <tbody id="groupMembersBody">
                     <!-- rows inserted dynamically -->
@@ -525,9 +529,9 @@
         }
 
         // Group OD data only carries register numbers for members — fetch
-        // the full student list once and build a register-number → name
+        // the full student list once and build a register-number → info
         // lookup so the report's Group Members table can show real names
-        // next to each register number, not just bare numbers.
+        // and sections next to each register number, not just bare numbers.
         async function fetchStudentNameLookup() {
             try {
                 const res = await fetch(`${API_BASE}/api/Student`);
@@ -536,7 +540,10 @@
                 const lookup = {};
                 students.forEach(s => {
                     const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
-                    if (reg) lookup[reg] = s.name || s.Name || '';
+                    if (reg) lookup[reg] = {
+                        name: s.name || s.Name || '',
+                        section: s.section || s.Section || ''
+                    };
                 });
                 return lookup;
             } catch (err) {
@@ -574,6 +581,7 @@
             setText('studentName', studentName);
             setText('registerNumber', registerNumber);
             setText('department', department);
+            setText('reportSection', section || '-');
             setText('odType', isGroupOd ? `Group OD${groupName ? ' — ' + groupName : ''}` : 'Individual');
             setText('collegeIndustry', collegeIndustry);
             setText('eventName', event);
@@ -610,8 +618,11 @@
                 const nameLookup = await fetchStudentNameLookup();
                 if (groupBody) {
                     groupBody.innerHTML = members.map((m, i) => {
-                        const name = nameLookup[m.toLowerCase()] || (m.toLowerCase() === registerNumber.toLowerCase() ? studentName : '') || '-';
-                        return `<tr><td>${i + 1}</td><td>${m}</td><td>${name}</td></tr>`;
+                        const info = nameLookup[m.toLowerCase()];
+                        const isMe = m.toLowerCase() === registerNumber.toLowerCase();
+                        const name = info?.name || (isMe ? studentName : '') || '-';
+                        const memberSection = info?.section || (isMe ? section : '') || '-';
+                        return `<tr><td>${i + 1}</td><td>${m}</td><td>${name}</td><td>${memberSection}</td></tr>`;
                     }).join('');
                 }
                 if (groupSection) groupSection.style.display = 'block';

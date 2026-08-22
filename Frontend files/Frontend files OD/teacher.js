@@ -488,10 +488,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
                 const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
                 const known = registerNumber === od.registerNumber
-                    ? { name: od.studentName, department: od.department }
+                    ? { name: od.studentName, department: od.department, section: od.section || od.Section || '' }
                     : lookupStudent(registerNumber);
                 const displayName = known?.name || '';
-                const className = known ? [known.department, known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ') : '';
+                const className = known
+                    ? [known.department, known.section ? `Sec ${known.section}` : '', known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ')
+                    : '';
 
                 if (isRejected) {
                     return `
@@ -616,7 +618,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const known = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
                 ? { name: od.studentName, department: od.department }
                 : lookupStudent(reg);
-            const label = known?.name ? `${reg} — ${known.name}` : reg;
 
             // Highlight members belonging to THIS staff's own class — makes it
             // obvious at a glance which students in a multi-section group OD
@@ -632,6 +633,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isMine = memberDept.trim().toLowerCase() === (dept || '').trim().toLowerCase()
                 && memberSection.trim().toLowerCase() === (section || '').trim().toLowerCase();
 
+            const label = `${reg}${known?.name ? ' — ' + known.name : ''}${memberSection ? ` (Sec ${memberSection})` : ''}`;
+
             const stateColor = isRejected ? '#ef4444' : isApproved ? '#10b981' : '#a5b4fc';
             const stateBg = isRejected ? 'rgba(239,68,68,0.15)' : isApproved ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.1)';
             const stateBorder = isRejected ? 'rgba(239,68,68,0.4)' : isApproved ? 'rgba(16,185,129,0.4)' : 'rgba(99,102,241,0.3)';
@@ -640,15 +643,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `
                 <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
                     <button class="member-chip ${isRejected ? 'rejected' : ''}"
-                        onclick="toggleMemberMenu(this, ${od.odId}, '${esc(reg)}')"
-                        title="${isMine ? 'Your class' : 'Another section'}"
-                        style="padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;
+                        ${isMine ? `onclick="toggleMemberMenu(this, ${od.odId}, '${esc(reg)}')"` : ''}
+                        title="${isMine ? 'Your class — click to manage' : 'Another section — only their own class staff can reject/approve them'}"
+                        style="padding:6px 14px;border-radius:100px;font-size:12px;font-weight:600;
+                               cursor:${isMine ? 'pointer' : 'default'};
                                border:1px solid ${stateBorder};
                                background:${stateBg};
                                color:${stateColor};
                                ${isMine ? 'box-shadow:0 0 0 1px rgba(255,255,255,0.25) inset;' : 'opacity:0.85;'}">
                         ${stateIcon}${escHtml(label)}${isMine ? '' : ' <span style="opacity:0.6;font-weight:400">(other class)</span>'}
                     </button>
+                    ${isMine ? `
                     <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
                          background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;
                          box-shadow:0 8px 20px rgba(0,0,0,0.4);white-space:nowrap">
@@ -656,7 +661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ? `<button onclick="unrejectMember(${od.odId}, '${esc(reg)}')" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Undo Reject</button>`
                             : `<button onclick="rejectMember(${od.odId}, '${esc(reg)}')" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Reject This Member</button>`
                         }
-                    </div>
+                    </div>` : ''}
                 </div>`;
         }).join('');
 
@@ -766,21 +771,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.rejectMember = async (odId, reg) => {
         if (!confirm(`Reject register number ${reg} from this group OD?`)) return;
         try {
-            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/RejectMember?registerNumber=${encodeURIComponent(reg)}`, {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/RejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
                 method: 'PUT'
             });
             if (res.ok) { showToast('success', `${reg} rejected`); loadODs(); }
-            else showToast('error', 'Failed to reject member');
+            else {
+                const errText = await res.text().catch(() => '');
+                showToast('error', errText || 'Failed to reject member');
+            }
         } catch (err) { console.error(err); showToast('error', 'Network error'); }
     };
 
     window.unrejectMember = async (odId, reg) => {
         try {
-            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/UnrejectMember?registerNumber=${encodeURIComponent(reg)}`, {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/UnrejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
                 method: 'PUT'
             });
             if (res.ok) { showToast('success', `${reg} rejection undone`); loadODs(); }
-            else showToast('error', 'Failed to undo rejection');
+            else {
+                const errText = await res.text().catch(() => '');
+                showToast('error', errText || 'Failed to undo rejection');
+            }
         } catch (err) { console.error(err); showToast('error', 'Network error'); }
     };
 
