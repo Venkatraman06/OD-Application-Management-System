@@ -1889,3 +1889,37 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* ── Time Period Filter Bar ────────────────────────────────────── */
+
+.time-filter-bar {
+    display: flex;
+    gap: 6px;
+    padding: 0 0 14px 0;
+    flex-wrap: wrap;
+}
+
+.time-btn {
+    padding: 6px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--surface-400, #94a3b8);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.time-btn:hover {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.30);
+    color: #a5b4fc;
+}
+
+.time-btn.active {
+    background: rgba(99, 102, 241, 0.20);
+    border-color: rgba(99, 102, 241, 0.50);
+    color: #a5b4fc;
+}

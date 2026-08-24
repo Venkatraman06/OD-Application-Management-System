@@ -24,6 +24,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     let certsLoaded = false;
     let currentFilter = 'pending';
 
+    // ── Time-period filter ──
+    let currentPeriod = 'all'; // 'all' | 'week' | 'month' | 'year'
+
+    function periodStart(period) {
+        const now = new Date();
+        if (period === 'week') {
+            const d = new Date(now); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d;
+        }
+        if (period === 'month') {
+            return new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+        if (period === 'year') {
+            return new Date(now.getFullYear(), 0, 1);
+        }
+        return null; // 'all'
+    }
+
+    function filterByPeriod(ods, period) {
+        const start = periodStart(period);
+        if (!start) return ods;
+        return ods.filter(o => {
+            const d = o.appliedDate ? new Date(o.appliedDate) : null;
+            return d && d >= start;
+        });
+    }
+
+    // Wire up time filter buttons
+    document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.dataset.period;
+            if (currentFilter === 'analytics') {
+                loadAnalytics();
+            } else {
+                applyFilter(currentFilter);
+            }
+        });
+    });
+
     // ── Register number → student lookup (name, department, year) ──
     // Group OD data only carries register numbers for non-applicant members,
     // so we fetch the full student list once and use it to resolve each
@@ -139,6 +179,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${API_BASE}/api/OdApply/Analytics/${encodeURIComponent(dept)}?_=${Date.now()}`, { cache: 'no-store' });
             if (!res.ok) { showToast('error', 'Failed to load analytics'); return; }
             const data = await res.json();
+
+            // Apply time-period filter to the student rows
+            if (currentPeriod !== 'all') {
+                const start = periodStart(currentPeriod);
+                const filtered = (data.students || []).filter(s => {
+                    const d = s.fromDate ? new Date(s.fromDate) : null;
+                    return d && d >= start;
+                });
+
+                // Recompute summary counts from filtered rows
+                let first = 0, second = 0, third = 0, participated = 0, other = 0;
+                const eventMap = {};
+                const regSet = new Set();
+                filtered.forEach(s => {
+                    regSet.add((s.registerNumber || '').toLowerCase());
+                    const ev = s.event || 'Unspecified';
+                    eventMap[ev] = (eventMap[ev] || 0) + 1;
+                    switch (s.winningStatus) {
+                        case '1st Prize':   first++;        break;
+                        case '2nd Prize':   second++;       break;
+                        case '3rd Prize':   third++;        break;
+                        case 'Participated': participated++; break;
+                        default:            other++;        break;
+                    }
+                });
+                const eventCounts = Object.entries(eventMap)
+                    .map(([event, count]) => ({ event, count }))
+                    .sort((a, b) => b.count - a.count);
+
+                data.students          = filtered;
+                data.totalCertificates = filtered.length;
+                data.totalParticipants = regSet.size;
+                data.totalEvents       = eventCounts.length;
+                data.firstPrizeCount   = first;
+                data.secondPrizeCount  = second;
+                data.thirdPrizeCount   = third;
+                data.participatedCount = participated;
+                data.otherCount        = other;
+                data.eventCounts       = eventCounts;
+            }
+
             renderAnalytics(data);
         } catch (err) { console.error(err); showToast('error', 'Network error loading analytics'); }
     }
@@ -379,8 +460,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const analyticsView = document.getElementById('analyticsView');
         applySectionMeta(filter);
 
+        const timeBar = document.getElementById('timeFilterBar');
+
         if (filter === 'analytics') {
             if (searchBox) searchBox.style.display = 'none';
+            if (timeBar)   timeBar.style.display = 'flex';
             if (requestsContainer) requestsContainer.style.display = 'none';
             if (emptyState) emptyState.style.display = 'none';
             if (analyticsView) analyticsView.style.display = 'block';
@@ -392,6 +476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (analyticsView) analyticsView.style.display = 'none';
 
         if (filter === 'certificates') {
+            if (timeBar)   timeBar.style.display = 'none';
             if (searchBox) searchBox.style.display = 'block';
             if (certsLoaded) {
                 renderCertificates(searchFilterCerts(allCerts));
@@ -405,7 +490,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // show search only for approved/rejected
+        // show time filter and search for OD request views
+        if (timeBar)   timeBar.style.display = 'flex';
         if (searchBox) searchBox.style.display = (filter === 'approved' || filter === 'rejected') ? 'block' : 'none';
 
         let filtered;
@@ -413,6 +499,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (filter === 'approved') filtered = allODs.filter(o => o.facultyStatus === 'Approved');
         else if (filter === 'rejected') filtered = allODs.filter(o => o.facultyStatus === 'Rejected');
         else filtered = allODs;
+
+        filtered = filterByPeriod(filtered, currentPeriod);
 
         const searchInput = document.getElementById('searchInput');
         if (searchInput && searchInput.value.trim()) {
