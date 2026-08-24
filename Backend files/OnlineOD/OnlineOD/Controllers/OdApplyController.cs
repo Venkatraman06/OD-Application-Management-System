@@ -30,11 +30,11 @@ namespace OnlineOD.Controllers
             return Ok(od);
         }
 
-        // GET /api/OdApply/{id}
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetOdById(int id)
+        // GET /api/OdApply/{odId}
+        [HttpGet("{odId}")]
+        public async Task<IActionResult> GetOdById(int odId)
         {
-            var od = await _service.GetOdApplyByIdAsync(id);
+            var od = await _service.GetOdApplyByIdAsync(odId);
             if (od == null) return NotFound();
             return Ok(od);
         }
@@ -99,7 +99,7 @@ namespace OnlineOD.Controllers
             // group), this notifies BOTH class staffs, not just the section of
             // whichever student happened to create the group.
             string emailStatus = "not_applicable";
-            string emailDetail = null;
+            string? emailDetail = null;
             try
             {
                 var involvedSections = await _service.GetInvolvedSectionsAsync(result);
@@ -170,10 +170,10 @@ namespace OnlineOD.Controllers
         }
 
         // DELETE /api/OdApply/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteOd(int id)
+        [HttpDelete("{odId}")]
+        public async Task<IActionResult> DeleteOd(int odId)
         {
-            var result = await _service.DeleteOdApplyAsync(id);
+            var result = await _service.DeleteOdApplyAsync(odId);
             if (!result) return NotFound();
             return Ok(result);
         }
@@ -240,15 +240,6 @@ namespace OnlineOD.Controllers
         }
 
 
-        // DELETE /api/OdApply/{odId}
-        [HttpDelete("{odId}")]
-        public async Task<IActionResult> DeleteOdApply(int odId)
-        {
-            var result = await _service.DeleteOdApplyAsync(odId);
-            if (!result) return NotFound();
-            return Ok(result);
-        }
-
         // POST /api/OdApply/{odId}/UploadCertificate
         // Each student (identified by registerNumber) gets their own certificate
         // row for this OD — required for group ODs where multiple members each
@@ -293,6 +284,19 @@ namespace OnlineOD.Controllers
         {
             var certs = await _service.GetCertificatesForOdAsync(odId);
             return Ok(certs);
+        }
+
+        // GET /api/OdApply/Analytics/{department}
+        // Event/participation/win-count summary + per-student breakdown for
+        // a department — shown on both the Staff and HOD dashboards.
+        [HttpGet("Analytics/{department}")]
+        public async Task<IActionResult> GetAnalytics(string department)
+        {
+            if (string.IsNullOrWhiteSpace(department))
+                return BadRequest("department is required");
+
+            var data = await _service.GetAnalyticsAsync(department);
+            return Ok(data);
         }
 
         // PUT /api/OdApply/{odId}/VerifyCertificate?registerNumber=XXX

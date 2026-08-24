@@ -103,6 +103,95 @@ namespace OnlineOD.Service
                 .ToList();
         }
 
+        // Analytics report — every uploaded certificate in this department,
+        // joined with its OD (for event/dates) and the student record (for
+        // name/section), then bucketed into win-status counts and an
+        // event-wise participation count for the charts, plus the full
+        // per-student breakdown table.
+        public async Task<AnalyticsSummaryDto> GetAnalyticsAsync(string department)
+        {
+            var deptLower = department.Trim().ToLower();
+
+            var joined = await (
+                from c in _context.OdCertificates
+                join o in _context.OdApplies on c.OdId equals o.OdId
+                where o.department != null
+                      && o.department.Trim().ToLower() == deptLower
+                      && !string.IsNullOrEmpty(c.CertificatePhotoUrl)
+                select new { c, o }
+            ).ToListAsync();
+
+            var regNumbers = joined.Select(x => x.c.RegisterNumber.ToLower()).Distinct().ToList();
+            var studentInfo = regNumbers.Count == 0
+                ? new Dictionary<string, (string Name, string Section)>()
+                : (await _context.Students
+                    .Where(s => regNumbers.Contains(s.RegisterNumber.ToLower()))
+                    .ToListAsync())
+                    .GroupBy(s => s.RegisterNumber.ToLower())
+                    .ToDictionary(g => g.Key, g => (Name: g.First().Name ?? "", Section: g.First().Section ?? ""));
+
+            var students = new List<AnalyticsStudentEntryDto>();
+            int participated = 0, first = 0, second = 0, third = 0, other = 0;
+
+            foreach (var x in joined)
+            {
+                var regLower = x.c.RegisterNumber.ToLower();
+                studentInfo.TryGetValue(regLower, out var info);
+
+                var name = !string.IsNullOrEmpty(info.Name)
+                    ? info.Name
+                    : (regLower == (x.o.registerNumber ?? "").ToLower() ? x.o.StudentName : x.c.RegisterNumber) ?? x.c.RegisterNumber;
+                var section = info.Section ?? "";
+
+                var status = (x.c.WinningStatus ?? "").Trim();
+                switch (status)
+                {
+                    case "1st Prize": first++; break;
+                    case "2nd Prize": second++; break;
+                    case "3rd Prize": third++; break;
+                    case "Participated": participated++; break;
+                    default: other++; break;
+                }
+
+                students.Add(new AnalyticsStudentEntryDto
+                {
+                    StudentName = name,
+                    RegisterNumber = x.c.RegisterNumber,
+                    Section = section,
+                    Event = x.o.Event ?? "",
+                    CollegeIndustry = x.o.CollegeIndustry ?? "",
+                    WinningStatus = string.IsNullOrEmpty(status) ? "Not Specified" : status,
+                    FromDate = x.o.FromDate ?? "",
+                    ToDate = x.o.ToDate ?? "",
+                    CertificateVerified = x.c.CertificateVerified
+                });
+            }
+
+            var eventCounts = joined
+                .GroupBy(x => string.IsNullOrWhiteSpace(x.o.Event) ? "Unspecified" : x.o.Event!.Trim())
+                .Select(g => new AnalyticsEventCountDto
+                {
+                    Event = g.Key,
+                    Count = g.Select(x => x.c.RegisterNumber.ToLower()).Distinct().Count()
+                })
+                .OrderByDescending(e => e.Count)
+                .ToList();
+
+            return new AnalyticsSummaryDto
+            {
+                TotalEvents = eventCounts.Count,
+                TotalParticipants = regNumbers.Count,
+                TotalCertificates = joined.Count,
+                ParticipatedCount = participated,
+                FirstPrizeCount = first,
+                SecondPrizeCount = second,
+                ThirdPrizeCount = third,
+                OtherCount = other,
+                EventCounts = eventCounts,
+                Students = students.OrderByDescending(s => s.FromDate).ToList()
+            };
+        }
+
         // Get OD applications approved by faculty for a department
         public async Task<List<OdApply>> GetApprovedByFacultyAsync(string department)
         {

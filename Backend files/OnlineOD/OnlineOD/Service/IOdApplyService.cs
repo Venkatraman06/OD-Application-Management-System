@@ -19,6 +19,11 @@ namespace OnlineOD.Service
         // since a group can span multiple sections.
         Task<List<string>> GetInvolvedSectionsAsync(OdApply od);
 
+        // Analytics report: event/participation/win-count summary plus a
+        // per-student breakdown, scoped to a department (shown on both the
+        // Staff and HOD dashboards).
+        Task<OnlineOD.Dtos.AnalyticsSummaryDto> GetAnalyticsAsync(string department);
+
         // Section-aware faculty decision. A group OD can span multiple class
         // sections (e.g. Section A + Section B students in one group) — this
         // makes sure a staff member can only decide on the members from their
