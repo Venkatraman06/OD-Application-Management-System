@@ -544,8 +544,14 @@
             <form id="certUploadForm" class="modal-body">
                 <div class="modal-row">
                     <label class="modal-label" for="certWinningStatus">Winning / Participation Status</label>
-                    <input type="text" id="certWinningStatus" class="cert-text-input"
-                           placeholder="e.g. Winner - 1st Prize, Participated">
+                    <select id="certWinningStatus" class="cert-text-input">
+                        <option value="">Select status...</option>
+                        <option value="Participated">Participated</option>
+                        <option value="1st Prize">1st Prize</option>
+                        <option value="2nd Prize">2nd Prize</option>
+                        <option value="3rd Prize">3rd Prize</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
                 <div class="modal-row">
                     <label class="modal-label" for="certFile">Certificate File <span class="required">*</span></label>

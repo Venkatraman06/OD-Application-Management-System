@@ -1689,3 +1689,152 @@ body {
     font-size: 0.78rem;
     font-weight: 600;
 }
+
+/* ── Analytics & Reports ───────────────────────────────────────── */
+
+.analytics-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.analytics-stat-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 22px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    min-width: 100px;
+    transition: background 0.2s;
+}
+
+.analytics-stat-pill.gold   { background: rgba(250, 204, 21, 0.10); border-color: rgba(250, 204, 21, 0.22); }
+.analytics-stat-pill.silver { background: rgba(148, 163, 184, 0.10); border-color: rgba(148, 163, 184, 0.22); }
+.analytics-stat-pill.bronze { background: rgba(194, 112, 61, 0.12); border-color: rgba(194, 112, 61, 0.25); }
+
+.analytics-stat-pill .stat-num {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+}
+.analytics-stat-pill.gold   .stat-num { color: #facc15; }
+.analytics-stat-pill.silver .stat-num { color: #94a3b8; }
+.analytics-stat-pill.bronze .stat-num { color: #c2703d; }
+
+.analytics-stat-pill .stat-lbl {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--surface-400, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+    white-space: nowrap;
+}
+
+/* Charts row */
+.analytics-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.chart-card {
+    background: var(--surface-card, rgba(255,255,255,0.04));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg, 14px);
+    padding: 20px;
+}
+
+.chart-card-header {
+    margin-bottom: 16px;
+}
+
+.chart-card-header h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--surface-200, #e2e8f0);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chart-canvas-wrap {
+    position: relative;
+    height: 220px;
+}
+
+/* Analytics table */
+.analytics-table-card {
+    background: var(--surface-card, rgba(255,255,255,0.04));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg, 14px);
+    padding: 20px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+}
+
+.analytics-table thead th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--surface-400, #64748b);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.analytics-table tbody td {
+    padding: 10px 12px;
+    color: var(--surface-200, #e2e8f0);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+}
+
+.analytics-table tbody tr:last-child td { border-bottom: none; }
+.analytics-table tbody tr:hover td { background: rgba(255,255,255,0.03); }
+
+/* Result badge chips */
+.result-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+.result-tag.gold    { background: rgba(250,204,21,0.15);  color: #facc15; }
+.result-tag.silver  { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.result-tag.bronze  { background: rgba(194,112,61,0.15);  color: #c2703d; }
+.result-tag.neutral { background: rgba(99,102,241,0.15);  color: #a5b4fc; }
+.result-tag.other   { background: rgba(51,65,85,0.5);     color: #94a3b8; }
+
+/* Analytics empty state */
+.analytics-empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--surface-400, #64748b);
+}
+.analytics-empty .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.analytics-empty p { font-size: 0.9rem; margin: 0; line-height: 1.6; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .analytics-charts-row { grid-template-columns: 1fr; }
+    .analytics-stats-row  { gap: 8px; }
+    .analytics-stat-pill  { min-width: 80px; padding: 10px 14px; }
+    .analytics-stat-pill .stat-num { font-size: 1.3rem; }
+}

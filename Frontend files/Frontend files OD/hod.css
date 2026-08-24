@@ -1704,3 +1704,188 @@ body {
     font-size: 0.78rem;
     font-weight: 600;
 }
+
+/* ============================================
+   Analytics / Reports View
+   ============================================ */
+.analytics-view {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: cardSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.analytics-stats-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+}
+
+.analytics-stat-pill {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.analytics-stat-pill:hover {
+    transform: translateY(-2px);
+    border-color: rgba(14, 165, 233, 0.3);
+}
+
+.analytics-stat-pill .stat-num {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: white;
+}
+
+.analytics-stat-pill .stat-lbl {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--surface-400);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.analytics-stat-pill.gold .stat-num { color: #facc15; }
+.analytics-stat-pill.silver .stat-num { color: #cbd5e1; }
+.analytics-stat-pill.bronze .stat-num { color: #d18b52; }
+
+.analytics-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.chart-card {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-card-header {
+    margin-bottom: 16px;
+}
+
+.chart-card-header h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.2px;
+}
+
+.chart-canvas-wrap {
+    position: relative;
+    height: 280px;
+}
+
+.analytics-table-card {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    padding: 22px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+}
+
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.analytics-table thead th {
+    text-align: left;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--surface-400);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.analytics-table tbody td {
+    padding: 12px 14px;
+    color: var(--surface-200);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
+}
+
+.analytics-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.analytics-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.result-tag {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.result-tag.gold {
+    background: rgba(250, 204, 21, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+.result-tag.silver {
+    background: rgba(203, 213, 225, 0.12);
+    color: #cbd5e1;
+    border: 1px solid rgba(203, 213, 225, 0.25);
+}
+
+.result-tag.bronze {
+    background: rgba(209, 139, 82, 0.15);
+    color: #d18b52;
+    border: 1px solid rgba(209, 139, 82, 0.3);
+}
+
+.result-tag.neutral {
+    background: rgba(14, 165, 233, 0.12);
+    color: var(--hod-accent);
+    border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.result-tag.other {
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--surface-400);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+@media (max-width: 900px) {
+    .analytics-stats-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .analytics-charts-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .analytics-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

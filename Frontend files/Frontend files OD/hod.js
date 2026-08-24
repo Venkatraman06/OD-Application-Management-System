@@ -71,6 +71,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             emptyTitle: 'No Certificates Here',
             emptyText: 'Once an approved OD\'s dates are finished, it will appear here.',
             icon: '<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>'
+        },
+        analytics: {
+            title: 'Analytics & Reports',
+            emptyTitle: '',
+            emptyText: '',
+            icon: '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'
         }
     };
 
@@ -80,8 +86,138 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!res.ok) { console.error('Load ODs failed:', res.status); return; }
             allODs = await res.json();
             updateCounts(allODs);
-            if (currentFilter !== 'certificates') applyFilter(currentFilter);
+            if (currentFilter !== 'certificates' && currentFilter !== 'analytics') applyFilter(currentFilter);
         } catch (err) { console.error(err); showToast('error', 'Failed to load ODs'); }
+    }
+
+    // ── Analytics report — event/win-count summary + per-student breakdown ──
+    // Same endpoint and shape as the Staff dashboard's Analytics view, scoped
+    // to this HOD's own department.
+    let winningStatusChartInstance = null;
+    let eventChartInstance = null;
+
+    async function loadAnalytics() {
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/Analytics/${encodeURIComponent(dept)}?_=${Date.now()}`, { cache: 'no-store' });
+            if (!res.ok) { showToast('error', 'Failed to load analytics'); return; }
+            const data = await res.json();
+            renderAnalytics(data);
+        } catch (err) { console.error(err); showToast('error', 'Network error loading analytics'); }
+    }
+
+    function resultTagClass(status) {
+        if (status === '1st Prize') return 'gold';
+        if (status === '2nd Prize') return 'silver';
+        if (status === '3rd Prize') return 'bronze';
+        if (status === 'Participated') return 'neutral';
+        return 'other';
+    }
+
+    function renderAnalytics(data) {
+        const statsRow = document.getElementById('analyticsStatsRow');
+        if (statsRow) {
+            statsRow.innerHTML = `
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.totalEvents ?? 0}</span>
+                    <span class="stat-lbl">Events</span>
+                </div>
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.totalParticipants ?? 0}</span>
+                    <span class="stat-lbl">Participants</span>
+                </div>
+                <div class="analytics-stat-pill gold">
+                    <span class="stat-num">${data.firstPrizeCount ?? 0}</span>
+                    <span class="stat-lbl">1st Prize</span>
+                </div>
+                <div class="analytics-stat-pill silver">
+                    <span class="stat-num">${data.secondPrizeCount ?? 0}</span>
+                    <span class="stat-lbl">2nd Prize</span>
+                </div>
+                <div class="analytics-stat-pill bronze">
+                    <span class="stat-num">${data.thirdPrizeCount ?? 0}</span>
+                    <span class="stat-lbl">3rd Prize</span>
+                </div>
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.participatedCount ?? 0}</span>
+                    <span class="stat-lbl">Participated Only</span>
+                </div>
+            `;
+        }
+
+        const winCtx = document.getElementById('winningStatusChart');
+        if (winCtx && window.Chart) {
+            if (winningStatusChartInstance) winningStatusChartInstance.destroy();
+            winningStatusChartInstance = new Chart(winCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['1st Prize', '2nd Prize', '3rd Prize', 'Participated', 'Other'],
+                    datasets: [{
+                        data: [
+                            data.firstPrizeCount ?? 0,
+                            data.secondPrizeCount ?? 0,
+                            data.thirdPrizeCount ?? 0,
+                            data.participatedCount ?? 0,
+                            data.otherCount ?? 0
+                        ],
+                        backgroundColor: ['#facc15', '#94a3b8', '#c2703d', '#0ea5e9', '#334155'],
+                        borderColor: 'rgba(15,23,42,0.9)',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14 } }
+                    }
+                }
+            });
+        }
+
+        const evCtx = document.getElementById('eventChart');
+        if (evCtx && window.Chart) {
+            if (eventChartInstance) eventChartInstance.destroy();
+            const top = (data.eventCounts || []).slice(0, 8);
+            eventChartInstance = new Chart(evCtx, {
+                type: 'bar',
+                data: {
+                    labels: top.map(e => e.event),
+                    datasets: [{
+                        label: 'Participants',
+                        data: top.map(e => e.count),
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 6,
+                        maxBarThickness: 42
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                    }
+                }
+            });
+        }
+
+        const tbody = document.getElementById('analyticsTableBody');
+        if (tbody) {
+            const students = data.students || [];
+            tbody.innerHTML = students.length ? students.map(s => `
+                <tr>
+                    <td>${escHtml(s.registerNumber)}</td>
+                    <td>${escHtml(s.studentName)}</td>
+                    <td>${escHtml(s.section) || '-'}</td>
+                    <td>${escHtml(s.event)}</td>
+                    <td>${escHtml(s.collegeIndustry)}</td>
+                    <td><span class="result-tag ${resultTagClass(s.winningStatus)}">${escHtml(s.winningStatus)}</span></td>
+                    <td>${fmtDate(s.fromDate)} → ${fmtDate(s.toDate)}</td>
+                </tr>
+            `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">No certificate data yet.</td></tr>`;
+        }
     }
 
     // ── Load certificates (view-only) — HOD-approved ODs whose dates have finished ──
@@ -192,7 +328,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyFilter(filter) {
         currentFilter = filter;
         const searchBox = document.getElementById('searchBox');
+        const requestsContainer = document.getElementById('requestsContainer');
+        const emptyState = document.getElementById('emptyState');
+        const analyticsView = document.getElementById('analyticsView');
         applySectionMeta(filter);
+
+        if (filter === 'analytics') {
+            if (searchBox) searchBox.style.display = 'none';
+            if (requestsContainer) requestsContainer.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
+            if (analyticsView) analyticsView.style.display = 'block';
+            setEl('sectionCount', '');
+            loadAnalytics();
+            return;
+        }
+        if (requestsContainer) requestsContainer.style.display = '';
+        if (analyticsView) analyticsView.style.display = 'none';
 
         if (filter === 'certificates') {
             if (searchBox) searchBox.style.display = 'block';

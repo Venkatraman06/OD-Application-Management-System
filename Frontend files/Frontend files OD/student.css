@@ -1505,6 +1505,14 @@ textarea:focus-visible {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
+/* Winning Status is now a <select> (was free text) — color-scheme dark
+   keeps the native dropdown's option list readable against this app's
+   dark theme instead of defaulting to a jarring white popup. */
+select.cert-text-input {
+    color-scheme: dark;
+    cursor: pointer;
+}
+
 .cert-file-drop {
     display: flex;
     flex-direction: column;
