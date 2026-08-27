@@ -11,6 +11,7 @@
         public string? ToDate { get; set; }
         public int NumberOfDays { get; set; }
         public string? Event { get; set; }
+        public string? CompetitionType { get; set; } // e.g. Hackathon, Cultural, Sports, Technical, Other
         public string? Reason { get; set; }
         public string? CollegeIndustry { get; set; }
 

@@ -105,10 +105,29 @@ namespace OnlineOD.Controllers
             if (status != "Approved" && status != "Rejected")
                 return BadRequest("Status must be Approved or Rejected");
 
+            // Block approve/reject once the OD is already ongoing (today falls
+            // within its From/To range) — same rule enforced on the staff side.
+            var existing = await _odService.GetOdApplyByIdAsync(odId);
+            if (existing == null) return NotFound("OD request not found");
+            if (IsOdOngoing(existing.FromDate, existing.ToDate))
+                return BadRequest("This OD is already ongoing and can no longer be approved or rejected.");
+
             var od = await _odService.UpdateHodStatusAsync(odId, status);
             if (od == null) return NotFound("OD request not found");
 
             return Ok(od);
+        }
+
+        // True once today is on/after the OD's own FromDate — covers an OD
+        // currently in progress AND one whose dates are already fully over.
+        // Used to lock out approve/reject once the decision window has
+        // begun or passed with no action taken.
+        private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
+        {
+            if (!DateTime.TryParse(fromDateRaw, out var from))
+                return false;
+            var today = DateTime.Today;
+            return today >= from.Date;
         }
     }
 }

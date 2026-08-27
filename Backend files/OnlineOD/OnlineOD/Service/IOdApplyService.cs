@@ -12,7 +12,25 @@ namespace OnlineOD.Service
         Task<List<OdApply>> GetByStudentIdAsync(int studentId);
         Task<List<OdApply>> GetByDepartmentAsync(string department, string? section = null);
         Task<List<OdApply>> GetApprovedByFacultyAsync(string department);
-        Task<OdApply?> UpdateFacultyStatusAsync(int odId, string status);
+
+        // Returns the distinct class sections actually involved in this OD —
+        // for a group OD, this looks up each member's REAL current Section
+        // from the Students table (not just the applicant's own Section),
+        // since a group can span multiple sections.
+        Task<List<string>> GetInvolvedSectionsAsync(OdApply od);
+
+        // Analytics report: event/participation/win-count summary plus a
+        // per-student breakdown, scoped to a department (shown on both the
+        // Staff and HOD dashboards).
+        Task<OnlineOD.Dtos.AnalyticsSummaryDto> GetAnalyticsAsync(string department);
+
+        // Section-aware faculty decision. A group OD can span multiple class
+        // sections (e.g. Section A + Section B students in one group) — this
+        // makes sure a staff member can only decide on the members from their
+        // OWN section, and the overall FacultyStatus only becomes "Approved"
+        // once every section involved has made its decision.
+        Task<OdApply?> ApproveByStaffAsync(int odId, string status, int staffId);
+
         Task<OdApply?> UpdateHodStatusAsync(int odId, string status);
         Task UpdateCertificateAsync(OdApply od);
 
@@ -22,8 +40,14 @@ namespace OnlineOD.Service
         Task<OdCertificate?> VerifyMemberCertificateAsync(int odId, string registerNumber);
         Task<List<OdWithCertificatesDto>> AttachCertificatesAsync(List<OdApply> ods);
 
-        Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber);
-        Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber);
+        // staffId identifies WHICH staff is acting — required so a staff can
+        // only reject/unreject members from their OWN class section, never
+        // a member belonging to a different section's class staff.
+        Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber, int staffId);
+        Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber, int staffId);
         Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber);
+
+        /// <summary>Staff alters the FromDate / ToDate / NumberOfDays of a pending OD.</summary>
+        Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays);
     }
 }

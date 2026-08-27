@@ -212,6 +212,31 @@
                         </div>
 
                         <div class="form-row single">
+                            <div class="input-group" id="competitionType-group">
+                                <label for="competitionType">Competition Type <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                        </svg>
+                                    </div>
+                                    <select id="competitionType" name="competitionType" required style="width:100%;padding:12px 16px 12px 48px;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;font-size:15px;background:#fff;color:inherit;appearance:auto;">
+                                        <option value="">Select competition type...</option>
+                                        <option value="Hackathon">Hackathon</option>
+                                        <option value="Cultural">Cultural</option>
+                                        <option value="Sports">Sports</option>
+                                        <option value="Technical">Technical</option>
+                                        <option value="Paper Presentation">Paper Presentation</option>
+                                        <option value="Workshop">Workshop</option>
+                                        <option value="Symposium">Symposium</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <span class="error-message" id="competitionType-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row single">
                             <div class="input-group" id="reason-group">
                                 <label for="reason">Reason for OD <span class="required">*</span></label>
                                 <div class="input-wrapper textarea-wrapper">
@@ -340,6 +365,31 @@
                                     <input type="text" id="groupEventName" name="groupEventName" placeholder="Enter event name" required>
                                 </div>
                                 <span class="error-message" id="groupEventName-error"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row single">
+                            <div class="input-group" id="groupCompetitionType-group">
+                                <label for="groupCompetitionType">Competition Type <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                        </svg>
+                                    </div>
+                                    <select id="groupCompetitionType" name="groupCompetitionType" required style="width:100%;padding:12px 16px 12px 48px;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;font-size:15px;background:#fff;color:inherit;appearance:auto;">
+                                        <option value="">Select competition type...</option>
+                                        <option value="Hackathon">Hackathon</option>
+                                        <option value="Cultural">Cultural</option>
+                                        <option value="Sports">Sports</option>
+                                        <option value="Technical">Technical</option>
+                                        <option value="Paper Presentation">Paper Presentation</option>
+                                        <option value="Workshop">Workshop</option>
+                                        <option value="Symposium">Symposium</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <span class="error-message" id="groupCompetitionType-error"></span>
                             </div>
                         </div>
 
@@ -474,6 +524,10 @@
             </div>
             <div class="modal-body">
                 <div class="modal-row">
+                    <span class="modal-label">Competition Type</span>
+                    <span class="modal-value" id="modalCompetitionType">-</span>
+                </div>
+                <div class="modal-row">
                     <span class="modal-label">College / Industry</span>
                     <span class="modal-value" id="modalCollege">-</span>
                 </div>
@@ -544,8 +598,14 @@
             <form id="certUploadForm" class="modal-body">
                 <div class="modal-row">
                     <label class="modal-label" for="certWinningStatus">Winning / Participation Status</label>
-                    <input type="text" id="certWinningStatus" class="cert-text-input"
-                           placeholder="e.g. Winner - 1st Prize, Participated">
+                    <select id="certWinningStatus" class="cert-text-input">
+                        <option value="">Select status...</option>
+                        <option value="Participated">Participated</option>
+                        <option value="1st Prize">1st Prize</option>
+                        <option value="2nd Prize">2nd Prize</option>
+                        <option value="3rd Prize">3rd Prize</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
                 <div class="modal-row">
                     <label class="modal-label" for="certFile">Certificate File <span class="required">*</span></label>

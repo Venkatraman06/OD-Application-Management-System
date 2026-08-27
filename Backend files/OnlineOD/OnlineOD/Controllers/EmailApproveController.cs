@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
+using System.Linq;
 
 namespace OnlineOD.Controllers
 {
@@ -10,20 +12,23 @@ namespace OnlineOD.Controllers
     {
         private readonly IOdApplyService _odService;
         private readonly EmailService _emailService;
+        private readonly IHodService _hodService;
 
-        public EmailApproveController(IOdApplyService odService, EmailService emailService)
+        public EmailApproveController(IOdApplyService odService, EmailService emailService, IHodService hodService)
         {
             _odService = odService;
             _emailService = emailService;
+            _hodService = hodService;
         }
 
-        // GET /api/EmailApprove?odId=5&action=Approved&role=faculty&token=xyz
+        // GET /api/EmailApprove?odId=5&action=Approved&role=faculty&staffId=3&token=xyz
         [HttpGet]
         public async Task<ContentResult> Handle(
             [FromQuery] int odId,
             [FromQuery] string action,
             [FromQuery] string token,
-            [FromQuery] string role = "faculty")
+            [FromQuery] string role = "faculty",
+            [FromQuery] int staffId = 0)
         {
             // ── Validate token ─────────────────────────────────────────────
             if (!_emailService.ValidateToken(odId, action, token))
@@ -33,11 +38,102 @@ namespace OnlineOD.Controllers
             if (action != "Approved" && action != "Rejected")
                 return Content(Page("❌ Unknown action.", "", false), "text/html");
 
+            // ── Lock: once faculty/HOD has already made a decision, the same
+            // (or the other) email link can no longer change it. This stops
+            // someone re-clicking Approve after Reject (or vice versa), or the
+            // same link being used twice.
+            var existingOd = await _odService.GetOdApplyByIdAsync(odId);
+            if (existingOd == null)
+                return Content(Page("❌ Not found.", "This OD request no longer exists.", false), "text/html");
+
+            var currentStatus = role == "hod" ? existingOd.HodStatus : existingOd.FacultyStatus;
+            if (!string.IsNullOrEmpty(currentStatus) && currentStatus != "Pending")
+            {
+                var roleLabelLocked = role == "hod" ? "HOD" : "Faculty";
+                return Content(Page("⚠️ Already decided.",
+                    $"OD #{odId} has already been <b>{currentStatus}</b> by {roleLabelLocked}. " +
+                    "This decision cannot be changed.", false), "text/html");
+            }
+
+            // ── Lock: once the OD is already ongoing (today falls within its
+            // From/To range), the one-click email link can no longer approve
+            // or reject it either — same rule enforced on the staff/HOD
+            // webpages, so this can't be used to bypass that restriction.
+            if (IsOdOngoing(existingOd.FromDate, existingOd.ToDate))
+            {
+                return Content(Page("⚠️ OD already ongoing.",
+                    $"OD #{odId} is already in progress (its dates have started). " +
+                    "It can no longer be approved or rejected.", false), "text/html");
+            }
+
             // ── Apply the status update ────────────────────────────────────
             if (role == "hod")
+            {
                 await _odService.UpdateHodStatusAsync(odId, action);
+            }
             else
-                await _odService.UpdateFacultyStatusAsync(odId, action);
+            {
+                if (staffId <= 0)
+                {
+                    return Content(Page("❌ Outdated link.",
+                        "This approval link is missing staff information and can't be used. " +
+                        "Please ask the student to resubmit the OD, or use the staff dashboard instead.",
+                        false), "text/html");
+                }
+
+                OdApply? od;
+                try
+                {
+                    od = await _odService.ApproveByStaffAsync(odId, action, staffId);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Content(Page("❌ Not your section.", ex.Message, false), "text/html");
+                }
+
+                // When the OD's OVERALL FacultyStatus becomes "Approved" (for a
+                // multi-section group OD, only once EVERY section has decided),
+                // the HOD must be notified — same as StaffController.Approve.
+                if (od != null && od.FacultyStatus == "Approved")
+                {
+                    try
+                    {
+                        var hods = await _hodService.GetAllHodAsync();
+                        var hod = hods.FirstOrDefault(h =>
+                            h.Department != null &&
+                            h.Department.Trim().ToLower() == (od.department ?? "").Trim().ToLower());
+
+                        if (hod != null && !string.IsNullOrWhiteSpace(hod.Email))
+                        {
+                            await _emailService.SendOdApprovalEmailAsync(
+                                toEmail: hod.Email,
+                                hodName: hod.Name,
+                                studentName: od.StudentName ?? "",
+                                registerNumber: od.registerNumber ?? "",
+                                eventName: od.Event ?? "",
+                                department: od.department ?? "",
+                                fromDate: od.FromDate ?? "",
+                                toDate: od.ToDate ?? "",
+                                odId: od.OdId,
+                                isGroup: od.IsGroupOd,
+                                groupName: od.GroupName ?? ""
+                            );
+                            Console.WriteLine($"[Email] HOD notify sent to {hod.Email} for OD #{od.OdId} (via email-approve link)");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Email] HOD notify skipped (via email-approve link) — " +
+                                (hod == null
+                                    ? $"No HOD record found for department '{od.department}'."
+                                    : $"HOD '{hod.Name}' has no Email set."));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Email] HOD notify FAILED (via email-approve link) — {ex.Message}");
+                    }
+                }
+            }
 
             var roleLabel = role == "hod" ? "HOD" : "Faculty";
             var actionLabel = action == "Approved" ? "approved ✓" : "rejected ✕";
@@ -48,6 +144,16 @@ namespace OnlineOD.Controllers
                 $"OD #{odId} has been <b style='color:{color}'>{actionLabel}</b> by {roleLabel}.<br>" +
                 $"The student's status page will reflect this immediately.",
                 true), "text/html");
+        }
+
+        // True while today falls within the OD's own From/To date range —
+        // used to lock out approve/reject once the OD has actually started.
+        private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
+        {
+            if (!DateTime.TryParse(fromDateRaw, out var from) || !DateTime.TryParse(toDateRaw, out var to))
+                return false;
+            var today = DateTime.Today;
+            return today >= from.Date && today <= to.Date;
         }
 
         // ── Simple confirmation HTML page ──────────────────────────────────
@@ -91,4 +197,3 @@ namespace OnlineOD.Controllers
 </html>";
     }
 }
-

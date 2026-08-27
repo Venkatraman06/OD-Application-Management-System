@@ -1,6 +1,25 @@
 const API_BASE = 'http://localhost:5088';
 
+// Register number → student name lookup, used to show real names next to
+// register numbers in the Group Members list (group OD data only ever
+// carries register numbers for non-applicant members).
+let studentNameLookup = {};
+async function loadStudentNameLookup() {
+    try {
+        const res = await fetch(`${API_BASE}/api/Student`);
+        if (!res.ok) return;
+        const students = await res.json();
+        students.forEach(s => {
+            const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
+            if (reg) studentNameLookup[reg] = s.name || s.Name || '';
+        });
+    } catch (err) {
+        console.error('Failed to load student name lookup:', err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    loadStudentNameLookup();
 
     // ── Guard: must be logged in ──
     const studentId = localStorage.getItem('studentId');
@@ -229,8 +248,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const event    = document.getElementById('eventName')?.value.trim()   || '';
         const college  = document.getElementById('collegeName')?.value.trim() || '';
         const reason   = document.getElementById('reason')?.value.trim()      || '';
+        const competitionType = document.getElementById('competitionType')?.value || '';
 
-        if (!fromDate || !toDate || !event || !college || !reason) {
+        if (!fromDate || !toDate || !event || !college || !reason || !competitionType) {
             showToast('error', 'All fields required'); return;
         }
         if (fromDate > toDate) {
@@ -264,6 +284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             toDate,
             numberOfDays:    days,
             event,
+            competitionType,
             collegeIndustry: college,
             reason
         };
@@ -282,6 +303,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const created = await res.json();
                 console.log('OD created successfully:', created);
                 showToast('success', 'OD submitted successfully!');
+                // The OD itself always saves fine even if the notification
+                // email fails (e.g. no matching class teacher, SMTP error) —
+                // surface that separately so the student knows to follow up.
+                if (res.headers.get('X-Email-Status') === 'failed') {
+                    showToast('error', `OD saved, but staff wasn't emailed — ${res.headers.get('X-Email-Detail') || 'unknown error'}. Contact your class teacher directly.`);
+                }
                 document.getElementById('odForm').reset();
                 if (daysEl) daysEl.value = '';
                 switchTab('apply-status');
@@ -309,8 +336,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const reason   = document.getElementById('groupReason')?.value.trim()      || '';
         const groupName = document.getElementById('groupName')?.value.trim()       || '';
         const regNumbersRaw = document.getElementById('registerNumbers')?.value.trim() || '';
+        const groupCompetitionType = document.getElementById('groupCompetitionType')?.value || '';
 
-        if (!fromDate || !toDate || !event || !college || !reason || !groupName || !regNumbersRaw) {
+        if (!fromDate || !toDate || !event || !college || !reason || !groupName || !regNumbersRaw || !groupCompetitionType) {
             showToast('error', 'All fields required'); return;
         }
         if (fromDate > toDate) {
@@ -359,6 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             event,
             collegeIndustry: college,
             reason,
+            competitionType: groupCompetitionType,
             isGroupOd:       true,
             groupName:       groupName,
             registerNumbers: regNumbers.join(',')
@@ -382,6 +411,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (res.ok) {
                 showToast('success', 'Group OD submitted successfully!');
+                if (res.headers.get('X-Email-Status') === 'failed') {
+                    showToast('error', `OD saved, but staff wasn't emailed — ${res.headers.get('X-Email-Detail') || 'unknown error'}. Contact your class teacher directly.`);
+                }
                 document.getElementById('groupOdForm').reset();
                 if (groupDaysEl) groupDaysEl.value = '';
                 switchTab('apply-status');
@@ -432,8 +464,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         ) || null;
     }
 
+    /**
+     * For a group OD spanning multiple class sections, the OD-level
+     * FacultyStatus stays "Pending" until EVERY section's staff has decided
+     * — that's correct for whether the OD is ready to move to HOD, but WRONG
+     * for showing an individual student their own status: a Section-B
+     * student whose own staff already approved them should see "Approved"
+     * immediately, even while a Section-A member is still waiting on their
+     * own staff. This resolves the CURRENT student's own faculty decision
+     * from the per-member approved/rejected lists, falling back to the raw
+     * OD-level FacultyStatus for solo ODs (which never populate those lists).
+     */
+    function getMyFacultyStatus(od) {
+        const isGroup = od.IsGroupOd ?? od.isGroupOd ?? false;
+        const rawStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
+        if (!isGroup) return rawStatus;
+
+        const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toLowerCase();
+        const approved = (od.FacultyApprovedRegisterNumbers ?? od.facultyApprovedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+        const rejected = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+        const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
+
+        if (approved.includes(myRegNo)) return 'Approved';
+        if (rejected.includes(myRegNo) && !hodOverridden.includes(myRegNo)) return 'Rejected';
+        return 'Pending';
+    }
+
     function openOdModal(od) {
-        const facultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
         const hodStatus     = od.HodStatus     ?? od.hodStatus     ?? 'Pending';
         const eventName     = od.Event         ?? od.event         ?? '';
         const college       = od.CollegeIndustry ?? od.collegeIndustry ?? '';
@@ -445,15 +505,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const groupName     = od.GroupName     ?? od.groupName     ?? '';
         const regNumbersRaw = od.RegisterNumbers ?? od.registerNumbers ?? '';
 
-        // Same per-member rejection check used in the status list — a group OD
-        // can be "Approved" overall while THIS student was specifically rejected
-        // by faculty. The modal must reflect that, not the raw OD-level status.
+        // My own faculty decision — for a group OD spanning multiple
+        // sections, this reflects MY OWN class staff's decision, not the
+        // shared OD-level status (which stays Pending until every section
+        // has decided).
+        const myFacultyStatus = getMyFacultyStatus(od);
+        const iAmRejected = myFacultyStatus === 'Rejected';
+
+        // Still needed for the group member chips further down, which show
+        // EVERY member's rejection state, not just mine.
         const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toLowerCase();
         const facRejected = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
             .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
         const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
             .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
-        const iAmRejected = isGroup && facRejected.includes(myRegNo) && !hodOverridden.includes(myRegNo);
+        const facApproved = (od.FacultyApprovedRegisterNumbers ?? od.facultyApprovedRegisterNumbers ?? '')
+            .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
 
         // My own certificate — read from the per-member certificates[] array,
         // not the old shared CertificatePhotoUrl field, so one group member's
@@ -465,25 +532,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const odId           = od.OdId ?? od.odId ?? '';
 
         setEl('modalEventName', eventName || 'OD Request');
+        const compType = od.CompetitionType ?? od.competitionType ?? '';
         setEl('modalCollege', college || '-');
+        const modalCompEl = document.getElementById('modalCompetitionType');
+        if (modalCompEl) { modalCompEl.textContent = compType || '-'; modalCompEl.closest('.modal-row').style.display = compType ? '' : 'none'; }
         setEl('modalFromDate', fmtDate(fromDate));
         setEl('modalToDate', fmtDate(toDate));
         setEl('modalDays', numDays ? `${numDays}${odDateCountdownLabel(fromDate, toDate) ? ' (' + odDateCountdownLabel(fromDate, toDate) + ')' : ''}` : '-');
         setEl('modalReason', reason || 'No reason provided');
 
-        const overall = iAmRejected ? 'rejected' : overallKey(facultyStatus, hodStatus);
+        // overallKey/overallLabel take MY OWN faculty status, not the raw
+        // shared one — so overall correctly still shows "Awaiting HOD"/
+        // "Pending" until the WHOLE OD reaches HOD, while the Faculty badge
+        // below shows MY approval immediately once my own staff decides.
+        const overall = iAmRejected ? 'rejected' : overallKey(myFacultyStatus, hodStatus);
         const overallBadge = document.getElementById('modalOverallBadge');
         if (overallBadge) {
             overallBadge.className = `badge-${overall}`;
-            overallBadge.textContent = iAmRejected ? 'Rejected (You)' : overallLabel(facultyStatus, hodStatus);
+            overallBadge.textContent = iAmRejected ? 'Rejected (You)' : overallLabel(myFacultyStatus, hodStatus);
         }
 
         const facBadge = document.getElementById('modalFacultyStatus');
         if (facBadge) {
-            // Show MY rejection here even though the OD-level facultyStatus
-            // field says "Approved" (because other group members were approved).
-            facBadge.className = `badge-${iAmRejected ? 'rejected' : bdg(facultyStatus)}`;
-            facBadge.textContent = iAmRejected ? 'Rejected' : facultyStatus;
+            facBadge.className = `badge-${bdg(myFacultyStatus)}`;
+            facBadge.textContent = myFacultyStatus;
         }
 
         const hodBadge = document.getElementById('modalHodStatus');
@@ -506,7 +578,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 membersDiv.innerHTML = members.length
                     ? members.map(m => {
                         const isMemberRejected = facRejected.includes(m.toLowerCase()) && !hodOverridden.includes(m.toLowerCase());
-                        return `<span class="${isMemberRejected ? 'member-rejected' : ''}">${escapeHtml(m)}${isMemberRejected ? ' ✕' : ''}</span>`;
+                        const isMemberApproved = !isMemberRejected && facApproved.includes(m.toLowerCase());
+                        const memberName = studentNameLookup[m.toLowerCase()] || '';
+                        const label = memberName ? `${m} — ${escapeHtml(memberName)}` : escapeHtml(m);
+                        const cls = isMemberRejected ? 'member-rejected' : isMemberApproved ? 'member-approved' : '';
+                        const icon = isMemberRejected ? ' ✕' : isMemberApproved ? ' ✓' : '';
+                        return `<span class="${cls}">${label}${icon}</span>`;
                     }).join('')
                     : '<span>No members listed</span>';
             }
@@ -578,6 +655,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (odModal) odModal.style.display = 'flex';
     }
 
+    function escapeCompType(t) {
+        const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
+        const key = (t || '').toLowerCase();
+        return (icons[key] || '🏅') + ' ' + t;
+    }
+
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str;
@@ -591,9 +674,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('error', 'Please allow pop-ups to print the OD report');
             return;
         }
+        // The OD's own Section field reflects whichever student CREATED it —
+        // for a group OD, a member from a different section (e.g. a
+        // Section-A student included in a Section-B student's group) must
+        // still see THEIR OWN class staff's name on their report, not the
+        // creator's. Override with the currently logged-in viewer's own
+        // section before handing the data to the report page.
+        const odForReport = { ...od, Section: localStorage.getItem('userSection') || od.Section || od.section || '' };
         const tryFill = () => {
             if (typeof reportWindow.fillOdReport === 'function') {
-                reportWindow.fillOdReport(od);
+                reportWindow.fillOdReport(odForReport);
             } else {
                 // Report page may still be parsing scripts — retry briefly
                 setTimeout(tryFill, 100);
@@ -785,7 +875,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toLowerCase();
 
             list.innerHTML = ods.map(od => {
-                const facultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
                 const hodStatus     = od.HodStatus     ?? od.hodStatus     ?? 'Pending';
                 const eventName     = od.Event         ?? od.event         ?? '';
                 const college       = od.CollegeIndustry ?? od.collegeIndustry ?? '';
@@ -798,14 +887,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // My own certificate for this OD — per-member, from certificates[].
                 const myCertRow     = findMyCertificate(od);
                 const certUrl       = myCertRow ? (myCertRow.CertificatePhotoUrl ?? myCertRow.certificatePhotoUrl ?? '') : '';
-                const facRejected   = (od.FacultyRejectedRegisterNumbers ?? od.facultyRejectedRegisterNumbers ?? '')
-                                        .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
-                const hodOverridden = (od.HodApprovedRegisterNumbers ?? od.hodApprovedRegisterNumbers ?? '')
-                                        .split(',').map(r => r.trim().toLowerCase()).filter(r => r);
 
-                const iAmRejected = isGroup && facRejected.includes(myRegNo) && !hodOverridden.includes(myRegNo);
+                // My own faculty decision — for a group OD spanning multiple
+                // sections, this is MY OWN class staff's decision, which can
+                // already be "Approved" even while the OD-level FacultyStatus
+                // is still "Pending" (waiting on another section's staff).
+                const myFacultyStatus = getMyFacultyStatus(od);
+                const iAmRejected = myFacultyStatus === 'Rejected';
 
-                const overall = iAmRejected ? 'rejected' : overallKey(facultyStatus, hodStatus);
+                const overall = iAmRejected ? 'rejected' : overallKey(myFacultyStatus, hodStatus);
+                const competitionType = od.CompetitionType ?? od.competitionType ?? '';
+                const competitionTag = competitionType
+                    ? `<span class="competition-tag competition-tag--${competitionType.toLowerCase().replace(/\s+/g,'-')}" title="Competition Type">${escapeCompType(competitionType)}</span>`
+                    : '';
                 const groupTag = isGroup
                     ? `<span class="status-program" style="margin-left:8px">Group: ${groupName}</span>`
                     : '';
@@ -861,10 +955,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
                     <div class="card-top">
                         <div>
-                            <h4>${eventName} ${groupTag} ${myStatusTag}</h4>
+                            <h4>${eventName} ${competitionTag} ${groupTag} ${myStatusTag}</h4>
                             <p>${college}</p>
                         </div>
-                        <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(facultyStatus, hodStatus)}</span>
+                        <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(myFacultyStatus, hodStatus)}</span>
                     </div>
                     <div class="card-meta">
                         <span><strong>From:</strong> ${fmtDate(fromDate)}</span>
@@ -875,7 +969,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="status-row">
                         <div class="status-item">
                             <strong>Faculty:</strong>
-                            <span class="badge-${bdg(facultyStatus)}">${facultyStatus}</span>
+                            <span class="badge-${bdg(myFacultyStatus)}">${myFacultyStatus}</span>
                         </div>
                         <div class="status-item">
                             <strong>HOD:</strong>

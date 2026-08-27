@@ -53,6 +53,15 @@
                     <span class="nav-text">Pending</span>
                     <span class="nav-badge pending" id="pendingCount">0</span>
                 </button>
+                <button class="nav-item" data-filter="ongoing" id="navOngoing">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">No Action</span>
+                    <span class="nav-badge ongoing" id="ongoingCount">0</span>
+                </button>
                 <button class="nav-item" data-filter="approved" id="navApproved">
                     <div class="nav-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -85,6 +94,18 @@
                     </div>
                     <span class="nav-text">Certificates</span>
                     <span class="nav-badge certificates" id="certificatesCount">0</span>
+                </button>
+
+                <div class="nav-label" style="margin-top:20px">Reports</div>
+                <button class="nav-item" data-filter="analytics" id="navAnalytics">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 20V10"/>
+                            <path d="M12 20V4"/>
+                            <path d="M6 20v-6"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">Analytics</span>
                 </button>
 
                 <div class="nav-divider"></div>
@@ -222,6 +243,14 @@
                 </div>
             </div>
 
+            <!-- Time Period Filter Bar -->
+            <div class="time-filter-bar" id="timeFilterBar">
+                <button class="time-btn active" data-period="all">All Time</button>
+                <button class="time-btn" data-period="week">This Week</button>
+                <button class="time-btn" data-period="month">This Month</button>
+                <button class="time-btn" data-period="year">This Year</button>
+            </div>
+
             <!-- Search Box (shown for approved/rejected/certificates) -->
             <div class="search-box" id="searchBox" style="display:none">
                 <div class="search-input-wrap">
@@ -250,6 +279,60 @@
                 <p>No requests found in this category.</p>
             </div>
 
+            <!-- Analytics / Reports View -->
+            <div class="analytics-view" id="analyticsView" style="display:none">
+                <div class="analytics-stats-row" id="analyticsStatsRow"></div>
+
+                <div class="analytics-charts-row">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Winning Status Distribution</h3>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="winningStatusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Participation by Event</h3>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="eventChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>OD & Certificates by Company / College</h3>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="companyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-table-card">
+                    <div class="chart-card-header">
+                        <h3>Student Result Breakdown</h3>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="analytics-table">
+                            <thead>
+                                <tr>
+                                    <th>Register No.</th>
+                                    <th>Name</th>
+                                    <th>Section</th>
+                                    <th>Event</th>
+                                    <th>College</th>
+                                    <th>Result</th>
+                                    <th>Dates</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -276,16 +359,17 @@
             <button class="modal-close" id="certPreviewCloseBtn" type="button">&times;</button>
             <h3 id="certPreviewTitle">Certificate</h3>
             <img id="certPreviewImage" class="cert-preview-image" alt="Certificate" />
+            <a id="certPreviewOpenLink" href="#" target="_blank" rel="noopener" class="cert-view-link" style="display:none;margin-top:12px">Open in new tab ↗</a>
         </div>
     </div>
 
     <!-- OD Full Details Modal (view-only) -->
     <div class="modal-overlay" id="odDetailOverlay">
-        <div class="modal od-detail-modal" id="odDetailModal">
-            <button class="modal-close" id="odDetailCloseBtn" type="button">&times;</button>
+        <div class="od-detail-modal" id="odDetailModal">
             <div class="od-detail-header">
                 <h3 id="odDetailEvent">Event Name</h3>
-                <span class="status-badge" id="odDetailOverallBadge">Pending</span>
+                <span class="badge-pending" id="odDetailOverallBadge">Pending</span>
+                <button class="modal-close" id="odDetailCloseBtn" type="button">&times;</button>
             </div>
             <div class="od-detail-body">
                 <div class="od-detail-row">
@@ -309,6 +393,10 @@
                     <span class="od-detail-value" id="odDetailCollege">-</span>
                 </div>
                 <div class="od-detail-row">
+                    <span class="od-detail-label">Competition Type</span>
+                    <span class="od-detail-value" id="odDetailCompetitionTypeHod">-</span>
+                </div>
+                <div class="od-detail-row">
                     <span class="od-detail-label">From</span>
                     <span class="od-detail-value" id="odDetailFromDate">-</span>
                 </div>
@@ -324,19 +412,19 @@
                     <span class="od-detail-label">Applied On</span>
                     <span class="od-detail-value" id="odDetailApplied">-</span>
                 </div>
-                <div class="od-detail-row full">
+                <div class="od-detail-row">
                     <span class="od-detail-label">Reason</span>
                     <p class="od-detail-value" id="odDetailReason">-</p>
                 </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">Faculty Status</span>
-                    <span class="status-badge" id="odDetailFacultyStatus">Pending</span>
+                    <span class="badge-pending" id="odDetailFacultyStatus">Pending</span>
                 </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">HOD Status</span>
-                    <span class="status-badge" id="odDetailHodStatus">Pending</span>
+                    <span class="badge-pending" id="odDetailHodStatus">Pending</span>
                 </div>
-                <div class="od-detail-row full" id="odDetailGroupSection" style="display:none">
+                <div class="od-detail-row" id="odDetailGroupSection" style="display:none">
                     <span class="od-detail-label">Group Name</span>
                     <span class="od-detail-value" id="odDetailGroupName">-</span>
                     <span class="od-detail-label" style="margin-top:10px">Group Members</span>
@@ -365,9 +453,10 @@
     <!-- Toast -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="store.js?v=20260810"></script>
     
-    <script src="hod.js?v=20260810"></script>
+    <script src="hod.js?v=20260821"></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script> -->
 </body>
 </html>

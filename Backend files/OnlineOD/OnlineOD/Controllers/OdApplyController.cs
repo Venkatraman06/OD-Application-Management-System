@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
+using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
 
@@ -29,11 +30,11 @@ namespace OnlineOD.Controllers
             return Ok(od);
         }
 
-        // GET /api/OdApply/{id}
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetOdById(int id)
+        // GET /api/OdApply/{odId}
+        [HttpGet("{odId}")]
+        public async Task<IActionResult> GetOdById(int odId)
         {
-            var od = await _service.GetOdApplyByIdAsync(id);
+            var od = await _service.GetOdApplyByIdAsync(odId);
             if (od == null) return NotFound();
             return Ok(od);
         }
@@ -92,77 +93,135 @@ namespace OnlineOD.Controllers
 
             var result = await _service.CreateOdApplyAsync(dto);
 
-            // Send email to the staff in the SAME department AND section as
-            // the applying student — this is what routes a Section-B
-            // student's OD only to their Section-B class teacher, instead of
-            // every staff member in the department.
+            // Send email to every staff whose Department + Section matches ANY
+            // section actually involved in this OD — for a group OD spanning
+            // multiple sections (e.g. Section A + Section B students in one
+            // group), this notifies BOTH class staffs, not just the section of
+            // whichever student happened to create the group.
+            string emailStatus = "not_applicable";
+            string? emailDetail = null;
             try
             {
+                var involvedSections = await _service.GetInvolvedSectionsAsync(result);
+                if (involvedSections.Count == 0 && !string.IsNullOrWhiteSpace(dto.Section))
+                    involvedSections.Add(dto.Section.Trim());
+
+                var involvedSectionsLower = involvedSections.Select(s => s.ToLower()).ToHashSet();
+
                 var staffList = await _staffService.GetAllStaffAsync();
                 var deptStaff = staffList.Where(s =>
                     s.Department != null &&
                     s.Department.Trim().ToLower() == (dto.department ?? "").Trim().ToLower() &&
-                    !string.IsNullOrWhiteSpace(dto.Section) &&
                     s.Section != null &&
-                    s.Section.Trim().ToLower() == dto.Section.Trim().ToLower() &&
+                    involvedSectionsLower.Contains(s.Section.Trim().ToLower()) &&
                     !string.IsNullOrEmpty(s.Email)
                 ).ToList();
 
-                foreach (var staff in deptStaff)
+                if (deptStaff.Count == 0)
                 {
-                    await _emailService.SendOdSubmissionEmailAsync(
-                        toEmail: staff.Email,
-                        staffName: staff.Name,
-                        studentName: dto.StudentName ?? "",
-                        registerNumber: dto.registerNumber ?? "",
-                        eventName: dto.Event ?? "",
-                        department: dto.department ?? "",
-                        fromDate: dto.FromDate ?? "",
-                        toDate: dto.ToDate ?? "",
-                        odId: result.OdId,
-                        isGroup: dto.IsGroupOd,
-                        groupName: dto.GroupName ?? ""
-                    );
+                    emailStatus = "failed";
+                    emailDetail = involvedSections.Count == 0
+                        ? "No Section was set on this OD, so no matching staff could be found."
+                        : $"No staff found for department '{dto.department}' + section(s) '{string.Join(", ", involvedSections)}' with an Email set.";
+                    Console.WriteLine($"[Email] Staff notify skipped — {emailDetail}");
+                }
+                else
+                {
+                    foreach (var staff in deptStaff)
+                    {
+                        await _emailService.SendOdSubmissionEmailAsync(
+                            toEmail: staff.Email,
+                            staffName: staff.Name,
+                            studentName: dto.StudentName ?? "",
+                            registerNumber: dto.registerNumber ?? "",
+                            eventName: dto.Event ?? "",
+                            department: dto.department ?? "",
+                            fromDate: dto.FromDate ?? "",
+                            toDate: dto.ToDate ?? "",
+                            odId: result.OdId,
+                            staffId: staff.StaffId,
+                            isGroup: dto.IsGroupOd,
+                            groupName: dto.GroupName ?? "",
+                            registerNumbers: dto.RegisterNumbers ?? "",
+                            collegeIndustry: dto.CollegeIndustry ?? ""
+                        );
+                    }
+                    emailStatus = "sent";
+                    Console.WriteLine($"[Email] Staff notify sent to {deptStaff.Count} staff (sections: {string.Join(", ", involvedSections)}) for OD #{result.OdId}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Email error: {ex.Message}");
+                emailStatus = "failed";
+                emailDetail = ex.InnerException != null
+                    ? $"{ex.Message} | Inner: {ex.InnerException.Message}"
+                    : ex.Message;
+                Console.WriteLine($"[Email] Staff notify FAILED — {emailDetail}");
             }
+
+            // Surface the email outcome via a response header instead of
+            // changing the JSON shape, so nothing that reads `result`'s
+            // fields elsewhere breaks.
+            Response.Headers["X-Email-Status"] = emailStatus;
+            if (!string.IsNullOrEmpty(emailDetail))
+                Response.Headers["X-Email-Detail"] = emailDetail;
 
             return Ok(result);
         }
 
         // DELETE /api/OdApply/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteOd(int id)
+        [HttpDelete("{odId}")]
+        public async Task<IActionResult> DeleteOd(int odId)
         {
-            var result = await _service.DeleteOdApplyAsync(id);
+            var result = await _service.DeleteOdApplyAsync(odId);
             if (!result) return NotFound();
             return Ok(result);
         }
 
-        // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX
+        // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX&staffId=YYY
+        // staffId identifies which staff is rejecting — enforced server-side
+        // so only that student's OWN class section's staff can reject them,
+        // even on a group OD shared across multiple sections.
         [HttpPut("{odId}/RejectMember")]
-        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber)
+        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int staffId)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
+            if (staffId <= 0)
+                return BadRequest("staffId is required");
 
-            var od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim());
+            OdApply? od;
+            try
+            {
+                od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim(), staffId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             if (od == null) return NotFound("OD request not found");
             return Ok(od);
         }
 
-        // PUT /api/OdApply/{odId}/UnrejectMember?registerNumber=XXX
-        // Faculty undoing their own rejection
+        // PUT /api/OdApply/{odId}/UnrejectMember?registerNumber=XXX&staffId=YYY
+        // Faculty undoing their own rejection — same section-ownership rule.
         [HttpPut("{odId}/UnrejectMember")]
-        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber)
+        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int staffId)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
+            if (staffId <= 0)
+                return BadRequest("staffId is required");
 
-            var od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim());
+            OdApply? od;
+            try
+            {
+                od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim(), staffId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             if (od == null) return NotFound("OD request not found");
             return Ok(od);
         }
@@ -181,13 +240,28 @@ namespace OnlineOD.Controllers
         }
 
 
-        // DELETE /api/OdApply/{odId}
-        [HttpDelete("{odId}")]
-        public async Task<IActionResult> DeleteOdApply(int odId)
+        // PUT /api/OdApply/{odId}/AlterDays
+        // Staff adjusts FromDate, ToDate, and NumberOfDays on a still-Pending OD.
+        [HttpPut("{odId}/AlterDays")]
+        public async Task<IActionResult> AlterDays(int odId, [FromBody] AlterDaysDto dto)
         {
-            var result = await _service.DeleteOdApplyAsync(odId);
-            if (!result) return NotFound();
-            return Ok(result);
+            if (string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
+                return BadRequest("FromDate and ToDate are required.");
+
+            // Server recomputes days; client hint is a fallback
+            int days = dto.NumberOfDays ?? 1;
+
+            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days);
+            if (result == null)
+                return BadRequest("OD not found or is no longer in Pending status — dates cannot be altered.");
+
+            return Ok(new
+            {
+                result.OdId,
+                result.FromDate,
+                result.ToDate,
+                result.NumberOfDays
+            });
         }
 
         // POST /api/OdApply/{odId}/UploadCertificate
@@ -234,6 +308,19 @@ namespace OnlineOD.Controllers
         {
             var certs = await _service.GetCertificatesForOdAsync(odId);
             return Ok(certs);
+        }
+
+        // GET /api/OdApply/Analytics/{department}
+        // Event/participation/win-count summary + per-student breakdown for
+        // a department — shown on both the Staff and HOD dashboards.
+        [HttpGet("Analytics/{department}")]
+        public async Task<IActionResult> GetAnalytics(string department)
+        {
+            if (string.IsNullOrWhiteSpace(department))
+                return BadRequest("department is required");
+
+            var data = await _service.GetAnalyticsAsync(department);
+            return Ok(data);
         }
 
         // PUT /api/OdApply/{odId}/VerifyCertificate?registerNumber=XXX

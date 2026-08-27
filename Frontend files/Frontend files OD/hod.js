@@ -18,6 +18,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     let certsLoaded = false;
     let currentFilter = 'pending';
 
+    // ── Time-period filter ──
+    let currentPeriod = 'all'; // 'all' | 'week' | 'month' | 'year'
+
+    function periodStart(period) {
+        const now = new Date();
+        if (period === 'week') {
+            const d = new Date(now); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d;
+        }
+        if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+        if (period === 'year')  return new Date(now.getFullYear(), 0, 1);
+        return null;
+    }
+
+    function filterByPeriod(ods, period) {
+        const start = periodStart(period);
+        if (!start) return ods;
+        return ods.filter(o => {
+            const d = o.appliedDate ? new Date(o.appliedDate) : null;
+            return d && d >= start;
+        });
+    }
+
+    // Wire up time filter buttons
+    document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.dataset.period;
+            if (currentFilter === 'analytics') {
+                loadAnalytics();
+            } else {
+                applyFilter(currentFilter);
+            }
+        });
+    });
+
     // ── Register number → student lookup (name, department, year) ──
     // Group OD data only carries register numbers for non-applicant members,
     // so we fetch the full student list once and use it to resolve each
@@ -34,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (reg) studentLookup[reg] = {
                     name: s.name || s.Name || '',
                     department: s.department || s.Department || '',
+                    section: s.section || s.Section || '',
                     year: s.year || s.Year || ''
                 };
             });
@@ -46,12 +83,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         return studentLookup[(reg || '').trim().toLowerCase()] || null;
     }
 
+    // True once today is on/after the OD's own FromDate — covers an OD
+    // currently in progress AND one whose dates are already fully over.
+    // Used to split "Pending" (not started yet) from "No Action" (window
+    // has begun or passed with no decision ever made).
+    function odHasStarted(o) {
+        if (!o.fromDate) return false;
+        const from = new Date(o.fromDate);
+        if (isNaN(from.getTime())) return false;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        return today >= from;
+    }
+    function isPendingOd(o)  { return o.hodStatus === 'Pending' && !odHasStarted(o); }
+    function isNoActionOd(o) { return o.hodStatus === 'Pending' && odHasStarted(o); }
+
     const sectionMeta = {
         pending: {
             title: 'Pending HOD Approval',
             emptyTitle: 'No OD Requests Here',
             emptyText: 'No requests found in this category.',
             icon: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+        },
+        ongoing: {
+            title: 'No Action OD Requests',
+            emptyTitle: 'No OD Requests Here',
+            emptyText: 'No OD requests are stuck without action.',
+            icon: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>'
         },
         approved: {
             title: 'Accepted OD Requests',
@@ -70,6 +128,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             emptyTitle: 'No Certificates Here',
             emptyText: 'Once an approved OD\'s dates are finished, it will appear here.',
             icon: '<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>'
+        },
+        analytics: {
+            title: 'Analytics & Reports',
+            emptyTitle: '',
+            emptyText: '',
+            icon: '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'
         }
     };
 
@@ -79,8 +143,226 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!res.ok) { console.error('Load ODs failed:', res.status); return; }
             allODs = await res.json();
             updateCounts(allODs);
-            if (currentFilter !== 'certificates') applyFilter(currentFilter);
+            if (currentFilter !== 'certificates' && currentFilter !== 'analytics') applyFilter(currentFilter);
         } catch (err) { console.error(err); showToast('error', 'Failed to load ODs'); }
+    }
+
+    // ── Analytics report — event/win-count summary + per-student breakdown ──
+    // Same endpoint and shape as the Staff dashboard's Analytics view, scoped
+    // to this HOD's own department.
+    let winningStatusChartInstance = null;
+    let eventChartInstance = null;
+    let companyChartInstance = null;
+
+    async function loadAnalytics() {
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/Analytics/${encodeURIComponent(dept)}?_=${Date.now()}`, { cache: 'no-store' });
+            if (!res.ok) { showToast('error', 'Failed to load analytics'); return; }
+            const data = await res.json();
+
+            if (currentPeriod !== 'all') {
+                const start = periodStart(currentPeriod);
+                const filtered = (data.students || []).filter(s => {
+                    const d = s.fromDate ? new Date(s.fromDate) : null;
+                    return d && d >= start;
+                });
+                let first = 0, second = 0, third = 0, participated = 0, other = 0;
+                const eventMap = {}, companyMap = {}, regSet = new Set();
+                filtered.forEach(s => {
+                    regSet.add((s.registerNumber || '').toLowerCase());
+                    const ev = s.event || 'Unspecified';
+                    eventMap[ev] = (eventMap[ev] || 0) + 1;
+                    const co = s.collegeIndustry || 'Unspecified';
+                    if (!companyMap[co]) companyMap[co] = { odCount: 0, certCount: 0 };
+                    companyMap[co].odCount++;
+                    companyMap[co].certCount++;
+                    switch (s.winningStatus) {
+                        case '1st Prize':    first++;        break;
+                        case '2nd Prize':    second++;       break;
+                        case '3rd Prize':    third++;        break;
+                        case 'Participated': participated++; break;
+                        default:             other++;        break;
+                    }
+                });
+                const eventCounts = Object.entries(eventMap)
+                    .map(([event, count]) => ({ event, count }))
+                    .sort((a, b) => b.count - a.count);
+                const companyCounts = Object.entries(companyMap)
+                    .map(([collegeIndustry, c]) => ({ collegeIndustry, odCount: c.odCount, certificateCount: c.certCount }))
+                    .sort((a, b) => b.odCount - a.odCount);
+                data.students          = filtered;
+                data.totalCertificates = filtered.length;
+                data.totalParticipants = regSet.size;
+                data.totalEvents       = eventCounts.length;
+                data.firstPrizeCount   = first;
+                data.secondPrizeCount  = second;
+                data.thirdPrizeCount   = third;
+                data.participatedCount = participated;
+                data.otherCount        = other;
+                data.eventCounts       = eventCounts;
+                data.companyCounts     = companyCounts;
+            }
+
+            renderAnalytics(data);
+        } catch (err) { console.error(err); showToast('error', 'Network error loading analytics'); }
+    }
+
+    function resultTagClass(status) {
+        if (status === '1st Prize') return 'gold';
+        if (status === '2nd Prize') return 'silver';
+        if (status === '3rd Prize') return 'bronze';
+        if (status === 'Participated') return 'neutral';
+        return 'other';
+    }
+
+    function renderAnalytics(data) {
+        const statsRow = document.getElementById('analyticsStatsRow');
+        if (statsRow) {
+            statsRow.innerHTML = `
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.totalOdApplications ?? 0}</span>
+                    <span class="stat-lbl">Total OD Applications</span>
+                </div>
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.totalEvents ?? 0}</span>
+                    <span class="stat-lbl">Events</span>
+                </div>
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.totalParticipants ?? 0}</span>
+                    <span class="stat-lbl">Participants</span>
+                </div>
+                <div class="analytics-stat-pill gold">
+                    <span class="stat-num">${data.firstPrizeCount ?? 0}</span>
+                    <span class="stat-lbl">1st Prize</span>
+                </div>
+                <div class="analytics-stat-pill silver">
+                    <span class="stat-num">${data.secondPrizeCount ?? 0}</span>
+                    <span class="stat-lbl">2nd Prize</span>
+                </div>
+                <div class="analytics-stat-pill bronze">
+                    <span class="stat-num">${data.thirdPrizeCount ?? 0}</span>
+                    <span class="stat-lbl">3rd Prize</span>
+                </div>
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.participatedCount ?? 0}</span>
+                    <span class="stat-lbl">Participated Only</span>
+                </div>
+            `;
+        }
+
+        const winCtx = document.getElementById('winningStatusChart');
+        if (winCtx && window.Chart) {
+            if (winningStatusChartInstance) winningStatusChartInstance.destroy();
+            winningStatusChartInstance = new Chart(winCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['1st Prize', '2nd Prize', '3rd Prize', 'Participated', 'Other'],
+                    datasets: [{
+                        data: [
+                            data.firstPrizeCount ?? 0,
+                            data.secondPrizeCount ?? 0,
+                            data.thirdPrizeCount ?? 0,
+                            data.participatedCount ?? 0,
+                            data.otherCount ?? 0
+                        ],
+                        backgroundColor: ['#facc15', '#94a3b8', '#c2703d', '#0ea5e9', '#334155'],
+                        borderColor: 'rgba(15,23,42,0.9)',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14 } }
+                    }
+                }
+            });
+        }
+
+        const evCtx = document.getElementById('eventChart');
+        if (evCtx && window.Chart) {
+            if (eventChartInstance) eventChartInstance.destroy();
+            const top = (data.eventCounts || []).slice(0, 8);
+            eventChartInstance = new Chart(evCtx, {
+                type: 'bar',
+                data: {
+                    labels: top.map(e => e.event),
+                    datasets: [{
+                        label: 'Participants',
+                        data: top.map(e => e.count),
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 6,
+                        maxBarThickness: 42
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                    }
+                }
+            });
+        }
+
+        const coCtx = document.getElementById('companyChart');
+        if (coCtx && window.Chart) {
+            if (companyChartInstance) companyChartInstance.destroy();
+            const topCo = (data.companyCounts || []).slice(0, 8);
+            companyChartInstance = new Chart(coCtx, {
+                type: 'bar',
+                data: {
+                    labels: topCo.map(c => c.collegeIndustry),
+                    datasets: [
+                        {
+                            label: 'OD Applications',
+                            data: topCo.map(c => c.odCount),
+                            backgroundColor: '#0ea5e9',
+                            borderRadius: 6,
+                            maxBarThickness: 28
+                        },
+                        {
+                            label: 'Certificates',
+                            data: topCo.map(c => c.certificateCount),
+                            backgroundColor: '#22c55e',
+                            borderRadius: 6,
+                            maxBarThickness: 28
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14 } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                    }
+                }
+            });
+        }
+
+        const tbody = document.getElementById('analyticsTableBody');
+        if (tbody) {
+            const students = data.students || [];
+            tbody.innerHTML = students.length ? students.map(s => `
+                <tr>
+                    <td>${escHtml(s.registerNumber)}</td>
+                    <td>${escHtml(s.studentName)}</td>
+                    <td>${escHtml(s.section) || '-'}</td>
+                    <td>${escHtml(s.event)}</td>
+                    <td>${escHtml(s.collegeIndustry)}</td>
+                    <td><span class="result-tag ${resultTagClass(s.winningStatus)}">${escHtml(s.winningStatus)}</span></td>
+                    <td>${fmtDate(s.fromDate)} → ${fmtDate(s.toDate)}</td>
+                </tr>
+            `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">No certificate data yet.</td></tr>`;
+        }
     }
 
     // ── Load certificates (view-only) — HOD-approved ODs whose dates have finished ──
@@ -106,7 +388,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateCounts(ods) {
-        const pending  = ods.filter(o => o.hodStatus === 'Pending').length;
+        const pending  = ods.filter(isPendingOd).length;
+        const ongoing  = ods.filter(isNoActionOd).length;
         const approved = ods.filter(o => o.hodStatus === 'Approved').length;
         const rejected = ods.filter(o => o.hodStatus === 'Rejected').length;
 
@@ -114,6 +397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('statPending',  pending);
         setEl('statApproved', approved);
         setEl('pendingCount',  pending);
+        setEl('ongoingCount',  ongoing);
         setEl('approvedCount', approved);
         setEl('rejectedCount', rejected);
     }
@@ -191,9 +475,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyFilter(filter) {
         currentFilter = filter;
         const searchBox = document.getElementById('searchBox');
+        const requestsContainer = document.getElementById('requestsContainer');
+        const emptyState = document.getElementById('emptyState');
+        const analyticsView = document.getElementById('analyticsView');
         applySectionMeta(filter);
 
+        const timeBar = document.getElementById('timeFilterBar');
+
+        if (filter === 'analytics') {
+            if (searchBox) searchBox.style.display = 'none';
+            if (timeBar)   timeBar.style.display = 'flex';
+            if (requestsContainer) requestsContainer.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
+            if (analyticsView) analyticsView.style.display = 'block';
+            setEl('sectionCount', '');
+            loadAnalytics();
+            return;
+        }
+        if (requestsContainer) requestsContainer.style.display = '';
+        if (analyticsView) analyticsView.style.display = 'none';
+
         if (filter === 'certificates') {
+            if (timeBar)   timeBar.style.display = 'none';
             if (searchBox) searchBox.style.display = 'block';
             if (certsLoaded) {
                 renderCertificates(searchFilterCerts(allCerts));
@@ -206,12 +509,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (searchBox) searchBox.style.display = (filter === 'approved' || filter === 'rejected') ? 'block' : 'none';
+        if (timeBar)   timeBar.style.display = 'flex';
 
+        // "Pending"   = still awaiting HOD decision and the OD hasn't started
+        // yet.
+        // "No Action" = still awaiting HOD decision but the OD's window has
+        // already begun OR fully finished (today is on/after FromDate) —
+        // locked from approve/reject, so split out from Pending.
         let filtered;
-        if      (filter === 'pending')  filtered = allODs.filter(o => o.hodStatus === 'Pending');
+        if      (filter === 'pending')  filtered = allODs.filter(isPendingOd);
+        else if (filter === 'ongoing')  filtered = allODs.filter(isNoActionOd);
         else if (filter === 'approved') filtered = allODs.filter(o => o.hodStatus === 'Approved');
         else if (filter === 'rejected') filtered = allODs.filter(o => o.hodStatus === 'Rejected');
         else filtered = allODs;
+
+        filtered = filterByPeriod(filtered, currentPeriod);
 
         const searchInput = document.getElementById('searchInput');
         if (searchInput && searchInput.value.trim()) {
@@ -220,11 +532,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Pending requests are sorted by soonest-starting OD first, so the
-        // most time-sensitive requests bubble to the top.
+        // most time-sensitive requests bubble to the top. Ongoing requests
+        // are sorted by soonest-ending first.
         if (filter === 'pending') {
             filtered = [...filtered].sort((a, b) => {
                 const da = a.fromDate ? new Date(a.fromDate).getTime() : Infinity;
                 const db = b.fromDate ? new Date(b.fromDate).getTime() : Infinity;
+                return da - db;
+            });
+        } else if (filter === 'ongoing') {
+            filtered = [...filtered].sort((a, b) => {
+                const da = a.toDate ? new Date(a.toDate).getTime() : Infinity;
+                const db = b.toDate ? new Date(b.toDate).getTime() : Infinity;
                 return da - db;
             });
         }
@@ -257,7 +576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
-                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(14,165,233,0.15);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3)">GROUP: ${od.groupName || ''}</span>` : ''}</h3>
+                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(14,165,233,0.15);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3)">GROUP: ${od.groupName || ''}</span>` : ''} ${od.competitionType ? `<span class="competition-tag" title="Competition Type" style="font-size:10px;padding:2px 8px;margin-left:4px">${escCompTypeHod(od.competitionType)}</span>` : ''}</h3>
                         <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}</p>
                     </div>
                     <span class="status-badge approved">Faculty ✓</span>
@@ -276,9 +595,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
                 <div class="card-actions">
                     <button type="button" class="view-details-btn" data-odid="${od.odId}">View Details</button>
-                    ${od.hodStatus === 'Pending' ? `
-                    <button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Final Approve</button>
-                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>` : ''}
+                    ${od.hodStatus === 'Pending'
+                        ? ((countdown.cls === 'od-countdown-ongoing' || countdown.cls === 'od-countdown-done')
+                            ? `<p class="od-ongoing-lock-note">${countdown.cls === 'od-countdown-done' ? 'This OD has already ended — it can no longer be approved or rejected.' : 'This OD is already ongoing — it can no longer be approved or rejected.'}</p>`
+                            : `<button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Final Approve</button>
+                    <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>`)
+                        : ''}
                 </div>
             </div>`;
         }).join('');
@@ -298,8 +620,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             : 'Pending';
 
         setEl('odDetailEvent', od.event || '');
+        const compTypeEl = document.getElementById('odDetailCompetitionTypeHod');
+        if (compTypeEl) compTypeEl.textContent = od.competitionType || '-';
         const overallBadge = document.getElementById('odDetailOverallBadge');
-        if (overallBadge) { overallBadge.className = `status-badge ${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
+        if (overallBadge) { overallBadge.className = `badge-${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
 
         setEl('odDetailStudent', od.studentName || '');
         setEl('odDetailRegNo', od.registerNumber || '');
@@ -314,9 +638,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('odDetailReason', od.reason || 'No reason provided');
 
         const facBadge = document.getElementById('odDetailFacultyStatus');
-        if (facBadge) { facBadge.className = `status-badge ${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
+        if (facBadge) { facBadge.className = `badge-${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
         const hodBadge = document.getElementById('odDetailHodStatus');
-        if (hodBadge) { hodBadge.className = `status-badge ${bdg(od.hodStatus)}`; hodBadge.textContent = od.hodStatus || 'Pending'; }
+        if (hodBadge) { hodBadge.className = `badge-${bdg(od.hodStatus)}`; hodBadge.textContent = od.hodStatus || 'Pending'; }
 
         const groupSection = document.getElementById('odDetailGroupSection');
         if (od.isGroupOd) {
@@ -325,7 +649,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (membersDiv) {
                 const members = (od.registerNumbers || '').split(',').map(r => r.trim()).filter(r => r);
                 membersDiv.innerHTML = members.length
-                    ? members.map(m => `<span>${escHtml(m)}</span>`).join('')
+                    ? members.map(m => {
+                        const known = m.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                            ? { name: od.studentName }
+                            : lookupStudent(m);
+                        const label = known?.name ? `${m} — ${known.name}` : m;
+                        return `<span>${escHtml(label)}</span>`;
+                    }).join('')
                     : '<span>No members listed</span>';
             }
             if (groupSection) groupSection.style.display = 'flex';
@@ -373,9 +703,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const rawUrl = cert ? (cert.certificatePhotoUrl ?? cert.CertificatePhotoUrl ?? '') : '';
                 const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
                 const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
-                const isImage = /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
+                const isImage = /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(rawUrl);
                 const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
-                const badgeText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Certificate Uploaded';
+                const badgeText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Pending Staff Verification';
                 const badgeClass = !rawUrl ? 'cert-badge' : isVerified ? 'cert-badge cert-badge-verified' : 'cert-badge';
 
                 return `
@@ -393,7 +723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
                         <p><strong>OD Finished:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)}</p>
                     </div>
-                    ${certUrl ? `
+                    ${certUrl && isVerified ? `
                     <div class="cert-preview-row">
                         ${isImage
                             ? `<img src="${certUrl}" alt="Certificate" class="cert-thumb" onclick="openCertPreview('${certUrl}','${esc(od.studentName)}')">`
@@ -404,8 +734,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                                    </svg>
                                </div>`
                         }
-                        <a href="${certUrl}" target="_blank" rel="noopener" class="cert-view-link">View Full Certificate ↗</a>
-                    </div>` : `<p class="cert-none-text">OD finished — student has not uploaded a certificate yet.</p>`}
+                        <a href="#" onclick="event.preventDefault(); openCertPreview('${certUrl}','${esc(od.studentName)}')" class="cert-view-link">View Full Certificate ↗</a>
+                    </div>` : certUrl && !isVerified
+                        ? `<p class="cert-none-text">Student uploaded a certificate — awaiting staff verification. It will appear here once staff verifies it.</p>`
+                        : `<p class="cert-none-text">OD finished — student has not uploaded a certificate yet.</p>`}
                 </div>`;
             }
 
@@ -422,10 +754,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const certUrl = resolvedUrl ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}_=${Date.now()}` : '';
                 const isVerified = !!(cert && (cert.certificateVerified ?? cert.CertificateVerified));
                 const known = registerNumber === od.registerNumber
-                    ? { name: od.studentName, department: od.department }
+                    ? { name: od.studentName, department: od.department, section: od.section || od.Section || '' }
                     : lookupStudent(registerNumber);
                 const displayName = known?.name || '';
-                const className = known ? [known.department, known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ') : '';
+                const className = known
+                    ? [known.department, known.section ? `Sec ${known.section}` : '', known.year ? `Year ${known.year}` : ''].filter(Boolean).join(' • ')
+                    : '';
 
                 if (isRejected) {
                     return `
@@ -439,11 +773,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>`;
                 }
 
-                const statusText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Uploaded';
+                const statusText = !rawUrl ? 'Not Uploaded' : isVerified ? 'Verified ✓' : 'Awaiting Staff Verification';
                 const statusClass = !rawUrl ? 'cert-mrow-status' : isVerified ? 'cert-mrow-status cert-mrow-verified' : 'cert-mrow-status cert-mrow-uploaded';
-                const actionHtml = rawUrl
-                    ? `<a href="${certUrl}" target="_blank" rel="noopener" class="cert-mrow-view">View</a>`
-                    : `<span class="cert-mrow-none">—</span>`;
+                // HOD only gets to actually view a member's certificate once
+                // staff has verified it — before that, just show the status.
+                const actionHtml = rawUrl && isVerified
+                    ? `<a href="#" onclick="event.preventDefault(); openCertPreview('${certUrl}','${esc(displayName || registerNumber)}')" class="cert-mrow-view">View</a>`
+                    : rawUrl
+                        ? `<span class="cert-mrow-none">Not yet verified</span>`
+                        : `<span class="cert-mrow-none">—</span>`;
 
                 return `
                     <div class="cert-member-row">
@@ -506,14 +844,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openCertPreview = (url, studentName) => {
         setEl('certPreviewTitle', `${studentName || 'Student'}'s Certificate`);
         const img = document.getElementById('certPreviewImage');
-        const isImage = /\.(png|jpe?g|gif|webp)$/i.test(url);
+        const openLink = document.getElementById('certPreviewOpenLink');
+        const isImage = /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(url);
+
+        if (openLink) { openLink.href = url; openLink.style.display = 'inline-block'; }
+
         if (img) {
             if (isImage) {
-                img.src = url;
                 img.style.display = 'block';
+                img.src = url;
+                img.onerror = () => { img.style.display = 'none'; };
             } else {
                 img.style.display = 'none';
-                window.open(url, '_blank');
             }
         }
         if (certPreviewOverlay) certPreviewOverlay.classList.add('active');
@@ -537,6 +879,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const wasRejected = rejected.some(r => r.toLowerCase() === reg.toLowerCase());
             const isOverridden = overridden.some(r => r.toLowerCase() === reg.toLowerCase());
             const showAsRejected = wasRejected && !isOverridden;
+            const known = reg.toLowerCase() === (od.registerNumber || '').toLowerCase()
+                ? { name: od.studentName, section: od.section || od.Section || '' }
+                : lookupStudent(reg);
+            const memberSection = known?.section || '';
+            const label = `${reg}${known?.name ? ' — ' + known.name : ''}${memberSection ? ` (Sec ${memberSection})` : ''}`;
 
             return `
                 <div class="member-chip-wrap" style="display:inline-block;position:relative;margin:4px 6px 4px 0">
@@ -546,7 +893,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                border:1px solid ${showAsRejected ? 'rgba(239,68,68,0.4)' : isOverridden ? 'rgba(16,185,129,0.4)' : 'rgba(14,165,233,0.3)'};
                                background:${showAsRejected ? 'rgba(239,68,68,0.15)' : isOverridden ? 'rgba(16,185,129,0.15)' : 'rgba(14,165,233,0.1)'};
                                color:${showAsRejected ? '#ef4444' : isOverridden ? '#10b981' : '#7dd3fc'}">
-                        ${showAsRejected ? '✕ ' : isOverridden ? '✓ ' : ''}${reg}
+                        ${showAsRejected ? '✕ ' : isOverridden ? '✓ ' : ''}${escHtml(label)}
                     </button>
                     ${showAsRejected ? `
                     <div class="member-menu" style="display:none;position:absolute;bottom:110%;left:0;z-index:10;
@@ -688,7 +1035,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return { text, cls: 'od-countdown-done' };
     }
 
-    function esc(s) { return (s||'').replace(/'/g, "\\'"); }
+    function escCompTypeHod(t) {
+        const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
+        return (icons[(t||'').toLowerCase()] || '🏅') + ' ' + t;
+    }
+    function esc(s) { return (s||'').replace(/'/g, "\'"); }
     function escHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
     function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? ''; }
     function showToast(type, msg) {
