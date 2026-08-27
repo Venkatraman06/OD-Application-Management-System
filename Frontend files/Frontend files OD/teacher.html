@@ -50,6 +50,15 @@
                     <span class="nav-text">Pending</span>
                     <span class="nav-badge pending" id="pendingCount">4</span>
                 </button>
+                <button class="nav-item" data-filter="ongoing" id="navOngoing">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">No Action</span>
+                    <span class="nav-badge ongoing" id="ongoingCount">0</span>
+                </button>
                 <button class="nav-item" data-filter="approved" id="navApproved">
                     <div class="nav-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -248,6 +257,14 @@
                             <canvas id="eventChart"></canvas>
                         </div>
                     </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>OD & Certificates by Company / College</h3>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="companyChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="analytics-table-card">
@@ -333,6 +350,10 @@
                     <span class="od-detail-value" id="odDetailCollege">-</span>
                 </div>
                 <div class="od-detail-row">
+                    <span class="od-detail-label">Competition Type</span>
+                    <span class="od-detail-value" id="odDetailCompetitionType">-</span>
+                </div>
+                <div class="od-detail-row">
                     <span class="od-detail-label">From</span>
                     <span class="od-detail-value" id="odDetailFromDate">-</span>
                 </div>
@@ -343,6 +364,29 @@
                 <div class="od-detail-row">
                     <span class="od-detail-label">Number of Days</span>
                     <span class="od-detail-value" id="odDetailDays">-</span>
+                </div>
+
+                <!-- Alter Days panel — visible only for Pending ODs -->
+                <div class="alter-days-panel" id="alterDaysPanel" style="display:none">
+                    <div class="alter-days-header">
+                        <span class="alter-days-title">✏️ Edit OD Dates</span>
+                        <button class="alter-days-cancel" id="alterDaysCancel" type="button">Cancel</button>
+                    </div>
+                    <div class="alter-days-fields">
+                        <label>From Date
+                            <input type="date" id="alterFromDate">
+                        </label>
+                        <label>To Date
+                            <input type="date" id="alterToDate">
+                        </label>
+                        <label>Number of Days
+                            <input type="number" id="alterDaysCount" min="1" readonly>
+                        </label>
+                    </div>
+                    <button class="alter-days-save" id="alterDaysSave" type="button">Save Changes</button>
+                </div>
+                <div class="od-detail-row" id="editDatesRow" style="display:none">
+                    <button class="btn-edit-dates" id="btnEditDates" type="button">✏️ Edit Dates</button>
                 </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">Applied On</span>

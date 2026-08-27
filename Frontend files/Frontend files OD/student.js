@@ -248,8 +248,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const event    = document.getElementById('eventName')?.value.trim()   || '';
         const college  = document.getElementById('collegeName')?.value.trim() || '';
         const reason   = document.getElementById('reason')?.value.trim()      || '';
+        const competitionType = document.getElementById('competitionType')?.value || '';
 
-        if (!fromDate || !toDate || !event || !college || !reason) {
+        if (!fromDate || !toDate || !event || !college || !reason || !competitionType) {
             showToast('error', 'All fields required'); return;
         }
         if (fromDate > toDate) {
@@ -283,6 +284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             toDate,
             numberOfDays:    days,
             event,
+            competitionType,
             collegeIndustry: college,
             reason
         };
@@ -334,8 +336,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const reason   = document.getElementById('groupReason')?.value.trim()      || '';
         const groupName = document.getElementById('groupName')?.value.trim()       || '';
         const regNumbersRaw = document.getElementById('registerNumbers')?.value.trim() || '';
+        const groupCompetitionType = document.getElementById('groupCompetitionType')?.value || '';
 
-        if (!fromDate || !toDate || !event || !college || !reason || !groupName || !regNumbersRaw) {
+        if (!fromDate || !toDate || !event || !college || !reason || !groupName || !regNumbersRaw || !groupCompetitionType) {
             showToast('error', 'All fields required'); return;
         }
         if (fromDate > toDate) {
@@ -384,6 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             event,
             collegeIndustry: college,
             reason,
+            competitionType: groupCompetitionType,
             isGroupOd:       true,
             groupName:       groupName,
             registerNumbers: regNumbers.join(',')
@@ -528,7 +532,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const odId           = od.OdId ?? od.odId ?? '';
 
         setEl('modalEventName', eventName || 'OD Request');
+        const compType = od.CompetitionType ?? od.competitionType ?? '';
         setEl('modalCollege', college || '-');
+        const modalCompEl = document.getElementById('modalCompetitionType');
+        if (modalCompEl) { modalCompEl.textContent = compType || '-'; modalCompEl.closest('.modal-row').style.display = compType ? '' : 'none'; }
         setEl('modalFromDate', fmtDate(fromDate));
         setEl('modalToDate', fmtDate(toDate));
         setEl('modalDays', numDays ? `${numDays}${odDateCountdownLabel(fromDate, toDate) ? ' (' + odDateCountdownLabel(fromDate, toDate) + ')' : ''}` : '-');
@@ -646,6 +653,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (odModal) odModal.style.display = 'flex';
+    }
+
+    function escapeCompType(t) {
+        const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
+        const key = (t || '').toLowerCase();
+        return (icons[key] || '🏅') + ' ' + t;
     }
 
     function escapeHtml(str) {
@@ -883,6 +896,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const iAmRejected = myFacultyStatus === 'Rejected';
 
                 const overall = iAmRejected ? 'rejected' : overallKey(myFacultyStatus, hodStatus);
+                const competitionType = od.CompetitionType ?? od.competitionType ?? '';
+                const competitionTag = competitionType
+                    ? `<span class="competition-tag competition-tag--${competitionType.toLowerCase().replace(/\s+/g,'-')}" title="Competition Type">${escapeCompType(competitionType)}</span>`
+                    : '';
                 const groupTag = isGroup
                     ? `<span class="status-program" style="margin-left:8px">Group: ${groupName}</span>`
                     : '';
@@ -938,7 +955,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
                     <div class="card-top">
                         <div>
-                            <h4>${eventName} ${groupTag} ${myStatusTag}</h4>
+                            <h4>${eventName} ${competitionTag} ${groupTag} ${myStatusTag}</h4>
                             <p>${college}</p>
                         </div>
                         <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(myFacultyStatus, hodStatus)}</span>

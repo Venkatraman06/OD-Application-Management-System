@@ -267,6 +267,11 @@ body {
     color: var(--primary-300);
 }
 
+.nav-badge.ongoing {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+}
+
 /* Sidebar Footer */
 .sidebar-footer {
     padding-top: 16px;
@@ -1872,4 +1877,129 @@ body {
     background: rgba(99, 102, 241, 0.20);
     border-color: rgba(99, 102, 241, 0.50);
     color: #a5b4fc;
+}
+
+
+/* ── Alter OD Days panel ───────────────────────────────────────── */
+
+.btn-edit-dates {
+    margin-top: 4px;
+    padding: 7px 18px;
+    border-radius: var(--radius-md, 10px);
+    border: 1px solid rgba(99, 102, 241, 0.40);
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.btn-edit-dates:hover {
+    background: rgba(99, 102, 241, 0.22);
+    border-color: rgba(99, 102, 241, 0.60);
+}
+
+.alter-days-panel {
+    margin: 10px 0;
+    padding: 16px;
+    background: rgba(99, 102, 241, 0.07);
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    border-radius: var(--radius-md, 10px);
+}
+
+.alter-days-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.alter-days-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #a5b4fc;
+}
+
+.alter-days-cancel {
+    padding: 4px 12px;
+    border-radius: 100px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--surface-400, #94a3b8);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.alter-days-cancel:hover { background: rgba(255,255,255,0.06); }
+
+.alter-days-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.alter-days-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--surface-400, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.alter-days-fields input {
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.25);
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+.alter-days-fields input:focus {
+    border-color: rgba(99, 102, 241, 0.55);
+}
+.alter-days-fields input[readonly] {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.alter-days-save {
+    width: 100%;
+    padding: 9px;
+    border-radius: var(--radius-md, 10px);
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.alter-days-save:hover   { opacity: 0.88; }
+.alter-days-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+    .alter-days-fields { grid-template-columns: 1fr 1fr; }
+    .alter-days-fields label:last-child { grid-column: 1 / -1; }
+}
+/* ── Competition Type Tag (shared) ── */
+.competition-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 20px;
+    margin-left: 5px;
+    background: rgba(99,102,241,0.12);
+    color: #6366f1;
+    border: 1px solid rgba(99,102,241,0.25);
+    vertical-align: middle;
 }

@@ -83,12 +83,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         return studentLookup[(reg || '').trim().toLowerCase()] || null;
     }
 
+    // True once today is on/after the OD's own FromDate — covers an OD
+    // currently in progress AND one whose dates are already fully over.
+    // Used to split "Pending" (not started yet) from "No Action" (window
+    // has begun or passed with no decision ever made).
+    function odHasStarted(o) {
+        if (!o.fromDate) return false;
+        const from = new Date(o.fromDate);
+        if (isNaN(from.getTime())) return false;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        return today >= from;
+    }
+    function isPendingOd(o)  { return o.hodStatus === 'Pending' && !odHasStarted(o); }
+    function isNoActionOd(o) { return o.hodStatus === 'Pending' && odHasStarted(o); }
+
     const sectionMeta = {
         pending: {
             title: 'Pending HOD Approval',
             emptyTitle: 'No OD Requests Here',
             emptyText: 'No requests found in this category.',
             icon: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+        },
+        ongoing: {
+            title: 'No Action OD Requests',
+            emptyTitle: 'No OD Requests Here',
+            emptyText: 'No OD requests are stuck without action.',
+            icon: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>'
         },
         approved: {
             title: 'Accepted OD Requests',
@@ -131,6 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // to this HOD's own department.
     let winningStatusChartInstance = null;
     let eventChartInstance = null;
+    let companyChartInstance = null;
 
     async function loadAnalytics() {
         try {
@@ -145,11 +167,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return d && d >= start;
                 });
                 let first = 0, second = 0, third = 0, participated = 0, other = 0;
-                const eventMap = {}, regSet = new Set();
+                const eventMap = {}, companyMap = {}, regSet = new Set();
                 filtered.forEach(s => {
                     regSet.add((s.registerNumber || '').toLowerCase());
                     const ev = s.event || 'Unspecified';
                     eventMap[ev] = (eventMap[ev] || 0) + 1;
+                    const co = s.collegeIndustry || 'Unspecified';
+                    if (!companyMap[co]) companyMap[co] = { odCount: 0, certCount: 0 };
+                    companyMap[co].odCount++;
+                    companyMap[co].certCount++;
                     switch (s.winningStatus) {
                         case '1st Prize':    first++;        break;
                         case '2nd Prize':    second++;       break;
@@ -161,6 +187,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const eventCounts = Object.entries(eventMap)
                     .map(([event, count]) => ({ event, count }))
                     .sort((a, b) => b.count - a.count);
+                const companyCounts = Object.entries(companyMap)
+                    .map(([collegeIndustry, c]) => ({ collegeIndustry, odCount: c.odCount, certificateCount: c.certCount }))
+                    .sort((a, b) => b.odCount - a.odCount);
                 data.students          = filtered;
                 data.totalCertificates = filtered.length;
                 data.totalParticipants = regSet.size;
@@ -171,6 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data.participatedCount = participated;
                 data.otherCount        = other;
                 data.eventCounts       = eventCounts;
+                data.companyCounts     = companyCounts;
             }
 
             renderAnalytics(data);
@@ -189,6 +219,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const statsRow = document.getElementById('analyticsStatsRow');
         if (statsRow) {
             statsRow.innerHTML = `
+                <div class="analytics-stat-pill">
+                    <span class="stat-num">${data.totalOdApplications ?? 0}</span>
+                    <span class="stat-lbl">Total OD Applications</span>
+                </div>
                 <div class="analytics-stat-pill">
                     <span class="stat-num">${data.totalEvents ?? 0}</span>
                     <span class="stat-lbl">Events</span>
@@ -275,6 +309,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
+        const coCtx = document.getElementById('companyChart');
+        if (coCtx && window.Chart) {
+            if (companyChartInstance) companyChartInstance.destroy();
+            const topCo = (data.companyCounts || []).slice(0, 8);
+            companyChartInstance = new Chart(coCtx, {
+                type: 'bar',
+                data: {
+                    labels: topCo.map(c => c.collegeIndustry),
+                    datasets: [
+                        {
+                            label: 'OD Applications',
+                            data: topCo.map(c => c.odCount),
+                            backgroundColor: '#0ea5e9',
+                            borderRadius: 6,
+                            maxBarThickness: 28
+                        },
+                        {
+                            label: 'Certificates',
+                            data: topCo.map(c => c.certificateCount),
+                            backgroundColor: '#22c55e',
+                            borderRadius: 6,
+                            maxBarThickness: 28
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14 } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                    }
+                }
+            });
+        }
+
         const tbody = document.getElementById('analyticsTableBody');
         if (tbody) {
             const students = data.students || [];
@@ -315,7 +388,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateCounts(ods) {
-        const pending  = ods.filter(o => o.hodStatus === 'Pending').length;
+        const pending  = ods.filter(isPendingOd).length;
+        const ongoing  = ods.filter(isNoActionOd).length;
         const approved = ods.filter(o => o.hodStatus === 'Approved').length;
         const rejected = ods.filter(o => o.hodStatus === 'Rejected').length;
 
@@ -323,6 +397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('statPending',  pending);
         setEl('statApproved', approved);
         setEl('pendingCount',  pending);
+        setEl('ongoingCount',  ongoing);
         setEl('approvedCount', approved);
         setEl('rejectedCount', rejected);
     }
@@ -436,8 +511,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (searchBox) searchBox.style.display = (filter === 'approved' || filter === 'rejected') ? 'block' : 'none';
         if (timeBar)   timeBar.style.display = 'flex';
 
+        // "Pending"   = still awaiting HOD decision and the OD hasn't started
+        // yet.
+        // "No Action" = still awaiting HOD decision but the OD's window has
+        // already begun OR fully finished (today is on/after FromDate) —
+        // locked from approve/reject, so split out from Pending.
         let filtered;
-        if      (filter === 'pending')  filtered = allODs.filter(o => o.hodStatus === 'Pending');
+        if      (filter === 'pending')  filtered = allODs.filter(isPendingOd);
+        else if (filter === 'ongoing')  filtered = allODs.filter(isNoActionOd);
         else if (filter === 'approved') filtered = allODs.filter(o => o.hodStatus === 'Approved');
         else if (filter === 'rejected') filtered = allODs.filter(o => o.hodStatus === 'Rejected');
         else filtered = allODs;
@@ -451,11 +532,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Pending requests are sorted by soonest-starting OD first, so the
-        // most time-sensitive requests bubble to the top.
+        // most time-sensitive requests bubble to the top. Ongoing requests
+        // are sorted by soonest-ending first.
         if (filter === 'pending') {
             filtered = [...filtered].sort((a, b) => {
                 const da = a.fromDate ? new Date(a.fromDate).getTime() : Infinity;
                 const db = b.fromDate ? new Date(b.fromDate).getTime() : Infinity;
+                return da - db;
+            });
+        } else if (filter === 'ongoing') {
+            filtered = [...filtered].sort((a, b) => {
+                const da = a.toDate ? new Date(a.toDate).getTime() : Infinity;
+                const db = b.toDate ? new Date(b.toDate).getTime() : Infinity;
                 return da - db;
             });
         }
@@ -488,7 +576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
-                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(14,165,233,0.15);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3)">GROUP: ${od.groupName || ''}</span>` : ''}</h3>
+                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(14,165,233,0.15);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3)">GROUP: ${od.groupName || ''}</span>` : ''} ${od.competitionType ? `<span class="competition-tag" title="Competition Type" style="font-size:10px;padding:2px 8px;margin-left:4px">${escCompTypeHod(od.competitionType)}</span>` : ''}</h3>
                         <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}</p>
                     </div>
                     <span class="status-badge approved">Faculty ✓</span>
@@ -508,8 +596,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="card-actions">
                     <button type="button" class="view-details-btn" data-odid="${od.odId}">View Details</button>
                     ${od.hodStatus === 'Pending'
-                        ? (countdown.cls === 'od-countdown-ongoing'
-                            ? `<p class="od-ongoing-lock-note">This OD is already ongoing — it can no longer be approved or rejected.</p>`
+                        ? ((countdown.cls === 'od-countdown-ongoing' || countdown.cls === 'od-countdown-done')
+                            ? `<p class="od-ongoing-lock-note">${countdown.cls === 'od-countdown-done' ? 'This OD has already ended — it can no longer be approved or rejected.' : 'This OD is already ongoing — it can no longer be approved or rejected.'}</p>`
                             : `<button class="btn-approve" onclick="approveOD(${od.odId},'${esc(od.studentName)}')">✓ Final Approve</button>
                     <button class="btn-reject"  onclick="rejectOD(${od.odId},'${esc(od.studentName)}')">✕ Reject</button>`)
                         : ''}
@@ -532,6 +620,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             : 'Pending';
 
         setEl('odDetailEvent', od.event || '');
+        const compTypeEl = document.getElementById('odDetailCompetitionTypeHod');
+        if (compTypeEl) compTypeEl.textContent = od.competitionType || '-';
         const overallBadge = document.getElementById('odDetailOverallBadge');
         if (overallBadge) { overallBadge.className = `badge-${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
 
@@ -945,7 +1035,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         return { text, cls: 'od-countdown-done' };
     }
 
-    function esc(s) { return (s||'').replace(/'/g, "\\'"); }
+    function escCompTypeHod(t) {
+        const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
+        return (icons[(t||'').toLowerCase()] || '🏅') + ' ' + t;
+    }
+    function esc(s) { return (s||'').replace(/'/g, "\'"); }
     function escHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
     function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? ''; }
     function showToast(type, msg) {

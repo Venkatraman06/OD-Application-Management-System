@@ -53,6 +53,15 @@
                     <span class="nav-text">Pending</span>
                     <span class="nav-badge pending" id="pendingCount">0</span>
                 </button>
+                <button class="nav-item" data-filter="ongoing" id="navOngoing">
+                    <div class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">No Action</span>
+                    <span class="nav-badge ongoing" id="ongoingCount">0</span>
+                </button>
                 <button class="nav-item" data-filter="approved" id="navApproved">
                     <div class="nav-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -291,6 +300,14 @@
                             <canvas id="eventChart"></canvas>
                         </div>
                     </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>OD & Certificates by Company / College</h3>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="companyChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="analytics-table-card">
@@ -374,6 +391,10 @@
                 <div class="od-detail-row">
                     <span class="od-detail-label">College / Industry</span>
                     <span class="od-detail-value" id="odDetailCollege">-</span>
+                </div>
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Competition Type</span>
+                    <span class="od-detail-value" id="odDetailCompetitionTypeHod">-</span>
                 </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">From</span>
