@@ -20,6 +20,9 @@ namespace OnlineOD.Models
         public string? ToDate { get; set; }
         public int NumberOfDays { get; set; }
         public string? Event { get; set; }
+
+        // Which competition the student is participating in (e.g. Hackathon, Cultural, Sports)
+        public string? CompetitionType { get; set; }
         public string? Reason { get; set; }
         public string? CollegeIndustry { get; set; }
         public DateTime AppliedDate { get; set; } = DateTime.Now;

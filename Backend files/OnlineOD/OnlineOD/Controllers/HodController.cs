@@ -118,14 +118,16 @@ namespace OnlineOD.Controllers
             return Ok(od);
         }
 
-        // True while today falls within the OD's own From/To date range —
-        // used to lock out approve/reject once the OD has actually started.
+        // True once today is on/after the OD's own FromDate — covers an OD
+        // currently in progress AND one whose dates are already fully over.
+        // Used to lock out approve/reject once the decision window has
+        // begun or passed with no action taken.
         private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
         {
-            if (!DateTime.TryParse(fromDateRaw, out var from) || !DateTime.TryParse(toDateRaw, out var to))
+            if (!DateTime.TryParse(fromDateRaw, out var from))
                 return false;
             var today = DateTime.Today;
-            return today >= from.Date && today <= to.Date;
+            return today >= from.Date;
         }
     }
 }

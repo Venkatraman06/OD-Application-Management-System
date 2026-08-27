@@ -240,6 +240,30 @@ namespace OnlineOD.Controllers
         }
 
 
+        // PUT /api/OdApply/{odId}/AlterDays
+        // Staff adjusts FromDate, ToDate, and NumberOfDays on a still-Pending OD.
+        [HttpPut("{odId}/AlterDays")]
+        public async Task<IActionResult> AlterDays(int odId, [FromBody] AlterDaysDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
+                return BadRequest("FromDate and ToDate are required.");
+
+            // Server recomputes days; client hint is a fallback
+            int days = dto.NumberOfDays ?? 1;
+
+            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days);
+            if (result == null)
+                return BadRequest("OD not found or is no longer in Pending status — dates cannot be altered.");
+
+            return Ok(new
+            {
+                result.OdId,
+                result.FromDate,
+                result.ToDate,
+                result.NumberOfDays
+            });
+        }
+
         // POST /api/OdApply/{odId}/UploadCertificate
         // Each student (identified by registerNumber) gets their own certificate
         // row for this OD — required for group ODs where multiple members each

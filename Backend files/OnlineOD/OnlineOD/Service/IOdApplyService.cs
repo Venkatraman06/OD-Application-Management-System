@@ -46,5 +46,8 @@ namespace OnlineOD.Service
         Task<OdApply?> RejectGroupMemberAsync(int odId, string registerNumber, int staffId);
         Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber, int staffId);
         Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber);
+
+        /// <summary>Staff alters the FromDate / ToDate / NumberOfDays of a pending OD.</summary>
+        Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays);
     }
 }

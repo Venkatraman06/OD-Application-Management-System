@@ -38,6 +38,12 @@ namespace OnlineOD.Dtos
         public string? CertificatePhotoUrl { get; set; }
         public bool CertificateVerified { get; set; }
 
+        // True while today falls within FromDate/ToDate — lets the frontend
+        // split the pending list into "Ongoing OD" (already started, awaiting
+        // no further action window) vs "No Action OD" (not started yet, still
+        // needs a decision) without duplicating the date-range check itself.
+        public bool IsOngoing { get; set; }
+
         public List<OdCertificate> Certificates { get; set; } = new();
     }
 }

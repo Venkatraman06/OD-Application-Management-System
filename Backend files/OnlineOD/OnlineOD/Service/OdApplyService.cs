@@ -45,6 +45,12 @@ namespace OnlineOD.Service
         //   BOTH class staffs instead of only the applicant's own staff.
         public async Task<List<OdApply>> GetByDepartmentAsync(string department, string? section = null)
         {
+            // Returns every OD for this department regardless of status —
+            // the frontend tabs (Pending / No Action / Accepted / Rejected)
+            // split them client-side using facultyStatus + isOngoing. Only
+            // filtering by FacultyStatus == "Pending" here would make an OD
+            // vanish from every tab the instant it's approved or rejected,
+            // since it would never come back from this endpoint again.
             var deptOds = await _context.OdApplies
                 .Where(o => o.department == department)
                 .OrderByDescending(o => o.AppliedDate)
@@ -112,6 +118,14 @@ namespace OnlineOD.Service
         {
             var deptLower = department.Trim().ToLower();
 
+            // Every OD application on file for the department, regardless of
+            // status — used for TotalOdApplications and for the per-company
+            // OD counts (how many students went, whether or not they later
+            // submitted a certificate).
+            var allDeptOds = await _context.OdApplies
+                .Where(o => o.department != null && o.department.Trim().ToLower() == deptLower)
+                .ToListAsync();
+
             var joined = await (
                 from c in _context.OdCertificates
                 join o in _context.OdApplies on c.OdId equals o.OdId
@@ -177,17 +191,49 @@ namespace OnlineOD.Service
                 .OrderByDescending(e => e.Count)
                 .ToList();
 
+            // OD count per company/college: distinct students from ALL OD
+            // applications for that company, not just certificate-linked
+            // ones — group ODs count once per member so headcount is right.
+            var odCountByCompany = allDeptOds
+                .GroupBy(o => string.IsNullOrWhiteSpace(o.CollegeIndustry) ? "Unspecified" : o.CollegeIndustry!.Trim())
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Sum(o => o.IsGroupOd
+                        ? Math.Max(ParseList(o.RegisterNumbers).Count, 1)
+                        : 1));
+
+            // Certificate count per company/college: distinct students who
+            // actually submitted a certificate for that company.
+            var certCountByCompany = joined
+                .GroupBy(x => string.IsNullOrWhiteSpace(x.o.CollegeIndustry) ? "Unspecified" : x.o.CollegeIndustry!.Trim())
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => x.c.RegisterNumber.ToLower()).Distinct().Count());
+
+            var companyCounts = odCountByCompany.Keys
+                .Union(certCountByCompany.Keys)
+                .Select(company => new AnalyticsCompanyCountDto
+                {
+                    CollegeIndustry = company,
+                    OdCount = odCountByCompany.TryGetValue(company, out var odc) ? odc : 0,
+                    CertificateCount = certCountByCompany.TryGetValue(company, out var cc) ? cc : 0
+                })
+                .OrderByDescending(c => c.OdCount)
+                .ToList();
+
             return new AnalyticsSummaryDto
             {
                 TotalEvents = eventCounts.Count,
                 TotalParticipants = regNumbers.Count,
                 TotalCertificates = joined.Count,
+                TotalOdApplications = allDeptOds.Count,
                 ParticipatedCount = participated,
                 FirstPrizeCount = first,
                 SecondPrizeCount = second,
                 ThirdPrizeCount = third,
                 OtherCount = other,
                 EventCounts = eventCounts,
+                CompanyCounts = companyCounts,
                 Students = students.OrderByDescending(s => s.FromDate).ToList()
             };
         }
@@ -216,6 +262,7 @@ namespace OnlineOD.Service
                 ToDate = dto.ToDate,
                 NumberOfDays = dto.NumberOfDays,
                 Event = dto.Event,
+                CompetitionType = dto.CompetitionType,
                 Reason = dto.Reason,
                 CollegeIndustry = dto.CollegeIndustry,
                 AppliedDate = DateTime.Now,
@@ -429,8 +476,22 @@ namespace OnlineOD.Service
                 WinningStatus = od.WinningStatus,
                 CertificatePhotoUrl = od.CertificatePhotoUrl,
                 CertificateVerified = od.CertificateVerified,
+                IsOngoing = IsOdOngoing(od.FromDate, od.ToDate),
                 Certificates = certsByOd.TryGetValue(od.OdId, out var list) ? list : new List<OdCertificate>()
             }).ToList();
+        }
+
+        // True once today is on/after the OD's own FromDate — covers an OD
+        // currently in progress AND one whose dates are already fully over.
+        // Mirrors the same rule enforced in HodController/StaffController
+        // when blocking approve/reject once the decision window has begun
+        // or passed with no action taken.
+        private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
+        {
+            if (!DateTime.TryParse(fromDateRaw, out var from))
+                return false;
+            var today = DateTime.Today;
+            return today >= from.Date;
         }
 
         // ── Group member per-register-number status ──
@@ -514,6 +575,29 @@ namespace OnlineOD.Service
             if (!hodApproved.Any(r => r.Equals(registerNumber, StringComparison.OrdinalIgnoreCase)))
                 hodApproved.Add(registerNumber);
             od.HodApprovedRegisterNumbers = JoinList(hodApproved);
+
+            await _context.SaveChangesAsync();
+            return od;
+        }
+
+
+        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return null;
+
+            // Only allow altering while the OD is still Pending with faculty
+            if (!string.Equals(od.FacultyStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            // Recompute days server-side to stay consistent
+            int computedDays = numberOfDays;
+            if (DateTime.TryParse(fromDate, out var from) && DateTime.TryParse(toDate, out var to) && to >= from)
+                computedDays = (int)(to - from).TotalDays + 1;
+
+            od.FromDate = fromDate;
+            od.ToDate = toDate;
+            od.NumberOfDays = computedDays;
 
             await _context.SaveChangesAsync();
             return od;
