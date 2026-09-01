@@ -1939,3 +1939,567 @@ body {
     border: 1px solid rgba(99,102,241,0.25);
     vertical-align: middle;
 }
+/* ══════════════════════════════════════════════════
+   THEME SYSTEM — Light / Dark
+   ══════════════════════════════════════════════════ */
+
+/* ── Toggle Button ── */
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
+    color: #a5b4fc;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+    flex-shrink: 0;
+}
+.theme-toggle-btn:hover {
+    background: rgba(99,102,241,0.18);
+    border-color: rgba(99,102,241,0.4);
+    color: #818cf8;
+    transform: rotate(20deg) scale(1.08);
+}
+
+/* ── Light theme overrides ── */
+
+/* ══════════════════════════════════════════════════
+   LIGHT THEME — Pure White
+   ══════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════
+   LIGHT THEME — Fully White
+   ══════════════════════════════════════════════════ */
+
+/* ── Page background & floating shapes ── */
+[data-theme="light"] body { background: #ffffff; color: #1e293b; }
+[data-theme="light"] .bg-animation { background: #ffffff !important; }
+[data-theme="light"] .floating-shape { display: none !important; }
+
+/* ── App container ── */
+[data-theme="light"] .app-container { background: transparent; }
+
+/* ── Student header card ── */
+[data-theme="light"] .student-header {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
+    backdrop-filter: none !important;
+}
+[data-theme="light"] .student-name { color: #0f172a !important; }
+[data-theme="light"] .student-dept { color: #64748b !important; }
+[data-theme="light"] .avatar { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
+
+/* ── Info cards (roll, dob, year) ── */
+[data-theme="light"] .detail-card {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+[data-theme="light"] .detail-card:hover {
+    background: #f1f5f9 !important;
+    border-color: #c7d2fe !important;
+}
+[data-theme="light"] .detail-label { color: #94a3b8 !important; }
+[data-theme="light"] .detail-value { color: #0f172a !important; }
+[data-theme="light"] .detail-icon { color: #6366f1 !important; }
+[data-theme="light"] .detail-icon svg { stroke: #6366f1 !important; }
+
+/* ── Tab bar ── */
+[data-theme="light"] .tabs-container {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    backdrop-filter: none !important;
+}
+[data-theme="light"] .tab-btn { color: #64748b !important; background: transparent !important; }
+[data-theme="light"] .tab-btn.active { color: #ffffff !important; }
+[data-theme="light"] .tab-indicator { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
+
+/* ── Form card (OD Apply, Group OD, Status wrapper) ── */
+[data-theme="light"] .form-card,
+[data-theme="light"] .status-card,
+[data-theme="light"] .status-wrapper {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
+    backdrop-filter: none !important;
+}
+[data-theme="light"] .form-card-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .form-card-header h2 { color: #0f172a !important; }
+[data-theme="light"] .form-card-header p  { color: #64748b !important; }
+
+/* ── Form labels ── */
+[data-theme="light"] .input-group label { color: #374151 !important; }
+[data-theme="light"] .required { color: #ef4444 !important; }
+
+/* ── Inputs, textareas, selects ── */
+[data-theme="light"] .input-wrapper input,
+[data-theme="light"] .input-wrapper textarea,
+[data-theme="light"] .input-wrapper select,
+[data-theme="light"] .input-group input,
+[data-theme="light"] .input-group select,
+[data-theme="light"] .input-group textarea {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+}
+[data-theme="light"] .input-wrapper input::placeholder,
+[data-theme="light"] .input-wrapper textarea::placeholder,
+[data-theme="light"] .input-group input::placeholder,
+[data-theme="light"] .input-group textarea::placeholder { color: #94a3b8 !important; }
+[data-theme="light"] .input-wrapper input:hover,
+[data-theme="light"] .input-wrapper textarea:hover {
+    border-color: #a5b4fc !important;
+    background: #fafbff !important;
+}
+[data-theme="light"] .input-wrapper input:focus,
+[data-theme="light"] .input-wrapper textarea:focus,
+[data-theme="light"] .input-wrapper select:focus,
+[data-theme="light"] .input-group input:focus,
+[data-theme="light"] .input-group select:focus,
+[data-theme="light"] .input-group textarea:focus {
+    border-color: #6366f1 !important;
+    background: #fafbff !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.10) !important;
+}
+[data-theme="light"] .input-icon { color: #6366f1 !important; }
+[data-theme="light"] .input-icon svg { stroke: #6366f1 !important; }
+[data-theme="light"] .input-group.error .input-wrapper input,
+[data-theme="light"] .input-group.error .input-wrapper textarea {
+    border-color: #ef4444 !important;
+}
+
+/* ── Buttons ── */
+[data-theme="light"] .btn-primary,
+[data-theme="light"] button[type="submit"],
+[data-theme="light"] .submit-btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+[data-theme="light"] .btn-secondary,
+[data-theme="light"] .reset-btn {
+    background: #f1f5f9 !important;
+    color: #374151 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .btn-secondary:hover,
+[data-theme="light"] .reset-btn:hover {
+    background: #e2e8f0 !important;
+}
+[data-theme="light"] .logout-btn {
+    background: #fff1f2 !important;
+    border: 1px solid #fecdd3 !important;
+    color: #e11d48 !important;
+}
+[data-theme="light"] .logout-btn:hover { background: #ffe4e6 !important; }
+[data-theme="light"] .view-details-btn {
+    background: #f1f5f9 !important;
+    color: #4f46e5 !important;
+    border: 1px solid #c7d2fe !important;
+}
+[data-theme="light"] .view-details-btn:hover { background: #ede9fe !important; }
+[data-theme="light"] .print-report-btn {
+    background: #f8fafc !important;
+    color: #374151 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .upload-cert-btn {
+    background: #f0fdf4 !important;
+    color: #166534 !important;
+    border: 1px solid #bbf7d0 !important;
+}
+[data-theme="light"] .approve-btn {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    color: #fff !important;
+}
+[data-theme="light"] .reject-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #fff !important;
+}
+
+/* ── Filter buttons ── */
+[data-theme="light"] .filter-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+}
+[data-theme="light"] .filter-btn.active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
+/* ── OD Status cards ── */
+[data-theme="light"] .od-status-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .od-status-card:hover {
+    border-color: #a5b4fc !important;
+    box-shadow: 0 4px 18px rgba(99,102,241,0.12) !important;
+    transform: translateY(-2px);
+}
+[data-theme="light"] .od-status-card .card-top h4 { color: #0f172a !important; }
+[data-theme="light"] .od-status-card .card-top p  { color: #64748b !important; }
+[data-theme="light"] .od-status-card .card-meta   { color: #64748b !important; }
+[data-theme="light"] .od-status-card .card-meta span strong { color: #374151 !important; }
+[data-theme="light"] .od-status-card .status-item strong { color: #374151 !important; }
+
+/* ── OD Detail Modal ── */
+[data-theme="light"] .od-detail-modal,
+[data-theme="light"] .modal-overlay {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.12) !important;
+    color: #1e293b !important;
+}
+[data-theme="light"] .modal-header,
+[data-theme="light"] .od-detail-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+}
+[data-theme="light"] .modal-header h3,
+[data-theme="light"] .od-detail-header h3 { color: #0f172a !important; }
+[data-theme="light"] .modal-row,
+[data-theme="light"] .od-detail-row { border-bottom: 1px solid #f1f5f9 !important; }
+[data-theme="light"] .modal-label,
+[data-theme="light"] .od-detail-label { color: #64748b !important; }
+[data-theme="light"] .modal-value,
+[data-theme="light"] .od-detail-value { color: #0f172a !important; }
+[data-theme="light"] .modal-close-btn {
+    background: #f1f5f9 !important;
+    color: #374151 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* ── Group member chips ── */
+[data-theme="light"] #modalMembers span {
+    background: #f1f5f9 !important;
+    color: #374151 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] #modalMembers .member-approved {
+    background: #f0fdf4 !important;
+    color: #166534 !important;
+    border-color: #bbf7d0 !important;
+}
+[data-theme="light"] #modalMembers .member-rejected {
+    background: #fff1f2 !important;
+    color: #be123c !important;
+    border-color: #fecdd3 !important;
+}
+
+/* ── Sidebar (teacher / hod) ── */
+[data-theme="light"] .sidebar {
+    background: #ffffff !important;
+    border-right: 1px solid #e2e8f0 !important;
+    box-shadow: 1px 0 8px rgba(0,0,0,0.04) !important;
+}
+[data-theme="light"] .sidebar-header {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .sidebar-logo { color: #0f172a !important; }
+[data-theme="light"] .sidebar-subtitle { color: #64748b !important; }
+[data-theme="light"] .nav-item { color: #475569 !important; }
+[data-theme="light"] .nav-item:hover { background: #f1f5f9 !important; color: #4f46e5 !important; }
+[data-theme="light"] .nav-item.active { background: #ede9fe !important; color: #4f46e5 !important; }
+[data-theme="light"] .nav-item.active .nav-icon {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+}
+[data-theme="light"] .nav-separator { border-color: #e2e8f0 !important; }
+[data-theme="light"] .logout-sidebar-btn {
+    background: #fff1f2 !important;
+    border: 1px solid #fecdd3 !important;
+    color: #e11d48 !important;
+}
+
+/* ── Main content area (teacher / hod) ── */
+[data-theme="light"] .main-content { background: #f8fafc !important; }
+[data-theme="light"] .content-header {
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .content-header h2 { color: #0f172a !important; }
+[data-theme="light"] .content-header p  { color: #64748b !important; }
+
+/* ── OD cards (teacher / hod list) ── */
+[data-theme="light"] .od-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .od-card:hover {
+    border-color: #a5b4fc !important;
+    box-shadow: 0 4px 18px rgba(99,102,241,0.12) !important;
+}
+[data-theme="light"] .od-card h3,
+[data-theme="light"] .od-card h4 { color: #0f172a !important; }
+[data-theme="light"] .od-card p   { color: #64748b !important; }
+
+/* ── OD Detail Panel (teacher / hod right panel) ── */
+[data-theme="light"] .od-detail-panel,
+[data-theme="light"] .od-panel {
+    background: #ffffff !important;
+    border-left: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+}
+[data-theme="light"] .od-detail-section { border-bottom: 1px solid #f1f5f9 !important; }
+[data-theme="light"] .od-detail-section-title { color: #64748b !important; }
+
+/* ── Analytics cards ── */
+[data-theme="light"] .analytics-card,
+[data-theme="light"] .stat-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .stat-label { color: #64748b !important; }
+[data-theme="light"] .stat-value { color: #0f172a !important; }
+
+/* ── Empty state ── */
+[data-theme="light"] .empty-state h3 { color: #374151 !important; }
+[data-theme="light"] .empty-state p  { color: #94a3b8 !important; }
+
+/* ── Toast ── */
+[data-theme="light"] .toast.success { background: #166534 !important; color: #fff !important; }
+[data-theme="light"] .toast.error   { background: #be123c !important; color: #fff !important; }
+[data-theme="light"] .toast         { background: #1e293b !important; color: #fff !important; }
+
+/* ── Search inputs ── */
+[data-theme="light"] .search-input,
+[data-theme="light"] .filter-select {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+/* ── Theme toggle button ── */
+[data-theme="light"] #themeToggleBtn {
+    background: #f1f5f9 !important;
+    border-color: #c7d2fe !important;
+    color: #4f46e5 !important;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.10) !important;
+}
+
+/* ── Scrollbar ── */
+[data-theme="light"] ::-webkit-scrollbar-track { background: #f8fafc; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c7d2fe; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #a5b4fc; }
+
+/* ── Loading spinner ── */
+[data-theme="light"] .spinner { border-color: #e2e8f0; border-top-color: #6366f1; }
+
+/* ── Countdown / program tags ── */
+[data-theme="light"] .od-countdown-tag {
+    background: #ede9fe !important;
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .status-program {
+    background: rgba(99,102,241,0.10) !important;
+    color: #4f46e5 !important;
+}
+/* ============================================
+   Working-Days Calendar tab (HOD)
+   ============================================ */
+.calendar-view {
+    animation: fadeIn 0.3s ease;
+}
+
+.calendar-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.calendar-header-row h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: white;
+    min-width: 180px;
+    text-align: center;
+}
+
+.calendar-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.calendar-nav-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+.calendar-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 18px;
+    font-size: 0.78rem;
+    color: var(--surface-400);
+}
+.calendar-legend .dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+.calendar-legend .dot.working     { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.25); }
+.calendar-legend .dot.has-od      { background: var(--primary-500, #6366f1); }
+.calendar-legend .dot.non-working { background: rgba(239,68,68,0.35); }
+.calendar-legend .dot.outside     { background: transparent; border: 1px dashed rgba(255,255,255,0.2); }
+
+.calendar-weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--surface-500, #64748b);
+    margin-bottom: 6px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.calendar-day {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.calendar-day.empty { background: transparent; border: none; }
+
+.calendar-day.working {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+    color: #e2e8f0;
+    cursor: pointer;
+}
+.calendar-day.working:hover {
+    background: rgba(99,102,241,0.18);
+    border-color: rgba(99,102,241,0.4);
+    transform: translateY(-1px);
+}
+
+.calendar-day.non-working {
+    background: rgba(239,68,68,0.06);
+    border-color: rgba(239,68,68,0.15);
+    color: #fca5a5;
+}
+
+.calendar-day.outside {
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.08);
+    color: #475569;
+}
+
+.calendar-day .cal-day-num { line-height: 1; }
+
+.calendar-day .cal-day-counts {
+    display: flex;
+    gap: 4px;
+    font-size: 0.62rem;
+    font-weight: 700;
+}
+.calendar-day .cal-count-applied { color: #a5b4fc; }
+.calendar-day .cal-count-rejected { color: #fca5a5; }
+
+.calendar-day .cal-dot {
+    position: absolute;
+    top: 5px; right: 5px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--primary-500, #6366f1);
+}
+
+/* Day-detail modal */
+.day-detail-stats {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+.day-detail-stats .dd-pill {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #e2e8f0;
+}
+.day-detail-stats .dd-pill.applied  { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3); color: #a5b4fc; }
+.day-detail-stats .dd-pill.approved { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); color: #6ee7b7; }
+.day-detail-stats .dd-pill.rejected { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+.day-detail-stats .dd-pill.pending  { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #fcd34d; }
+
+.day-detail-list {
+    max-height: 320px;
+    overflow-y: auto;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.day-detail-list .dd-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.82rem;
+}
+.day-detail-list .dd-row .dd-event { color: white; font-weight: 600; }
+.day-detail-list .dd-row .dd-sub { color: var(--surface-400); font-size: 0.74rem; }
+.day-detail-list .dd-empty { text-align: center; color: var(--surface-500, #64748b); padding: 20px; font-size: 0.85rem; }
+
+#dayDetailModal { max-width: 480px; text-align: left; }
+#dayDetailModal h3 { text-align: center; }
+
+[data-theme="light"] .calendar-day.working { background: #f8fafc !important; border-color: #e2e8f0 !important; color: #1e293b !important; }
+[data-theme="light"] .calendar-day.working:hover { background: #eef2ff !important; border-color: #c7d2fe !important; }
+[data-theme="light"] .calendar-day.non-working { background: #fef2f2 !important; border-color: #fecaca !important; color: #b91c1c !important; }
+[data-theme="light"] .calendar-nav-btn { background: #f1f5f9 !important; border-color: #e2e8f0 !important; color: #334155 !important; }
+[data-theme="light"] .day-detail-list .dd-row { background: #f8fafc !important; border-color: #e2e8f0 !important; }
+[data-theme="light"] .day-detail-list .dd-row .dd-event { color: #1e293b !important; }
