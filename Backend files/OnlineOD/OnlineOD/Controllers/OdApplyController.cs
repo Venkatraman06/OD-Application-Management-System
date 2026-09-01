@@ -91,6 +91,10 @@ namespace OnlineOD.Controllers
             if (dto == null)
                 return BadRequest("OD Apply data is required");
 
+            var dateError = WorkingDaysCalendar.ValidateRange(dto.FromDate, dto.ToDate);
+            if (dateError != null)
+                return BadRequest(dateError);
+
             var result = await _service.CreateOdApplyAsync(dto);
 
             // Send email to every staff whose Department + Section matches ANY
@@ -170,12 +174,20 @@ namespace OnlineOD.Controllers
         }
 
         // DELETE /api/OdApply/{id}
+        // DELETE /api/OdApply/{odId}
+        // Lets a student cancel/withdraw their own OD application — but only
+        // while it is still Pending. Once faculty has approved or rejected
+        // it, the student can no longer delete it from their side.
         [HttpDelete("{odId}")]
         public async Task<IActionResult> DeleteOd(int odId)
         {
-            var result = await _service.DeleteOdApplyAsync(odId);
-            if (!result) return NotFound();
-            return Ok(result);
+            var (success, error) = await _service.DeleteOdApplyAsync(odId);
+            if (!success)
+            {
+                if (error == "OD not found.") return NotFound(error);
+                return BadRequest(error);
+            }
+            return Ok(new { success = true, message = "OD application cancelled." });
         }
 
         // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX&staffId=YYY
@@ -247,6 +259,10 @@ namespace OnlineOD.Controllers
         {
             if (string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
                 return BadRequest("FromDate and ToDate are required.");
+
+            var dateError = WorkingDaysCalendar.ValidateRange(dto.FromDate, dto.ToDate);
+            if (dateError != null)
+                return BadRequest(dateError);
 
             // Server recomputes days; client hint is a fallback
             int days = dto.NumberOfDays ?? 1;

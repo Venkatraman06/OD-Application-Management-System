@@ -134,6 +134,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             emptyTitle: '',
             emptyText: '',
             icon: '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'
+        },
+        calendar: {
+            title: 'Working-Days Calendar',
+            emptyTitle: '',
+            emptyText: '',
+            icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'
         }
     };
 
@@ -478,9 +484,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const requestsContainer = document.getElementById('requestsContainer');
         const emptyState = document.getElementById('emptyState');
         const analyticsView = document.getElementById('analyticsView');
+        const calendarView = document.getElementById('calendarView');
         applySectionMeta(filter);
 
         const timeBar = document.getElementById('timeFilterBar');
+
+        if (filter === 'calendar') {
+            if (searchBox) searchBox.style.display = 'none';
+            if (timeBar)   timeBar.style.display = 'none';
+            if (requestsContainer) requestsContainer.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
+            if (analyticsView) analyticsView.style.display = 'none';
+            if (calendarView) calendarView.style.display = 'block';
+            setEl('sectionCount', '');
+            loadCalendarData();
+            return;
+        }
+        if (calendarView) calendarView.style.display = 'none';
 
         if (filter === 'analytics') {
             if (searchBox) searchBox.style.display = 'none';
@@ -906,6 +926,202 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         return `<div style="margin-top:10px"><strong style="font-size:12px;color:#94a3b8">Group Members:</strong><div style="margin-top:6px">${chips}</div></div>`;
     }
+
+    // ── Working-Days Calendar (HOD) ──
+    // Loads every OD in this HOD's department (any status) once, then lets
+    // the HOD browse the published college working-days calendar month by
+    // month. Clicking a working day shows how many ODs cover that date and
+    // how many of those were rejected (by faculty or HOD).
+    let calendarODs = null;      // department-scoped OD list, loaded once
+    let calendarLoading = false;
+    let calMonthIndex = 0;       // index into calMonthKeys
+    let calMonthKeys = [];       // e.g. ['2025-12', '2026-01', ...]
+
+    function buildCalMonthKeys() {
+        if (calMonthKeys.length || typeof CollegeWorkingDays === 'undefined') return;
+        const seen = new Set();
+        CollegeWorkingDays.list.forEach(d => seen.add(d.slice(0, 7)));
+        calMonthKeys = [...seen].sort();
+    }
+
+    async function loadCalendarData() {
+        buildCalMonthKeys();
+        if (!calMonthKeys.length) {
+            const grid = document.getElementById('calendarGrid');
+            if (grid) grid.innerHTML = '<div class="dd-empty">Working-days calendar not available.</div>';
+            return;
+        }
+        if (calMonthIndex === 0 && calMonthKeys.length) {
+            // Default to the month containing today, if it's in range; else first month.
+            const todayKey = new Date().toISOString().slice(0, 7);
+            const idx = calMonthKeys.indexOf(todayKey);
+            calMonthIndex = idx >= 0 ? idx : 0;
+        }
+
+        if (calendarODs === null && !calendarLoading) {
+            calendarLoading = true;
+            const grid = document.getElementById('calendarGrid');
+            if (grid) grid.innerHTML = '<div class="dd-empty">Loading OD data...</div>';
+            try {
+                const res = await fetch(`${API_BASE}/api/OdApply?_=${Date.now()}`, { cache: 'no-store' });
+                const all = res.ok ? await res.json() : [];
+                const myDept = (dept || '').trim().toLowerCase();
+                calendarODs = all.filter(o => ((o.department ?? o.Department ?? '').trim().toLowerCase()) === myDept);
+            } catch (err) {
+                console.error('loadCalendarData error:', err);
+                calendarODs = [];
+                showToast('error', 'Failed to load calendar data');
+            }
+            calendarLoading = false;
+        }
+
+        renderCalendarMonth();
+    }
+
+    /** Every OD (row) whose FromDate..ToDate range covers dateStr. */
+    function odsCoveringDate(dateStr) {
+        if (!calendarODs) return [];
+        return calendarODs.filter(o => {
+            const from = o.fromDate ?? o.FromDate ?? '';
+            const to   = o.toDate   ?? o.ToDate   ?? '';
+            if (!from || !to) return false;
+            return dateStr >= from && dateStr <= to;
+        });
+    }
+
+    /** true if this OD row is rejected overall (faculty or HOD rejected it). */
+    function isOdRowRejected(o) {
+        const fac = o.facultyStatus ?? o.FacultyStatus ?? 'Pending';
+        const hod = o.hodStatus ?? o.HodStatus ?? 'Pending';
+        return fac === 'Rejected' || hod === 'Rejected';
+    }
+
+    function isOdRowApproved(o) {
+        const hod = o.hodStatus ?? o.HodStatus ?? 'Pending';
+        return hod === 'Approved';
+    }
+
+    function renderCalendarMonth() {
+        const grid  = document.getElementById('calendarGrid');
+        const label = document.getElementById('calendarMonthLabel');
+        const prevBtn = document.getElementById('calendarPrevBtn');
+        const nextBtn = document.getElementById('calendarNextBtn');
+        if (!grid || !calMonthKeys.length) return;
+
+        const monthKey = calMonthKeys[calMonthIndex]; // 'YYYY-MM'
+        const [yearStr, monStr] = monthKey.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monStr, 10) - 1; // 0-based
+
+        if (label) {
+            label.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        if (prevBtn) prevBtn.disabled = calMonthIndex <= 0;
+        if (nextBtn) nextBtn.disabled = calMonthIndex >= calMonthKeys.length - 1;
+
+        const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = '';
+        for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
+            const isWorking = CollegeWorkingDays.isWorkingDay(dateStr);
+
+            if (!isWorking) {
+                html += `<div class="calendar-day non-working" title="Holiday / non-working day">
+                            <span class="cal-day-num">${day}</span>
+                         </div>`;
+                continue;
+            }
+
+            const covering = odsCoveringDate(dateStr);
+            const appliedCount  = covering.length;
+            const rejectedCount = covering.filter(isOdRowRejected).length;
+            const hasActivity = appliedCount > 0;
+
+            html += `<div class="calendar-day working" data-date="${dateStr}" title="${dateStr}">
+                        ${hasActivity ? '<span class="cal-dot"></span>' : ''}
+                        <span class="cal-day-num">${day}</span>
+                        ${hasActivity ? `<span class="cal-day-counts">
+                            <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
+                        </span>` : ''}
+                     </div>`;
+        }
+
+        grid.innerHTML = html;
+    }
+
+    document.getElementById('calendarPrevBtn')?.addEventListener('click', () => {
+        if (calMonthIndex > 0) { calMonthIndex--; renderCalendarMonth(); }
+    });
+    document.getElementById('calendarNextBtn')?.addEventListener('click', () => {
+        if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
+    });
+
+    document.getElementById('calendarGrid')?.addEventListener('click', (e) => {
+        const cell = e.target.closest('.calendar-day.working[data-date]');
+        if (!cell) return;
+        openDayDetail(cell.dataset.date);
+    });
+
+    const dayDetailOverlay = document.getElementById('dayDetailOverlay');
+    function openDayDetail(dateStr) {
+        const covering = odsCoveringDate(dateStr);
+        const applied  = covering.length;
+        const approved = covering.filter(isOdRowApproved).length;
+        const rejected = covering.filter(isOdRowRejected).length;
+        const pending   = applied - approved - rejected;
+
+        const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        setEl('dayDetailDate', dateLabel);
+
+        const statsEl = document.getElementById('dayDetailStats');
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <span class="dd-pill applied">${applied} Applied</span>
+                <span class="dd-pill approved">${approved} Approved</span>
+                <span class="dd-pill rejected">${rejected} Rejected</span>
+                <span class="dd-pill pending">${Math.max(pending, 0)} Pending</span>
+            `;
+        }
+
+        const listEl = document.getElementById('dayDetailList');
+        if (listEl) {
+            if (!covering.length) {
+                listEl.innerHTML = '<div class="dd-empty">No OD requests cover this date.</div>';
+            } else {
+                listEl.innerHTML = covering.map(o => {
+                    const event   = o.event ?? o.Event ?? 'OD';
+                    const student = o.studentName ?? o.StudentName ?? '';
+                    const reg     = o.registerNumber ?? o.RegisterNumber ?? '';
+                    const isGroup = o.isGroupOd ?? o.IsGroupOd ?? false;
+                    const groupName = o.groupName ?? o.GroupName ?? '';
+                    const rejected  = isOdRowRejected(o);
+                    const approved  = isOdRowApproved(o);
+                    const statusLabel = rejected ? 'Rejected' : approved ? 'Approved' : 'Pending';
+                    const statusColor = rejected ? '#ef4444' : approved ? '#10b981' : '#f59e0b';
+                    const who = isGroup ? `Group: ${groupName}` : `${student}${reg ? ' (' + reg + ')' : ''}`;
+                    return `
+                        <div class="dd-row">
+                            <div>
+                                <div class="dd-event">${event}</div>
+                                <div class="dd-sub">${who}</div>
+                            </div>
+                            <span style="font-weight:700;color:${statusColor}">${statusLabel}</span>
+                        </div>`;
+                }).join('');
+            }
+        }
+
+        dayDetailOverlay?.classList.add('active');
+    }
+    function closeDayDetail() { dayDetailOverlay?.classList.remove('active'); }
+    document.getElementById('dayDetailCloseBtn')?.addEventListener('click', closeDayDetail);
+    dayDetailOverlay?.addEventListener('click', (e) => { if (e.target === dayDetailOverlay) closeDayDetail(); });
 
     // ── Nav filters ──
     document.querySelectorAll('.nav-item[data-filter]').forEach(btn => {

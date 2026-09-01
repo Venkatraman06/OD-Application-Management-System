@@ -73,49 +73,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ============================================
     // Working-days-only helpers
-    // OD can only be applied for working days (Mon–Fri).
-    // Weekends (Sat/Sun) are blocked on date pick and
-    // the day count only counts working days in range.
+    // OD can only be applied for dates that are on the college's
+    // published working-days calendar (see working-days.js, generated
+    // from the college_working_days.xlsx sheet). Holidays, weekends,
+    // and any date outside the published semester period are blocked
+    // on date pick, and the day count only counts actual working days.
     // ============================================
 
-    /** true if the given YYYY-MM-DD date string falls on Sat or Sun */
+    const workingDaysCalendar = (typeof CollegeWorkingDays !== 'undefined') ? CollegeWorkingDays : null;
+
+    // Restrict the native date pickers to the published calendar period
+    // so students can't even scroll to an out-of-range date.
+    ['fromDate', 'toDate', 'groupFromDate', 'groupToDate'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && workingDaysCalendar) {
+            el.min = workingDaysCalendar.minDate;
+            el.max = workingDaysCalendar.maxDate;
+        }
+    });
+
+    /** true if the given YYYY-MM-DD date string is NOT a published college working day */
     function isWeekend(dateStr) {
         if (!dateStr) return false;
-        const d = new Date(dateStr + 'T00:00:00');
-        if (isNaN(d.getTime())) return false;
-        const day = d.getDay(); // 0 = Sunday, 6 = Saturday
-        return day === 0 || day === 6;
+        if (!workingDaysCalendar) return false; // fail open if calendar failed to load
+        return !workingDaysCalendar.isWorkingDay(dateStr);
     }
 
-    /** counts only Mon–Fri days (inclusive) between two YYYY-MM-DD strings */
+    /** counts only published working days (inclusive) between two YYYY-MM-DD strings */
     function countWorkingDays(fromStr, toStr) {
-        const from = new Date(fromStr + 'T00:00:00');
-        const to   = new Date(toStr + 'T00:00:00');
-        if (isNaN(from.getTime()) || isNaN(to.getTime()) || from > to) return 0;
-        let count = 0;
-        const cur = new Date(from);
-        while (cur <= to) {
-            const day = cur.getDay();
-            if (day !== 0 && day !== 6) count++;
-            cur.setDate(cur.getDate() + 1);
-        }
-        return count;
+        if (!workingDaysCalendar) return 0;
+        return workingDaysCalendar.countWorkingDays(fromStr, toStr);
     }
 
     /**
-     * Guards a date input against weekend selection.
-     * If the picked date is a Saturday/Sunday, clears the field,
-     * shows an inline error, and shows a toast.
+     * Guards a date input against non-working-day selection.
+     * If the picked date is a holiday, weekend, or outside the published
+     * semester calendar, clears the field, shows an inline error, and a toast.
      * Returns true if the value was valid (or empty), false if it was cleared.
      */
     function guardWeekendInput(inputEl, errorElId, label) {
         if (!inputEl) return true;
         const val = inputEl.value;
         if (!val) { clearFieldError(inputEl, errorElId); return true; }
+        if (workingDaysCalendar && workingDaysCalendar.isOutsideCalendar(val)) {
+            inputEl.value = '';
+            showFieldError(inputEl, errorElId, `${label} is outside the published college working-days calendar (${workingDaysCalendar.minDate} to ${workingDaysCalendar.maxDate}).`);
+            showToast('error', `${label} is outside the current college calendar.`);
+            return false;
+        }
         if (isWeekend(val)) {
             inputEl.value = '';
-            showFieldError(inputEl, errorElId, `${label} cannot be a weekend (Sat/Sun) — OD is only for working days.`);
-            showToast('error', `${label} must be a working day (Mon–Fri).`);
+            showFieldError(inputEl, errorElId, `${label} is not a college working day (holiday/weekend) — OD is only for working days.`);
+            showToast('error', `${label} must be a college working day.`);
             return false;
         }
         clearFieldError(inputEl, errorElId);
@@ -145,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value <= toEl.value) {
             const d = countWorkingDays(fromEl.value, toEl.value);
             if (daysEl) {
-                daysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers only weekends)';
+                daysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers no published working days)';
             }
         } else {
             if (daysEl) daysEl.value = '';
@@ -163,7 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (groupFromEl && groupToEl && groupFromEl.value && groupToEl.value && groupFromEl.value <= groupToEl.value) {
             const d = countWorkingDays(groupFromEl.value, groupToEl.value);
             if (groupDaysEl) {
-                groupDaysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers only weekends)';
+                groupDaysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers no published working days)';
             }
         } else {
             if (groupDaysEl) groupDaysEl.value = '';
@@ -338,8 +347,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const regNumbersRaw = document.getElementById('registerNumbers')?.value.trim() || '';
         const groupCompetitionType = document.getElementById('groupCompetitionType')?.value || '';
 
-        if (!fromDate || !toDate || !event || !college || !reason || !groupName || !regNumbersRaw || !groupCompetitionType) {
+        if (!fromDate || !toDate || !event || !college || !reason || !groupName || !groupCompetitionType) {
             showToast('error', 'All fields required'); return;
+        }
+        if (!regNumbersRaw || window.groupMemberList.length < 2) {
+            showToast('error', 'Add at least 2 group members'); return;
         }
         if (fromDate > toDate) {
             showToast('error', 'To date must be after from date'); return;
@@ -357,18 +369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('error', 'Reason too short'); return;
         }
 
-        const regNumbers = [...new Set(
-            regNumbersRaw.split(',').map(r => r.trim()).filter(r => r.length > 0)
-        )];
-
-        if (regNumbers.length < 2) {
-            showToast('error', 'Enter at least 2 register numbers for a group'); return;
-        }
-
-        const myRegNo = (localStorage.getItem('registerNumber') || '').trim();
-        if (myRegNo && !regNumbers.some(r => r.toLowerCase() === myRegNo.toLowerCase())) {
-            regNumbers.push(myRegNo);
-        }
+        const regNumbers = [...window.groupMemberList];
 
         const days = countWorkingDays(fromDate, toDate);
         if (days <= 0) {
@@ -416,6 +417,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('groupOdForm').reset();
                 if (groupDaysEl) groupDaysEl.value = '';
+                // Reset dynamic member list
+                window.groupMemberList = [];
+                renderMemberList();
                 switchTab('apply-status');
             } else {
                 const errText = await res.text();
@@ -655,6 +659,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (odModal) odModal.style.display = 'flex';
     }
 
+
+    // ══════════════════════════════════════════════════
+    // GROUP MEMBER DYNAMIC LIST
+    // ══════════════════════════════════════════════════
+    window.groupMemberList = [];  // array of uppercase reg numbers
+
+    function renderMemberList() {
+        const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toUpperCase();
+        const list = document.getElementById('memberList');
+        const hidden = document.getElementById('registerNumbers');
+        if (!list) return;
+
+        // Ensure own reg number is always first in the list
+        if (myRegNo && !window.groupMemberList.includes(myRegNo)) {
+            window.groupMemberList.unshift(myRegNo);
+        }
+
+        list.innerHTML = window.groupMemberList.map((reg, i) => {
+            const isSelf = reg === myRegNo;
+            return `<span class="member-chip${isSelf ? ' is-self' : ''}" data-reg="${reg}">
+                <span class="chip-label">${reg}${isSelf ? ' (You)' : ''}</span>
+                ${!isSelf ? `<button type="button" class="chip-remove" data-index="${i}" title="Remove">×</button>` : ''}
+            </span>`;
+        }).join('');
+
+        // Sync hidden field for form submission
+        if (hidden) hidden.value = window.groupMemberList.join(',');
+
+        // Update error visibility
+        const errEl = document.getElementById('registerNumbers-error');
+        if (errEl && window.groupMemberList.length >= 2) errEl.textContent = '';
+
+        // Wire remove buttons
+        list.querySelectorAll('.chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const reg = btn.closest('.member-chip').dataset.reg;
+                window.groupMemberList = window.groupMemberList.filter(r => r !== reg);
+                renderMemberList();
+            });
+        });
+    }
+
+    function addMember() {
+        const input = document.getElementById('memberRegInput');
+        if (!input) return;
+        const val = input.value.trim().toUpperCase();
+        if (!val) { showToast('error', 'Enter a register number'); return; }
+        if (window.groupMemberList.includes(val)) {
+            showToast('error', `${val} is already added`);
+            input.value = '';
+            return;
+        }
+        window.groupMemberList.push(val);
+        renderMemberList();
+        input.value = '';
+        input.focus();
+    }
+
+    document.getElementById('addMemberBtn')?.addEventListener('click', addMember);
+    document.getElementById('memberRegInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addMember(); }
+    });
+
+    // Initialise with own reg number on page load
+    renderMemberList();
+
     function escapeCompType(t) {
         const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
         const key = (t || '').toLowerCase();
@@ -827,6 +897,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         return daysSinceEnd === 1 ? 'Completed yesterday' : `Completed ${daysSinceEnd} days ago`;
     }
 
+    // ── Cancel/withdraw an OD before staff has reviewed it ──
+    // Only shown (see canCancel above) while FacultyStatus is still
+    // "Pending". The server re-checks this too before deleting, so this
+    // is not the only line of defence — just a friendlier UX gate.
+    async function cancelOdApplication(odId, od) {
+        const eventName = od.Event ?? od.event ?? 'this OD';
+        const confirmed = window.confirm(
+            `Cancel your OD request for "${eventName}"?\n\nThis cannot be undone. You can only cancel while staff has not yet reviewed it.`
+        );
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}`, { method: 'DELETE' });
+
+            if (res.ok) {
+                showToast('success', 'OD request cancelled.');
+                loadODStatus();
+                return;
+            }
+
+            // 400 = already reviewed by staff (race condition with the poll),
+            // 404 = already deleted/gone. Either way, refresh the list so
+            // the card reflects reality instead of leaving a stale button.
+            let message = 'Could not cancel this OD.';
+            try {
+                const body = await res.json();
+                message = (typeof body === 'string') ? body : (body?.message || body?.title || message);
+            } catch (_) { /* no JSON body */ }
+
+            showToast('error', message);
+            loadODStatus();
+        } catch (err) {
+            console.error('cancelOdApplication error:', err);
+            showToast('error', 'Network error — could not cancel OD.');
+        }
+    }
+
     // ── Load OD Status (solo + group, via register number) ──
     async function loadODStatus() {
         const list  = document.getElementById('statusList');
@@ -896,6 +1003,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const iAmRejected = myFacultyStatus === 'Rejected';
 
                 const overall = iAmRejected ? 'rejected' : overallKey(myFacultyStatus, hodStatus);
+
+                // Can still be cancelled by the student ONLY while no staff
+                // has acted on it yet at all (matches the server-side check
+                // in DeleteOdApplyAsync — OD-level FacultyStatus, not just
+                // "my own" status, since a group OD can have one section
+                // already decided even while mine is still Pending).
+                const rawFacultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
+                const canCancel = rawFacultyStatus === 'Pending';
+
                 const competitionType = od.CompetitionType ?? od.competitionType ?? '';
                 const competitionTag = competitionType
                     ? `<span class="competition-tag competition-tag--${competitionType.toLowerCase().replace(/\s+/g,'-')}" title="Competition Type">${escapeCompType(competitionType)}</span>`
@@ -988,6 +1104,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             Print Report
                         </button>`}
                         ${certBtnHtml}
+                        ${canCancel ? `
+                        <button type="button" class="cancel-od-btn" data-odid="${odId}" title="Withdraw this OD request before staff reviews it">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            Cancel OD
+                        </button>` : ''}
                     </div>
                 </div>`;
             }).join('');
@@ -1015,6 +1139,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.closest('.print-report-btn')) {
             e.stopPropagation();
             printOdReport(od);
+            return;
+        }
+
+        if (e.target.closest('.cancel-od-btn')) {
+            e.stopPropagation();
+            cancelOdApplication(odId, od);
             return;
         }
 

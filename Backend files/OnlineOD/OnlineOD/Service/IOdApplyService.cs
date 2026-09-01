@@ -8,7 +8,7 @@ namespace OnlineOD.Service
         Task<List<OdApply>> GetAllOdApplyAsync();
         Task<OdApply?> GetOdApplyByIdAsync(int id);
         Task<OdApply> CreateOdApplyAsync(OdApplyDto dto);
-        Task<bool> DeleteOdApplyAsync(int id);
+        Task<(bool success, string? error)> DeleteOdApplyAsync(int id);
         Task<List<OdApply>> GetByStudentIdAsync(int studentId);
         Task<List<OdApply>> GetByDepartmentAsync(string department, string? section = null);
         Task<List<OdApply>> GetApprovedByFacultyAsync(string department);
