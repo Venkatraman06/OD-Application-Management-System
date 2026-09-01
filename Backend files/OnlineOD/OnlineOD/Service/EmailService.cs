@@ -200,5 +200,29 @@ namespace OnlineOD.Services
             await SendAsync(toEmail, hodName,
                 $"{subjectTag}OD Approval Required — {studentName} ({registerNumber})", body);
         }
+
+        // ── 3. "Contact Admin" form on the login page ─────────────────────────
+        public async Task SendContactAdminEmailAsync(
+            string registerNumber, string dob, string password, string role, string message)
+        {
+            var adminEmail = _config["EmailSettings:AdminEmail"] ?? _config["EmailSettings:SenderEmail"];
+
+            var rows = $@"
+            <table style='width:100%;border-collapse:collapse;font-size:14px'>
+                <tr><td style='padding:6px 0;color:#6b7280;width:160px'>Role</td><td style='color:#111827'><b>{role}</b></td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280'>Register / Staff No.</td><td style='color:#111827'>{registerNumber}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280'>Date of Birth</td><td style='color:#111827'>{dob}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280'>Password (as entered)</td><td style='color:#111827'>{password}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;vertical-align:top'>Message / Report</td><td style='color:#111827;white-space:pre-wrap'>{message}</td></tr>
+            </table>";
+
+            var intro = "A user submitted the <b>Contact Admin</b> form from the login page. " +
+                        "They may need account creation, a password reset, or help with the issue below.";
+
+            var body = Wrap("Admin", intro, rows, "");
+
+            await SendAsync(adminEmail, "Admin",
+                $"Contact Admin — {role} ({registerNumber})", body);
+        }
     }
 }
