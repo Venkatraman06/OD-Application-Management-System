@@ -2,6 +2,7 @@
 using OnlineOD.Models;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Dtos;
+using System;
 
 namespace OnlineOD.Service
 {
@@ -260,7 +261,7 @@ namespace OnlineOD.Service
                 Section = dto.Section,
                 FromDate = dto.FromDate,
                 ToDate = dto.ToDate,
-                NumberOfDays = dto.NumberOfDays,
+                NumberOfDays = WorkingDaysCalendar.CountWorkingDays(dto.FromDate, dto.ToDate) is int wd && wd > 0 ? wd : dto.NumberOfDays,
                 Event = dto.Event,
                 CompetitionType = dto.CompetitionType,
                 Reason = dto.Reason,
@@ -371,14 +372,20 @@ namespace OnlineOD.Service
 
         // Delete an OD application by ID
 
-        public async Task<bool> DeleteOdApplyAsync(int id)
+        public async Task<(bool success, string? error)> DeleteOdApplyAsync(int id)
         {
             var od = await _context.OdApplies.FindAsync(id);
-            if (od == null) return false;
+            if (od == null) return (false, "OD not found.");
+
+            // Students can only withdraw an OD while it is still pending —
+            // once any staff (faculty) has acted on it, it can no longer be
+            // cancelled from the student side.
+            if (!string.Equals(od.FacultyStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+                return (false, "This OD has already been reviewed by staff and can no longer be cancelled.");
 
             _context.OdApplies.Remove(od);
             await _context.SaveChangesAsync();
-            return true;
+            return (true, null);
         }
 
         // In OdApplyService.cs
@@ -590,10 +597,11 @@ namespace OnlineOD.Service
             if (!string.Equals(od.FacultyStatus, "Pending", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            // Recompute days server-side to stay consistent
-            int computedDays = numberOfDays;
-            if (DateTime.TryParse(fromDate, out var from) && DateTime.TryParse(toDate, out var to) && to >= from)
-                computedDays = (int)(to - from).TotalDays + 1;
+            // Recompute days server-side to stay consistent — count only
+            // published college working days, not raw calendar days.
+            int computedDays = WorkingDaysCalendar.CountWorkingDays(fromDate, toDate);
+            if (computedDays <= 0)
+                computedDays = numberOfDays;
 
             od.FromDate = fromDate;
             od.ToDate = toDate;
