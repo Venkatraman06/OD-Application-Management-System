@@ -94,12 +94,16 @@ function initAdminApp() {
         const { kind, id } = pendingDelete;
         deleteOverlay.classList.remove('active');
         try {
-            const endpoint = kind === 'student' ? `Student/${id}` : kind === 'staff' ? `Faculty/${id}` : `Hod/${id}`;
+            const endpoint = kind === 'student' ? `Student/${id}`
+                : kind === 'staff' ? `Faculty/${id}`
+                : kind === 'request' ? `Admin/ContactRequests/${id}`
+                : `Hod/${id}`;
             const res = await fetch(`${API_BASE}/api/${endpoint}`, { method: 'DELETE' });
             if (!res.ok) { showToast('error', 'Delete failed.'); return; }
             showToast('success', 'Deleted.');
             if (kind === 'student') loadStudents();
             else if (kind === 'staff') loadStaff();
+            else if (kind === 'request') loadRequests();
             else loadHods();
         } catch (err) {
             console.error(err);
@@ -585,8 +589,93 @@ function initAdminApp() {
         if (el) el.textContent = val ?? '';
     }
 
+    // ============================================
+    // CONTACT ADMIN REQUESTS
+    // ============================================
+    let requests = [];
+
+    async function loadRequests() {
+        try {
+            const res = await fetch(`${API_BASE}/api/Admin/ContactRequests?_=${Date.now()}`, { cache: 'no-store' });
+            requests = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error(err);
+            requests = [];
+            showToast('error', 'Failed to load contact requests.');
+        }
+        setEl('requestsTabCount', requests.filter(r => !(r.isResolved ?? r.IsResolved)).length);
+        renderRequests(requests);
+    }
+
+    function renderRequests(list) {
+        const tbody = document.getElementById('requestsTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No requests yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(r => {
+            const id = r.id ?? r.Id;
+            const resolved = r.isResolved ?? r.IsResolved;
+            const submitted = r.submittedDate ?? r.SubmittedDate;
+            const submittedLabel = submitted ? new Date(submitted).toLocaleString() : '-';
+            return `
+            <tr>
+                <td>${esc(r.registerNumber ?? r.RegisterNumber)}</td>
+                <td>${esc(r.role ?? r.Role)}</td>
+                <td>${esc(r.dob ?? r.Dob ?? '-')}</td>
+                <td class="requests-msg-cell">${esc(r.message ?? r.Message)}</td>
+                <td>${esc(submittedLabel)}</td>
+                <td><span class="status-pill ${resolved ? 'status-resolved' : 'status-pending'}">${resolved ? 'Resolved' : 'Pending'}</span></td>
+                <td>
+                    <div class="row-actions">
+                        ${!resolved ? `
+                        <button class="row-btn resolve-btn" title="Mark resolved" data-id="${id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                        </button>` : ''}
+                        <button class="row-btn delete-btn" title="Delete" data-id="${id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.resolve-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                try {
+                    const res = await fetch(`${API_BASE}/api/Admin/ContactRequests/${id}/Resolve`, { method: 'PUT' });
+                    if (!res.ok) { showToast('error', 'Could not update request.'); return; }
+                    showToast('success', 'Marked as resolved.');
+                    loadRequests();
+                } catch (err) {
+                    console.error(err);
+                    showToast('error', 'Network error while updating request.');
+                }
+            });
+        });
+
+        tbody.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                askDelete('request', btn.dataset.id, 'this contact request');
+            });
+        });
+    }
+
+    document.getElementById('requestsSearch')?.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) { renderRequests(requests); return; }
+        renderRequests(requests.filter(r =>
+            (r.registerNumber ?? r.RegisterNumber ?? '').toLowerCase().includes(q) ||
+            (r.role ?? r.Role ?? '').toLowerCase().includes(q) ||
+            (r.message ?? r.Message ?? '').toLowerCase().includes(q)
+        ));
+    });
+
     // ── Initial load ──
     loadStudents();
     loadStaff();
     loadHods();
+    loadRequests();
 }

@@ -68,6 +68,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             HOD <span class="tab-count" id="hodTabCount">0</span>
         </button>
+        <button class="admin-tab" data-tab="requests">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Requests <span class="tab-count" id="requestsTabCount">0</span>
+        </button>
     </nav>
 
     <main class="admin-main">
@@ -251,6 +255,28 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============== CONTACT ADMIN REQUESTS ============== -->
+        <section class="admin-panel" id="panel-requests">
+            <div class="admin-card list-card requests-full">
+                <div class="list-card-header">
+                    <h2>Contact Admin Requests</h2>
+                    <input type="text" class="admin-search" id="requestsSearch" placeholder="Search reg/staff no. / role...">
+                </div>
+                <div class="table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Reg/Staff No.</th><th>Role</th><th>DOB</th><th>Report</th><th>Submitted</th><th>Status</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsTableBody">
+                            <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
