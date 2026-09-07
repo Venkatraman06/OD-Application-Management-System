@@ -10,5 +10,6 @@ namespace OnlineOD.Service
         Task<Student> UpdateStudentAsync(Student student);
         Task<bool> DeleteStudentAsync(int id);
         Task<Student> LoginAsync(string registerNumber, string password);
+        Task<Student> GetByRegisterNumberAsync(string registerNumber);
     }
 }

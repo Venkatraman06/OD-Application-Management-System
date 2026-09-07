@@ -16,7 +16,10 @@ namespace OnlineOD.Service
     /// </summary>
     public static class WorkingDaysCalendar
     {
-        public static readonly HashSet<string> WorkingDays = new HashSet<string>
+        // Original published seed list — kept as the fallback/default.
+        // HOD edits are layered on top of this via ApplyOverride() /
+        // LoadOverrides(), which mutate the live WorkingDays set below.
+        private static readonly HashSet<string> SeedWorkingDays = new HashSet<string>
         {
             "2025-12-01", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-06", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11",
             "2025-12-12", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-20", "2025-12-22", "2025-12-23", "2025-12-24",
@@ -31,8 +34,38 @@ namespace OnlineOD.Service
             "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30"
         };
 
-        public static readonly string MinDate = WorkingDays.Min();
-        public static readonly string MaxDate = WorkingDays.Max();
+        private static readonly string SeedMinDate = SeedWorkingDays.Min();
+        private static readonly string SeedMaxDate = SeedWorkingDays.Max();
+
+        // Live, mutable set — starts as a copy of the seed and is adjusted
+        // at startup (from DB overrides) and at runtime (when the HOD edits
+        // or removes a day from the calendar).
+        public static HashSet<string> WorkingDays { get; private set; } = new HashSet<string>(SeedWorkingDays);
+
+        public static string MinDate => WorkingDays.Count > 0 ? WorkingDays.Min() : SeedMinDate;
+        public static string MaxDate => WorkingDays.Count > 0 ? WorkingDays.Max() : SeedMaxDate;
+
+        /// <summary>Applies a batch of HOD-made overrides on top of the seed list — called once at app startup.</summary>
+        public static void LoadOverrides(IEnumerable<(string Date, bool IsWorking)> overrides)
+        {
+            foreach (var o in overrides)
+                ApplyOverride(o.Date, o.IsWorking);
+        }
+
+        /// <summary>
+        /// HOD edits a single date: true = mark/keep it a working day
+        /// (add to calendar), false = remove it from the calendar (holiday).
+        /// </summary>
+        public static bool ApplyOverride(string dateStr, bool isWorking)
+        {
+            var normalized = Normalize(dateStr);
+            if (normalized == null) return false;
+
+            if (isWorking) WorkingDays.Add(normalized);
+            else WorkingDays.Remove(normalized);
+
+            return true;
+        }
 
         /// <summary>True if the given date string (any parseable format, compared as yyyy-MM-dd) is a published working day.</summary>
         public static bool IsWorkingDay(string? dateStr)

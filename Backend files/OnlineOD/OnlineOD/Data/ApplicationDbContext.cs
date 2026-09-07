@@ -16,5 +16,6 @@ namespace OnlineOD.Data
         public DbSet<OdApply> OdApplies { get; set; }
         public DbSet<OdCertificate> OdCertificates { get; set; }
         public DbSet<ContactAdminRequest> ContactAdminRequests { get; set; }
+        public DbSet<WorkingDayOverride> WorkingDayOverrides { get; set; }
     }
 }

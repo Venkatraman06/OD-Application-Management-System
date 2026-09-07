@@ -610,5 +610,62 @@ namespace OnlineOD.Service
             await _context.SaveChangesAsync();
             return od;
         }
+
+        // Student edits their own Group OD — only while nobody (faculty or
+        // HOD) has made a decision on it yet.
+        public async Task<(OdApply? od, string? error)> EditGroupOdAsync(int odId, EditGroupOdDto dto)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return (null, "OD not found.");
+
+            if (!od.IsGroupOd)
+                return (null, "Only Group OD requests can be edited this way.");
+
+            if (!string.Equals(od.FacultyStatus, "Pending", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(od.HodStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+                return (null, "This OD has already been reviewed and can no longer be edited.");
+
+            if (string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
+                return (null, "From Date and To Date are required.");
+
+            var dateError = WorkingDaysCalendar.ValidateRange(dto.FromDate, dto.ToDate);
+            if (dateError != null)
+                return (null, dateError);
+
+            var memberList = (dto.RegisterNumbers ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(r => r.ToUpperInvariant())
+                .Distinct()
+                .ToList();
+
+            if (memberList.Count < 2)
+                return (null, "A Group OD needs at least 2 members.");
+
+            // Make sure every register number actually belongs to a real
+            // student — same guard as when members are added on the form.
+            var validRegNumbers = await _context.Students
+                .Select(s => s.RegisterNumber.ToUpper())
+                .ToListAsync();
+            var invalidMembers = memberList.Where(r => !validRegNumbers.Contains(r)).ToList();
+            if (invalidMembers.Count > 0)
+                return (null, $"No user found for: {string.Join(", ", invalidMembers)}");
+
+            int computedDays = WorkingDaysCalendar.CountWorkingDays(dto.FromDate, dto.ToDate);
+            if (computedDays <= 0)
+                computedDays = dto.NumberOfDays;
+
+            od.FromDate = dto.FromDate;
+            od.ToDate = dto.ToDate;
+            od.NumberOfDays = computedDays;
+            od.Event = dto.Event;
+            od.CompetitionType = dto.CompetitionType;
+            od.Reason = dto.Reason;
+            od.CollegeIndustry = dto.CollegeIndustry;
+            od.GroupName = dto.GroupName;
+            od.RegisterNumbers = string.Join(",", memberList);
+
+            await _context.SaveChangesAsync();
+            return (od, null);
+        }
     }
 }

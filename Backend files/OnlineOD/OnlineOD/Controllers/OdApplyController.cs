@@ -280,6 +280,22 @@ namespace OnlineOD.Controllers
             });
         }
 
+        // PUT /api/OdApply/{odId}/EditGroupOd
+        // Student edits their own Group OD (dates, event, reason, members) —
+        // only while it is still Pending with both faculty and HOD.
+        [HttpPut("{odId}/EditGroupOd")]
+        public async Task<IActionResult> EditGroupOd(int odId, [FromBody] EditGroupOdDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Edit data is required.");
+
+            var (od, error) = await _service.EditGroupOdAsync(odId, dto);
+            if (error != null)
+                return BadRequest(error);
+
+            return Ok(od);
+        }
+
         // POST /api/OdApply/{odId}/UploadCertificate
         // Each student (identified by registerNumber) gets their own certificate
         // row for this OD — required for group ODs where multiple members each
