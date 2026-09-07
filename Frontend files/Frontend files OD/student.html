@@ -665,6 +665,93 @@
         </div>
     </div>
 
+    <!-- Edit Group OD Modal -->
+    <div class="modal-overlay" id="editGroupOdModal" style="display:none">
+        <div class="modal-box">
+            <button class="modal-close" id="editGroupOdCloseBtn" type="button">&times;</button>
+            <div class="modal-header">
+                <h3>Edit Group OD</h3>
+            </div>
+            <form id="editGroupOdForm" class="modal-body" novalidate>
+                <input type="hidden" id="editOdId">
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupFromDate">From Date <span class="required">*</span></label>
+                    <input type="date" id="editGroupFromDate" class="cert-text-input" required>
+                    <span class="error-message" id="editGroupFromDate-error"></span>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupToDate">To Date <span class="required">*</span></label>
+                    <input type="date" id="editGroupToDate" class="cert-text-input" required>
+                    <span class="error-message" id="editGroupToDate-error"></span>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupCollegeName">College Name <span class="required">*</span></label>
+                    <input type="text" id="editGroupCollegeName" class="cert-text-input" required>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupEventName">Event Name <span class="required">*</span></label>
+                    <input type="text" id="editGroupEventName" class="cert-text-input" required>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupCompetitionType">Competition Type <span class="required">*</span></label>
+                    <select id="editGroupCompetitionType" class="cert-text-input" required>
+                        <option value="">Select competition type...</option>
+                        <option value="Hackathon">Hackathon</option>
+                        <option value="Cultural">Cultural</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Technical">Technical</option>
+                        <option value="Paper Presentation">Paper Presentation</option>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Symposium">Symposium</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupName">Group Name <span class="required">*</span></label>
+                    <input type="text" id="editGroupName" class="cert-text-input" required>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label">Group Members' Register Numbers <span class="required">*</span></label>
+                    <div id="editMemberList" class="member-list"></div>
+                    <div class="member-add-row">
+                        <div class="input-wrapper member-input-wrapper">
+                            <input type="text" id="editMemberRegInput" placeholder="Enter register number (e.g. 24CS101)" autocomplete="off" style="text-transform:uppercase">
+                        </div>
+                        <button type="button" id="editAddMemberBtn" class="add-member-btn" title="Add member">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add
+                        </button>
+                    </div>
+                    <span class="error-message" id="editRegisterNumbers-error"></span>
+                </div>
+
+                <div class="modal-row">
+                    <label class="modal-label" for="editGroupReason">Reason for OD <span class="required">*</span></label>
+                    <textarea id="editGroupReason" class="cert-text-input" rows="4" required></textarea>
+                </div>
+
+                <div class="modal-row full modal-actions">
+                    <button type="submit" class="btn-primary" id="editGroupOdSubmitBtn">
+                        <span class="btn-text">Save Changes</span>
+                        <span class="btn-loader" style="display:none">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="store.js?v=20260810"></script>
     <script src="working-days.js?v=20260829"></script>
     <script src="student.js?v=20260810"></script>

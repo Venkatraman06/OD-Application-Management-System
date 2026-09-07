@@ -701,7 +701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function addMember() {
+    async function addMember() {
         const input = document.getElementById('memberRegInput');
         if (!input) return;
         const val = input.value.trim().toUpperCase();
@@ -711,10 +711,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             input.value = '';
             return;
         }
-        window.groupMemberList.push(val);
-        renderMemberList();
-        input.value = '';
-        input.focus();
+
+        const addBtn = document.getElementById('addMemberBtn');
+        if (addBtn) addBtn.disabled = true;
+        input.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Student/ValidateRegisterNumber/${encodeURIComponent(val)}`);
+
+            if (res.status === 404) {
+                showToast('error', 'No user found');
+                return;
+            }
+            if (!res.ok) {
+                showToast('error', 'Could not verify register number. Try again.');
+                return;
+            }
+
+            window.groupMemberList.push(val);
+            renderMemberList();
+            input.value = '';
+        } catch (err) {
+            console.error('Validate register number error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (addBtn) addBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
     }
 
     document.getElementById('addMemberBtn')?.addEventListener('click', addMember);
@@ -724,6 +748,188 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialise with own reg number on page load
     renderMemberList();
+
+    // ══════════════════════════════════════════════════
+    // EDIT GROUP OD (only while still Pending with faculty)
+    // ══════════════════════════════════════════════════
+    const editGroupOdModal = document.getElementById('editGroupOdModal');
+    window.editMemberList = []; // array of uppercase reg numbers, for the edit modal
+
+    function renderEditMemberList() {
+        const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toUpperCase();
+        const list = document.getElementById('editMemberList');
+        if (!list) return;
+
+        list.innerHTML = window.editMemberList.map((reg, i) => {
+            const isSelf = reg === myRegNo;
+            return `<span class="member-chip${isSelf ? ' is-self' : ''}" data-reg="${reg}">
+                <span class="chip-label">${reg}${isSelf ? ' (You)' : ''}</span>
+                ${!isSelf ? `<button type="button" class="chip-remove" data-index="${i}" title="Remove">×</button>` : ''}
+            </span>`;
+        }).join('');
+
+        const errEl = document.getElementById('editRegisterNumbers-error');
+        if (errEl && window.editMemberList.length >= 2) errEl.textContent = '';
+
+        list.querySelectorAll('.chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const reg = btn.closest('.member-chip').dataset.reg;
+                window.editMemberList = window.editMemberList.filter(r => r !== reg);
+                renderEditMemberList();
+            });
+        });
+    }
+
+    async function addEditMember() {
+        const input = document.getElementById('editMemberRegInput');
+        if (!input) return;
+        const val = input.value.trim().toUpperCase();
+        if (!val) { showToast('error', 'Enter a register number'); return; }
+        if (window.editMemberList.includes(val)) {
+            showToast('error', `${val} is already added`);
+            input.value = '';
+            return;
+        }
+
+        const addBtn = document.getElementById('editAddMemberBtn');
+        if (addBtn) addBtn.disabled = true;
+        input.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Student/ValidateRegisterNumber/${encodeURIComponent(val)}`);
+            if (res.status === 404) {
+                showToast('error', 'No user found');
+                return;
+            }
+            if (!res.ok) {
+                showToast('error', 'Could not verify register number. Try again.');
+                return;
+            }
+            window.editMemberList.push(val);
+            renderEditMemberList();
+            input.value = '';
+        } catch (err) {
+            console.error('Validate register number error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (addBtn) addBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+    }
+
+    document.getElementById('editAddMemberBtn')?.addEventListener('click', addEditMember);
+    document.getElementById('editMemberRegInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addEditMember(); }
+    });
+
+    function openEditGroupOdModal(od) {
+        const rawFacultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
+        const rawHodStatus = od.HodStatus ?? od.hodStatus ?? 'Pending';
+        if (rawFacultyStatus !== 'Pending' || rawHodStatus !== 'Pending') {
+            showToast('error', 'This OD has already been reviewed and can no longer be edited.');
+            return;
+        }
+
+        const odId = od.OdId ?? od.odId ?? '';
+        document.getElementById('editOdId').value = odId;
+        document.getElementById('editGroupFromDate').value = od.FromDate ?? od.fromDate ?? '';
+        document.getElementById('editGroupToDate').value = od.ToDate ?? od.toDate ?? '';
+        document.getElementById('editGroupCollegeName').value = od.CollegeIndustry ?? od.collegeIndustry ?? '';
+        document.getElementById('editGroupEventName').value = od.Event ?? od.event ?? '';
+        document.getElementById('editGroupCompetitionType').value = od.CompetitionType ?? od.competitionType ?? '';
+        document.getElementById('editGroupName').value = od.GroupName ?? od.groupName ?? '';
+        document.getElementById('editGroupReason').value = od.Reason ?? od.reason ?? '';
+
+        const regNumbersRaw = od.RegisterNumbers ?? od.registerNumbers ?? '';
+        window.editMemberList = regNumbersRaw
+            ? regNumbersRaw.split(',').map(r => r.trim().toUpperCase()).filter(Boolean)
+            : [];
+        renderEditMemberList();
+
+        if (editGroupOdModal) editGroupOdModal.style.display = 'flex';
+    }
+
+    document.getElementById('editGroupOdCloseBtn')?.addEventListener('click', () => {
+        if (editGroupOdModal) editGroupOdModal.style.display = 'none';
+    });
+    editGroupOdModal?.addEventListener('click', (e) => {
+        if (e.target === editGroupOdModal) editGroupOdModal.style.display = 'none';
+    });
+
+    document.getElementById('editGroupOdForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const odId = document.getElementById('editOdId').value;
+        const fromDate = document.getElementById('editGroupFromDate').value;
+        const toDate = document.getElementById('editGroupToDate').value;
+        const college = document.getElementById('editGroupCollegeName').value.trim();
+        const event = document.getElementById('editGroupEventName').value.trim();
+        const competitionType = document.getElementById('editGroupCompetitionType').value;
+        const groupName = document.getElementById('editGroupName').value.trim();
+        const reason = document.getElementById('editGroupReason').value.trim();
+
+        if (!fromDate || !toDate || !college || !event || !competitionType || !groupName || !reason) {
+            showToast('error', 'All fields required'); return;
+        }
+        if (window.editMemberList.length < 2) {
+            showToast('error', 'Add at least 2 group members'); return;
+        }
+        if (fromDate > toDate) {
+            showToast('error', 'To date must be after from date'); return;
+        }
+        if (isWeekend(fromDate)) {
+            showToast('error', 'From Date must be a working day (Mon–Fri).'); return;
+        }
+        if (isWeekend(toDate)) {
+            showToast('error', 'To Date must be a working day (Mon–Fri).'); return;
+        }
+        if (reason.length < 5) {
+            showToast('error', 'Reason too short'); return;
+        }
+
+        const days = countWorkingDays(fromDate, toDate);
+        if (days <= 0) {
+            showToast('error', 'Selected range contains no working days'); return;
+        }
+
+        const submitBtn = document.getElementById('editGroupOdSubmitBtn');
+        const btnText = submitBtn?.querySelector('.btn-text');
+        const btnLoader = submitBtn?.querySelector('.btn-loader');
+        if (btnText) btnText.style.display = 'none';
+        if (btnLoader) btnLoader.style.display = 'inline';
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/EditGroupOd`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fromDate, toDate, numberOfDays: days,
+                    event, collegeIndustry: college, competitionType,
+                    reason, groupName,
+                    registerNumbers: window.editMemberList.join(',')
+                })
+            });
+
+            if (res.ok) {
+                showToast('success', 'Group OD updated successfully!');
+                if (editGroupOdModal) editGroupOdModal.style.display = 'none';
+                loadODStatus();
+            } else {
+                const errText = await res.text();
+                console.error('Edit group OD failed:', res.status, errText);
+                showToast('error', errText || `Failed to update OD (${res.status})`);
+            }
+        } catch (err) {
+            console.error('Edit group OD network error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (btnText) btnText.style.display = 'block';
+            if (btnLoader) btnLoader.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
 
     function escapeCompType(t) {
         const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
@@ -1104,6 +1310,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             Print Report
                         </button>`}
                         ${certBtnHtml}
+                        ${(canCancel && isGroup) ? `
+                        <button type="button" class="edit-group-od-btn" data-odid="${odId}" title="Edit this Group OD before it's reviewed">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Edit OD
+                        </button>` : ''}
                         ${canCancel ? `
                         <button type="button" class="cancel-od-btn" data-odid="${odId}" title="Withdraw this OD request before staff reviews it">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
@@ -1145,6 +1359,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.closest('.cancel-od-btn')) {
             e.stopPropagation();
             cancelOdApplication(odId, od);
+            return;
+        }
+
+        if (e.target.closest('.edit-group-od-btn')) {
+            e.stopPropagation();
+            openEditGroupOdModal(od);
             return;
         }
 

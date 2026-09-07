@@ -936,6 +936,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     let calendarLoading = false;
     let calMonthIndex = 0;       // index into calMonthKeys
     let calMonthKeys = [];       // e.g. ['2025-12', '2026-01', ...]
+    let calendarOverrides = {};  // { 'yyyy-MM-dd': true|false } — HOD edits, loaded from backend
+    let calendarOverridesLoaded = false;
+
+    /** Effective working-day status for a date: HOD override wins over the published default. */
+    function isEffectiveWorkingDay(dateStr) {
+        if (Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr)) {
+            return calendarOverrides[dateStr];
+        }
+        return typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.isWorkingDay(dateStr);
+    }
+
+    async function loadCalendarOverrides() {
+        if (calendarOverridesLoaded) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/WorkingDay?_=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                calendarOverrides = {};
+                (data.overrides || []).forEach(o => {
+                    calendarOverrides[o.date] = o.isWorking;
+                });
+            }
+        } catch (err) {
+            console.error('loadCalendarOverrides error:', err);
+        }
+        calendarOverridesLoaded = true;
+    }
 
     function buildCalMonthKeys() {
         if (calMonthKeys.length || typeof CollegeWorkingDays === 'undefined') return;
@@ -957,6 +984,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const idx = calMonthKeys.indexOf(todayKey);
             calMonthIndex = idx >= 0 ? idx : 0;
         }
+
+        await loadCalendarOverrides();
 
         if (calendarODs === null && !calendarLoading) {
             calendarLoading = true;
@@ -1027,11 +1056,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
-            const isWorking = CollegeWorkingDays.isWorkingDay(dateStr);
+            const isWorking = isEffectiveWorkingDay(dateStr);
+            const wasEdited = Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr);
 
             if (!isWorking) {
-                html += `<div class="calendar-day non-working" title="Holiday / non-working day">
+                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}" data-date="${dateStr}" title="${wasEdited ? 'Marked non-working by HOD' : 'Holiday / non-working day'}">
                             <span class="cal-day-num">${day}</span>
+                            ${wasEdited ? '<span class="cal-edit-dot" title="Edited by HOD"></span>' : ''}
                          </div>`;
                 continue;
             }
@@ -1041,9 +1072,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
 
-            html += `<div class="calendar-day working" data-date="${dateStr}" title="${dateStr}">
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}" data-date="${dateStr}" title="${dateStr}">
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
                         <span class="cal-day-num">${day}</span>
+                        ${wasEdited ? '<span class="cal-edit-dot" title="Edited by HOD"></span>' : ''}
                         ${hasActivity ? `<span class="cal-day-counts">
                             <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
                         </span>` : ''}
@@ -1061,14 +1093,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('calendarGrid')?.addEventListener('click', (e) => {
-        const cell = e.target.closest('.calendar-day.working[data-date]');
+        const cell = e.target.closest('.calendar-day[data-date]');
         if (!cell) return;
         openDayDetail(cell.dataset.date);
     });
 
     const dayDetailOverlay = document.getElementById('dayDetailOverlay');
+    let dayDetailCurrentDate = null;
+
     function openDayDetail(dateStr) {
-        const covering = odsCoveringDate(dateStr);
+        dayDetailCurrentDate = dateStr;
+        const isWorking = isEffectiveWorkingDay(dateStr);
+        const covering = isWorking ? odsCoveringDate(dateStr) : [];
         const applied  = covering.length;
         const approved = covering.filter(isOdRowApproved).length;
         const rejected = covering.filter(isOdRowRejected).length;
@@ -1081,12 +1117,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const statsEl = document.getElementById('dayDetailStats');
         if (statsEl) {
-            statsEl.innerHTML = `
+            statsEl.innerHTML = isWorking ? `
                 <span class="dd-pill applied">${applied} Applied</span>
                 <span class="dd-pill approved">${approved} Approved</span>
                 <span class="dd-pill rejected">${rejected} Rejected</span>
                 <span class="dd-pill pending">${Math.max(pending, 0)} Pending</span>
-            `;
+            ` : `<span class="dd-pill rejected">Holiday / Non-working day</span>`;
         }
 
         const listEl = document.getElementById('dayDetailList');
@@ -1117,11 +1153,65 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        const actionsEl = document.getElementById('dayDetailActions');
+        if (actionsEl) {
+            actionsEl.innerHTML = isWorking
+                ? `<button type="button" class="dd-cal-action-btn dd-remove-btn" id="dayDetailRemoveBtn">
+                        Remove from Calendar
+                   </button>`
+                : `<button type="button" class="dd-cal-action-btn dd-add-btn" id="dayDetailAddBtn">
+                        Add to Calendar (Edit)
+                   </button>`;
+        }
+
         dayDetailOverlay?.classList.add('active');
     }
     function closeDayDetail() { dayDetailOverlay?.classList.remove('active'); }
     document.getElementById('dayDetailCloseBtn')?.addEventListener('click', closeDayDetail);
     dayDetailOverlay?.addEventListener('click', (e) => { if (e.target === dayDetailOverlay) closeDayDetail(); });
+
+    // HOD toggles a calendar day's working/non-working status from the
+    // day-detail modal — "Remove from Calendar" marks it a holiday,
+    // "Add to Calendar (Edit)" restores/marks it a working day.
+    document.getElementById('dayDetailActions')?.addEventListener('click', async (e) => {
+        const removeBtn = e.target.closest('#dayDetailRemoveBtn');
+        const addBtn = e.target.closest('#dayDetailAddBtn');
+        if (!removeBtn && !addBtn) return;
+        if (!dayDetailCurrentDate) return;
+
+        const makeWorking = !!addBtn;
+        const label = removeBtn ? 'remove this day from the calendar' : 'add this day to the calendar';
+        if (!confirm(`Are you sure you want to ${label}?`)) return;
+
+        const btn = removeBtn || addBtn;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        try {
+            const res = await fetch(`${API_BASE}/api/WorkingDay/${dayDetailCurrentDate}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isWorking: makeWorking })
+            });
+
+            if (res.ok) {
+                calendarOverrides[dayDetailCurrentDate] = makeWorking;
+                showToast('success', makeWorking ? 'Day added to calendar.' : 'Day removed from calendar.');
+                renderCalendarMonth();
+                openDayDetail(dayDetailCurrentDate);
+            } else {
+                const errText = await res.text();
+                showToast('error', errText || 'Could not update the calendar.');
+                btn.disabled = false;
+                btn.textContent = removeBtn ? 'Remove from Calendar' : 'Add to Calendar (Edit)';
+            }
+        } catch (err) {
+            console.error('WorkingDay update error:', err);
+            showToast('error', 'Network error — check backend is running');
+            btn.disabled = false;
+            btn.textContent = removeBtn ? 'Remove from Calendar' : 'Add to Calendar (Edit)';
+        }
+    });
 
     // ── Nav filters ──
     document.querySelectorAll('.nav-item[data-filter]').forEach(btn => {

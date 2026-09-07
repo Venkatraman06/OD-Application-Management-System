@@ -1434,6 +1434,38 @@ textarea:focus-visible {
 }
 
 /* ============================================
+   Edit OD — card button (student edits their
+   own Group OD while it's still Pending)
+   ============================================ */
+.od-status-card .edit-group-od-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-family: var(--font-family);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: var(--primary-300, #818cf8);
+}
+
+.od-status-card .edit-group-od-btn:hover {
+    background: rgba(99, 102, 241, 0.18);
+    border-color: rgba(99, 102, 241, 0.45);
+}
+
+[data-theme="light"] .edit-group-od-btn {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .edit-group-od-btn:hover { background: #e0e7ff !important; }
+
+/* ============================================
    Certificate Verified — locked badge (replaces
    the upload button once staff has verified it)
    ============================================ */
