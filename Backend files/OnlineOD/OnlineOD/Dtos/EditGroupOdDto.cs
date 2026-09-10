@@ -1,11 +1,12 @@
-﻿namespace OnlineOD.Dtos
+namespace OnlineOD.Dtos
 {
-    // Payload for a student editing their own Group OD while it is still
-    // Pending with both faculty and HOD — i.e. before any decision is made.
+    // Payload for a student editing their own OD (Solo or Group)
     public class EditGroupOdDto
     {
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
+        public string? StartTime { get; set; }
+        public string? EndTime { get; set; }
         public int NumberOfDays { get; set; }
         public string? Event { get; set; }
         public string? CompetitionType { get; set; }

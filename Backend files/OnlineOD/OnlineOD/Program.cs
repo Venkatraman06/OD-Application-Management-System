@@ -47,6 +47,8 @@ builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IHodService, HodService>();
 builder.Services.AddScoped<IOdApplyService, OdApplyService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddHostedService<EmailBackgroundWorker>();
 
 var app = builder.Build();
 

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace OnlineOD.Models
 {
@@ -18,6 +18,8 @@ namespace OnlineOD.Models
 
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
+        public string? StartTime { get; set; }
+        public string? EndTime { get; set; }
         public int NumberOfDays { get; set; }
         public string? Event { get; set; }
 

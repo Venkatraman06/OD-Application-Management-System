@@ -1,4 +1,4 @@
-﻿namespace OnlineOD.Dtos
+namespace OnlineOD.Dtos
 {
     public class OdApplyDto
     {
@@ -9,6 +9,8 @@
         public string? Section { get; set; }
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
+        public string? StartTime { get; set; }
+        public string? EndTime { get; set; }
         public int NumberOfDays { get; set; }
         public string? Event { get; set; }
         public string? CompetitionType { get; set; } // e.g. Hackathon, Cultural, Sports, Technical, Other

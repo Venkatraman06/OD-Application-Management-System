@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
@@ -82,10 +82,57 @@ namespace OnlineOD.Controllers
         {
             return await EditDay(date, new EditWorkingDayDto { IsWorking = false });
         }
+
+        // POST /api/WorkingDay/AddCalendar
+        // Body: { "fromDate": "YYYY-MM-DD", "toDate": "YYYY-MM-DD", "isWorking": true|false }
+        // Batch add/update working days or non-working days for a date range.
+        [HttpPost("AddCalendar")]
+        public async Task<IActionResult> AddCalendar([FromBody] AddCalendarRangeDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
+                return BadRequest(new { message = "FromDate and ToDate are required." });
+
+            if (!DateTime.TryParse(dto.FromDate, out var start) || !DateTime.TryParse(dto.ToDate, out var end) || start > end)
+                return BadRequest(new { message = "Invalid date range." });
+
+            var curr = start;
+            while (curr <= end)
+            {
+                var dateStr = curr.ToString("yyyy-MM-dd");
+                WorkingDaysCalendar.ApplyOverride(dateStr, dto.IsWorking);
+
+                var existing = await _context.WorkingDayOverrides.FindAsync(dateStr);
+                if (existing == null)
+                {
+                    _context.WorkingDayOverrides.Add(new WorkingDayOverride
+                    {
+                        Date = dateStr,
+                        IsWorking = dto.IsWorking,
+                        UpdatedAt = DateTime.Now
+                    });
+                }
+                else
+                {
+                    existing.IsWorking = dto.IsWorking;
+                    existing.UpdatedAt = DateTime.Now;
+                }
+                curr = curr.AddDays(1);
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Calendar updated successfully.", fromDate = dto.FromDate, toDate = dto.ToDate, isWorking = dto.IsWorking });
+        }
     }
 
     public class EditWorkingDayDto
     {
         public bool IsWorking { get; set; }
+    }
+
+    public class AddCalendarRangeDto
+    {
+        public string FromDate { get; set; } = string.Empty;
+        public string ToDate { get; set; } = string.Empty;
+        public bool IsWorking { get; set; } = true;
     }
 }
