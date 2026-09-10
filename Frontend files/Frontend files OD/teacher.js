@@ -33,10 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const d = new Date(now); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d;
         }
         if (period === 'month') {
-            return new Date(now.getFullYear(), now.getMonth(), 1);
+            const d = new Date(now.getFullYear(), now.getMonth(), 1); d.setHours(0,0,0,0); return d;
         }
         if (period === 'year') {
-            return new Date(now.getFullYear(), 0, 1);
+            const d = new Date(now.getFullYear(), 0, 1); d.setHours(0,0,0,0); return d;
         }
         return null; // 'all'
     }
@@ -45,8 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const start = periodStart(period);
         if (!start) return ods;
         return ods.filter(o => {
-            const d = o.appliedDate ? new Date(o.appliedDate) : null;
-            return d && d >= start;
+            const raw = o.appliedDate ?? o.AppliedDate ?? o.fromDate ?? o.FromDate;
+            if (!raw) return false;
+            const d = new Date(raw);
+            return !isNaN(d) && d >= start;
         });
     }
 
@@ -256,7 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderAnalytics(data) {
         const statsRow = document.getElementById('analyticsStatsRow');
-        const hasData  = (data.totalCertificates ?? 0) > 0;
+        const hasData  = (data.totalOdApplications ?? 0) > 0 || (data.totalCertificates ?? 0) > 0;
 
         if (statsRow) {
             statsRow.innerHTML = `
@@ -548,6 +550,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         applySectionMeta(filter);
 
         const timeBar = document.getElementById('timeFilterBar');
+        const calendarView = document.getElementById('calendarView');
+
+        if (filter === 'calendar') {
+            if (searchBox) searchBox.style.display = 'none';
+            if (timeBar)   timeBar.style.display = 'none';
+            if (requestsContainer) requestsContainer.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
+            if (analyticsView) analyticsView.style.display = 'none';
+            if (calendarView) calendarView.style.display = 'block';
+            setEl('sectionCount', '');
+            loadCalendarData();
+            return;
+        }
+        if (calendarView) calendarView.style.display = 'none';
 
         if (filter === 'analytics') {
             if (searchBox) searchBox.style.display = 'none';
@@ -602,7 +618,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // No Action requests are sorted by soonest-ending first, since those
         // are closer to needing a certificate/closure follow-up.
         if (filter === 'pending') {
+            const userSec = (localStorage.getItem('userSection') || section || '').trim().toLowerCase();
             filtered = [...filtered].sort((a, b) => {
+                if (userSec) {
+                    const secA = (a.section || '').trim().toLowerCase() === userSec;
+                    const secB = (b.section || '').trim().toLowerCase() === userSec;
+                    if (secA && !secB) return -1;
+                    if (!secA && secB) return 1;
+                }
                 const da = a.fromDate ? new Date(a.fromDate).getTime() : Infinity;
                 const db = b.fromDate ? new Date(b.fromDate).getTime() : Infinity;
                 return da - db;
@@ -637,16 +660,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         ods.forEach(od => { odsById[od.odId] = od; });
         if (container) container.innerHTML = ods.map(od => {
             const countdown = odDateCountdownLabel(od.fromDate, od.toDate);
+            const userSec = (localStorage.getItem('userSection') || section || '').trim().toLowerCase();
+            const isMySec = userSec && (od.section || '').trim().toLowerCase() === userSec;
+            const secBadgeHtml = od.section ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:4px;${isMySec ? 'background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.4);font-weight:600' : 'background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.12)'}">${isMySec ? '⭐ My ' : ''}Sec ${od.section}</span>` : '';
             return `
             <div class="request-card" data-odid="${od.odId}">
                 ${countdown.text ? `<div class="od-countdown-banner ${countdown.cls}">${countdown.text}</div>` : ''}
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
-                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">GROUP: ${od.groupName || ''}</span>` : ''} ${od.competitionType ? `<span class="competition-tag" title="Competition Type" style="font-size:10px;padding:2px 8px;margin-left:4px">${escCompType(od.competitionType)}</span>` : ''}</h3>
-                        <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}</p>
+                        <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">GROUP: ${od.groupName || ''}</span>` : ''} ${od.competitionType ? `<span class="competition-tag" title="Competition Type" style="font-size:10px;padding:2px 8px;margin-left:4px">${escCompType(od.competitionType)}</span>` : ''} ${secBadgeHtml}</h3>
+                        <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}${od.section ? ' &bull; Sec ' + od.section : ''}</p>
                     </div>
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
+                </div>`;>`acultyStatus)}">${od.facultyStatus || 'Pending'}</span>
                 </div>
                 <div class="card-body">
                     <p><strong>Event:</strong> ${od.event || ''}</p>
@@ -712,6 +739,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('odDetailCollege', od.collegeIndustry || '');
         setEl('odDetailFromDate', fmtDate(od.fromDate));
         setEl('odDetailToDate', fmtDate(od.toDate));
+        // Start Time / End Time — display as 12-hr or '-' for old ODs
+        function fmt12h(t) {
+            if (!t) return '-';
+            const [h, m] = t.split(':').map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+        }
+        setEl('odDetailStartTime', fmt12h(od.startTime ?? od.StartTime ?? null));
+        setEl('odDetailEndTime',   fmt12h(od.endTime   ?? od.EndTime   ?? null));
         const countdown = odDateCountdownLabel(od.fromDate, od.toDate);
         setEl('odDetailDays', od.numberOfDays ? `${od.numberOfDays}${countdown.text ? ' (' + countdown.text + ')' : ''}` : '-');
         setEl('odDetailApplied', fmtDT(od.appliedDate));
@@ -724,7 +760,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (alterPanel)    alterPanel.style.display    = 'none';
         if (alterFromInp)  alterFromInp.value          = toInputDate(od.fromDate);
         if (alterToInp)    alterToInp.value            = toInputDate(od.toDate);
+        if (alterStartInp) alterStartInp.value         = od.startTime || '';
+        if (alterEndInp)   alterEndInp.value           = od.endTime || '';
         if (alterDaysInp)  alterDaysInp.value          = od.numberOfDays ?? '';
+        recomputeDaysAndTime();
 
         const facBadge = document.getElementById('odDetailFacultyStatus');
         if (facBadge) { facBadge.className = `badge-${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
@@ -758,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('odDetailCloseBtn')?.addEventListener('click', closeOdDetailModal);
     odDetailOverlay?.addEventListener('click', (e) => { if (e.target === odDetailOverlay) closeOdDetailModal(); });
 
-    // ── Alter OD Days ──────────────────────────────────────────────────────
+    // ── Alter OD Days & Time ────────────────────────────────────────────────
     let alterDaysOdId = null;
 
     const btnEditDates  = document.getElementById('btnEditDates');
@@ -766,7 +805,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const editDatesRow  = document.getElementById('editDatesRow');
     const alterFromInp  = document.getElementById('alterFromDate');
     const alterToInp    = document.getElementById('alterToDate');
+    const alterStartInp = document.getElementById('alterStartTime');
+    const alterEndInp   = document.getElementById('alterEndTime');
     const alterDaysInp  = document.getElementById('alterDaysCount');
+    const alterHoursEl  = document.getElementById('alterHoursText');
     const alterCancel   = document.getElementById('alterDaysCancel');
     const alterSave     = document.getElementById('alterDaysSave');
 
@@ -777,22 +819,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
     }
 
-    function recomputeDays() {
+    function recomputeDaysAndTime() {
         const f = alterFromInp?.value, t = alterToInp?.value;
+        const s = alterStartInp?.value, e = alterEndInp?.value;
+
         if (f && t && t >= f) {
             const diff = Math.round((new Date(t) - new Date(f)) / 86400000) + 1;
             if (alterDaysInp) alterDaysInp.value = diff;
         } else {
             if (alterDaysInp) alterDaysInp.value = '';
         }
+
+        if (s && e) {
+            if (e <= s) {
+                if (alterHoursEl) {
+                    alterHoursEl.style.display = 'block';
+                    alterHoursEl.style.color = '#ef4444';
+                    alterHoursEl.textContent = '⚠️ End Time must be later than Start Time.';
+                }
+            } else {
+                const [sh, sm] = s.split(':').map(Number);
+                const [eh, em] = e.split(':').map(Number);
+                const diffMins = (eh * 60 + em) - (sh * 60 + sm);
+                const hours = (diffMins / 60).toFixed(1).replace(/\.0$/, '');
+
+                const format12 = (t24) => {
+                    const [h, m] = t24.split(':').map(Number);
+                    const p = h >= 12 ? 'PM' : 'AM';
+                    return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${p}`;
+                };
+
+                if (alterHoursEl) {
+                    alterHoursEl.style.display = 'block';
+                    alterHoursEl.style.color = 'var(--primary, #3b82f6)';
+                    alterHoursEl.textContent = `${format12(s)} → ${format12(e)} = ${hours} working hours/day`;
+                }
+            }
+        } else {
+            if (alterHoursEl) alterHoursEl.style.display = 'none';
+        }
     }
 
-    alterFromInp?.addEventListener('change', recomputeDays);
-    alterToInp?.addEventListener('change', recomputeDays);
+    alterFromInp?.addEventListener('change', recomputeDaysAndTime);
+    alterToInp?.addEventListener('change', recomputeDaysAndTime);
+    alterStartInp?.addEventListener('change', recomputeDaysAndTime);
+    alterStartInp?.addEventListener('input', recomputeDaysAndTime);
+    alterEndInp?.addEventListener('change', recomputeDaysAndTime);
+    alterEndInp?.addEventListener('input', recomputeDaysAndTime);
 
     btnEditDates?.addEventListener('click', () => {
         if (alterPanel) alterPanel.style.display = 'block';
         if (editDatesRow) editDatesRow.style.display = 'none';
+        recomputeDaysAndTime();
     });
 
     alterCancel?.addEventListener('click', () => {
@@ -803,10 +881,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     alterSave?.addEventListener('click', async () => {
         const from  = alterFromInp?.value;
         const to    = alterToInp?.value;
+        const start = alterStartInp?.value || null;
+        const end   = alterEndInp?.value || null;
         const days  = parseInt(alterDaysInp?.value || '1', 10);
 
         if (!from || !to || to < from) {
             showToast('error', 'Invalid dates — To Date must be on or after From Date.');
+            return;
+        }
+        if (start && end && end <= start) {
+            showToast('error', 'Invalid time range — End Time must be later than Start Time.');
             return;
         }
         if (!alterDaysOdId) return;
@@ -817,27 +901,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${API_BASE}/api/OdApply/${alterDaysOdId}/AlterDays`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fromDate: from, toDate: to, numberOfDays: days })
+                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days })
             });
             if (!res.ok) {
                 const msg = await res.text();
-                showToast('error', msg || 'Failed to update dates.');
+                showToast('error', msg || 'Failed to update dates & time.');
                 return;
             }
             const updated = await res.json();
             // Refresh the display fields inside the modal
-            setEl('odDetailFromDate', fmtDate(updated.fromDate));
-            setEl('odDetailToDate',   fmtDate(updated.toDate));
-            setEl('odDetailDays',     updated.numberOfDays?.toString() || '-');
-            // Update local cache so the card in the list reflects new dates
+            setEl('odDetailFromDate',  fmtDate(updated.fromDate));
+            setEl('odDetailToDate',    fmtDate(updated.toDate));
+            setEl('odDetailStartTime', updated.startTime ? fmtTime(updated.startTime) : '-');
+            setEl('odDetailEndTime',   updated.endTime   ? fmtTime(updated.endTime)   : '-');
+            setEl('odDetailDays',      updated.numberOfDays?.toString() || '-');
+            // Update local cache so the card in the list reflects new dates & time
             if (odsById[alterDaysOdId]) {
                 odsById[alterDaysOdId].fromDate     = updated.fromDate;
                 odsById[alterDaysOdId].toDate       = updated.toDate;
+                odsById[alterDaysOdId].startTime    = updated.startTime;
+                odsById[alterDaysOdId].endTime      = updated.endTime;
                 odsById[alterDaysOdId].numberOfDays = updated.numberOfDays;
             }
-            showToast('success', 'OD dates updated successfully.');
+            showToast('success', 'OD dates & time updated successfully.');
             if (alterPanel) alterPanel.style.display = 'none';
             if (editDatesRow) editDatesRow.style.display = 'flex';
+            loadODs();
         } catch (err) {
             console.error(err);
             showToast('error', 'Network error — could not update dates.');
@@ -915,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                    </svg>
                                </div>`
                         }
-                        <a href="${certUrl}" target="_blank" rel="noopener" class="cert-view-link">View Full Certificate ↗</a>
+                        <a href="#" onclick="event.preventDefault(); openCertPreview('${certUrl}','${esc(od.studentName)}')" class="cert-view-link">View Full Certificate ↗</a>
                     </div>
                     <div class="cert-verify-row">
                         ${isVerified
@@ -1162,20 +1251,88 @@ document.addEventListener('DOMContentLoaded', async () => {
         else loadODs();
     });
 
-    // ── Auto-refresh so HOD/email-approved changes reflect without manual refresh ──
-    setInterval(() => {
-        loadODs();
-        if (certsLoaded) loadCertificates();
-    }, 15000);
+    // Auto-refresh disabled — use the manual Refresh button instead.
 
-    window.approveOD = async (odId, name) => { if (confirm(`Approve OD for ${name}?`)) await updateStatus(odId, 'Approved'); };
-    window.rejectOD  = async (odId, name) => { if (confirm(`Reject OD for ${name}?`))  await updateStatus(odId, 'Rejected'); };
+    // ── Custom Themed Confirmation Modal ──────────────────────────────────────
+    function showConfirmModal({ title, message, icon = '❓', confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false, isSuccess = false }) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('modalOverlay');
+            const titleEl = document.getElementById('modalTitle');
+            const msgEl   = document.getElementById('modalMessage');
+            const iconEl  = document.getElementById('modalIcon');
+            const confirmBtn = document.getElementById('modalConfirm');
+            const cancelBtn  = document.getElementById('modalCancel');
 
-    // ── Verify certificate — once verified, that specific member can no longer
-    // replace THEIR certificate. Tied to registerNumber so verifying one group
-    // member's certificate never locks or affects another member's.
+            if (!overlay || !confirmBtn || !cancelBtn) {
+                resolve(true);
+                return;
+            }
+
+            if (titleEl) titleEl.textContent = title;
+            if (msgEl)   msgEl.textContent   = message;
+            if (iconEl)  {
+                iconEl.textContent = icon;
+                iconEl.className = 'modal-icon ' + (isDanger ? 'icon-danger' : (isSuccess ? 'icon-success' : ''));
+            }
+            if (confirmBtn) {
+                confirmBtn.textContent = confirmText;
+                confirmBtn.style.background = isDanger ? '#ef4444' : (isSuccess ? '#10b981' : '');
+                confirmBtn.style.color = '#ffffff';
+            }
+            if (cancelBtn) cancelBtn.textContent = cancelText;
+
+            const cleanup = () => {
+                overlay.classList.remove('active');
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+            };
+
+            const onConfirm = () => { cleanup(); resolve(true); };
+            const onCancel  = () => { cleanup(); resolve(false); };
+
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+
+            overlay.classList.add('active');
+        });
+    }
+
+    window.approveOD = async (odId, name) => {
+        const ok = await showConfirmModal({
+            title: 'Approve OD?',
+            message: `Are you sure you want to approve the OD request for ${name || 'this student'}?`,
+            icon: '✅',
+            confirmText: 'Approve',
+            cancelText: 'Cancel',
+            isDanger: false,
+            isSuccess: true
+        });
+        if (ok) await updateStatus(odId, 'Approved');
+    };
+
+    window.rejectOD = async (odId, name) => {
+        const ok = await showConfirmModal({
+            title: 'Reject OD?',
+            message: `Are you sure you want to reject the OD request for ${name || 'this student'}?`,
+            icon: '⚠️',
+            confirmText: 'Reject',
+            cancelText: 'Cancel',
+            isDanger: true
+        });
+        if (ok) await updateStatus(odId, 'Rejected');
+    };
+
+    // ── Verify certificate
     window.verifyCertificate = async (odId, registerNumber, studentName) => {
-        if (!confirm(`Mark ${studentName}'s certificate as verified?\n\nOnce verified, this student will no longer be able to replace this certificate.`)) return;
+        const ok = await showConfirmModal({
+            title: 'Verify Certificate',
+            message: `Mark ${studentName}'s certificate as verified?\n\nOnce verified, this student will no longer be able to replace this certificate.`,
+            icon: '📜',
+            confirmText: 'Verify',
+            cancelText: 'Cancel',
+            isDanger: false
+        });
+        if (!ok) return;
         try {
             const res = await fetch(`${API_BASE}/api/OdApply/${odId}/VerifyCertificate?registerNumber=${encodeURIComponent(registerNumber)}`, { method: 'PUT' });
             if (res.ok) {
@@ -1195,22 +1352,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok) {
                 const data = await res.json().catch(() => null);
                 if (data && data.facultyStatus === 'Pending') {
-                    // Overall OD is still Pending — this group OD spans another
-                    // section too, and that section's staff hasn't decided yet.
                     showToast('success', `Your decision (${status.toLowerCase()}) was recorded. Still waiting on another section's staff for this group OD.`);
                 } else {
                     showToast('success', `OD ${status.toLowerCase()}!`);
                 }
-                // Surface HOD email failures instead of hiding them — the OD
-                // status itself still updated fine, but the HOD was never
-                // notified, so staff should know to follow up manually.
                 if (data && data.emailStatus === 'failed') {
                     showToast('error', `Warning: HOD was not emailed — ${data.emailDetail || 'unknown error'}`);
                 }
-                loadODs();
+                // Update local state directly so card and modal badge update instantly
+                if (odsById[odId]) {
+                    odsById[odId].facultyStatus = status;
+                    if (data && data.facultyStatus) odsById[odId].facultyStatus = data.facultyStatus;
+                }
+                if (odDetailOverlay?.classList.contains('active')) {
+                    const facBadge = document.getElementById('odDetailFacultyStatus');
+                    if (facBadge) {
+                        facBadge.className = `badge-${bdg(status)}`;
+                        facBadge.textContent = status;
+                    }
+                }
+                await loadODs();
             } else {
-                // "Not your section" and other validation errors come back as
-                // plain text in the body — show the real reason, not a generic one.
                 const errText = await res.text().catch(() => '');
                 showToast('error', errText || 'Failed to update');
             }
@@ -1227,7 +1389,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.rejectMember = async (odId, reg) => {
-        if (!confirm(`Reject register number ${reg} from this group OD?`)) return;
+        const ok = await showConfirmModal({
+            title: 'Reject Group Member?',
+            message: `Are you sure you want to reject register number ${reg} from this group OD?`,
+            icon: '⚠️',
+            confirmText: 'Reject Member',
+            cancelText: 'Cancel',
+            isDanger: true
+        });
+        if (!ok) return;
         try {
             const res = await fetch(`${API_BASE}/api/OdApply/${odId}/RejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
                 method: 'PUT'
@@ -1298,6 +1468,223 @@ document.addEventListener('DOMContentLoaded', async () => {
         const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
         return (icons[(t||'').toLowerCase()] || '🏅') + ' ' + t;
     }
+
+    // ── Working-Days Calendar View (Staff) ──
+    let calendarODs = null;
+    let calendarLoading = false;
+    let calMonthKeys = [];
+    let calMonthIndex = 0;
+    let calendarOverrides = {};
+    let calendarOverridesLoaded = false;
+
+    function isEffectiveWorkingDay(dateStr) {
+        if (Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr)) {
+            return calendarOverrides[dateStr];
+        }
+        return typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.isWorkingDay(dateStr);
+    }
+
+    async function loadCalendarOverrides() {
+        if (calendarOverridesLoaded) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/WorkingDay?_=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                calendarOverrides = {};
+                (data.overrides || []).forEach(o => {
+                    calendarOverrides[o.date] = o.isWorking;
+                });
+            }
+        } catch (err) {
+            console.error('loadCalendarOverrides error:', err);
+        }
+        calendarOverridesLoaded = true;
+    }
+
+    function buildCalMonthKeys() {
+        if (calMonthKeys.length || typeof CollegeWorkingDays === 'undefined') return;
+        const seen = new Set();
+        CollegeWorkingDays.list.forEach(d => seen.add(d.slice(0, 7)));
+        calMonthKeys = [...seen].sort();
+    }
+
+    async function loadCalendarData() {
+        buildCalMonthKeys();
+        if (!calMonthKeys.length) {
+            const grid = document.getElementById('calendarGrid');
+            if (grid) grid.innerHTML = '<div class="dd-empty">Working-days calendar not available.</div>';
+            return;
+        }
+        if (calMonthIndex === 0 && calMonthKeys.length) {
+            const todayKey = new Date().toISOString().slice(0, 7);
+            const idx = calMonthKeys.indexOf(todayKey);
+            calMonthIndex = idx >= 0 ? idx : 0;
+        }
+
+        await loadCalendarOverrides();
+
+        if (calendarODs === null && !calendarLoading) {
+            calendarLoading = true;
+            const grid = document.getElementById('calendarGrid');
+            if (grid) grid.innerHTML = '<div class="dd-empty">Loading OD data...</div>';
+            try {
+                const res = await fetch(`${API_BASE}/api/OdApply?_=${Date.now()}`, { cache: 'no-store' });
+                const all = res.ok ? await res.json() : [];
+                const myDept = (dept || '').trim().toLowerCase();
+                calendarODs = myDept ? all.filter(o => ((o.department ?? o.Department ?? '').trim().toLowerCase()) === myDept) : all;
+            } catch (err) {
+                console.error('loadCalendarData error:', err);
+                calendarODs = [];
+                showToast('error', 'Failed to load calendar data');
+            }
+            calendarLoading = false;
+        }
+
+        renderCalendarMonth();
+    }
+
+    function odsCoveringDate(dateStr) {
+        if (!calendarODs) return [];
+        return calendarODs.filter(o => {
+            const from = o.fromDate ?? o.FromDate ?? '';
+            const to   = o.toDate   ?? o.ToDate   ?? '';
+            if (!from || !to) return false;
+            return dateStr >= from && dateStr <= to;
+        });
+    }
+
+    function isOdRowRejected(o) {
+        const fac = o.facultyStatus ?? o.FacultyStatus ?? 'Pending';
+        const hod = o.hodStatus ?? o.HodStatus ?? 'Pending';
+        return fac === 'Rejected' || hod === 'Rejected';
+    }
+
+    function renderCalendarMonth() {
+        const grid  = document.getElementById('calendarGrid');
+        const label = document.getElementById('calendarMonthLabel');
+        const prevBtn = document.getElementById('calendarPrevBtn');
+        const nextBtn = document.getElementById('calendarNextBtn');
+        if (!grid || !calMonthKeys.length) return;
+
+        const monthKey = calMonthKeys[calMonthIndex];
+        const [yearStr, monStr] = monthKey.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monStr, 10) - 1;
+
+        if (label) {
+            label.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        if (prevBtn) prevBtn.disabled = calMonthIndex <= 0;
+        if (nextBtn) nextBtn.disabled = calMonthIndex >= calMonthKeys.length - 1;
+
+        const firstDow = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = '';
+        for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
+            const isWorking = isEffectiveWorkingDay(dateStr);
+            const wasEdited = Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr);
+
+            if (!isWorking) {
+                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}" data-date="${dateStr}" title="${wasEdited ? 'Marked non-working' : 'Holiday / non-working day'}">
+                            <span class="cal-day-num">${day}</span>
+                            ${wasEdited ? '<span class="cal-edit-dot" title="Edited day"></span>' : ''}
+                         </div>`;
+                continue;
+            }
+
+            const covering = odsCoveringDate(dateStr);
+            const appliedCount  = covering.length;
+            const rejectedCount = covering.filter(isOdRowRejected).length;
+            const hasActivity = appliedCount > 0;
+
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}" data-date="${dateStr}" title="${dateStr}">
+                        ${hasActivity ? '<span class="cal-dot"></span>' : ''}
+                        <span class="cal-day-num">${day}</span>
+                        ${wasEdited ? '<span class="cal-edit-dot" title="Edited day"></span>' : ''}
+                        ${hasActivity ? `<span class="cal-day-counts">
+                            <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
+                        </span>` : ''}
+                     </div>`;
+        }
+
+        grid.innerHTML = html;
+    }
+
+    document.getElementById('calendarPrevBtn')?.addEventListener('click', () => {
+        if (calMonthIndex > 0) { calMonthIndex--; renderCalendarMonth(); }
+    });
+    document.getElementById('calendarNextBtn')?.addEventListener('click', () => {
+        if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
+    });
+
+    function initAddCalendarModal() {
+        const openBtn = document.getElementById('openAddCalendarModalBtn');
+        const modal = document.getElementById('addCalendarModal');
+        const closeBtn = document.getElementById('closeAddCalendarModalBtn');
+        const cancelBtn = document.getElementById('cancelAddCalendarBtn');
+        const form = document.getElementById('addCalendarForm');
+
+        if (!openBtn || !modal) return;
+
+        function open() {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+        function close() {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+
+        openBtn.onclick = open;
+        if (closeBtn) closeBtn.onclick = close;
+        if (cancelBtn) cancelBtn.onclick = close;
+
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const fromDate = document.getElementById('addCalFromDate')?.value;
+                const toDate = document.getElementById('addCalToDate')?.value;
+                const isWorking = document.getElementById('addCalIsWorking')?.value === 'true';
+
+                if (!fromDate || !toDate) {
+                    showToast('error', 'Please select both From Date and To Date.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE}/api/WorkingDay/AddCalendar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fromDate, toDate, isWorking })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.message || 'Failed to update calendar');
+                    }
+
+                    showToast('success', `Calendar updated successfully for ${fromDate} to ${toDate}.`);
+                    close();
+
+                    if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                        await CollegeWorkingDays.syncWithBackend(API_BASE);
+                    }
+
+                    calendarOverridesLoaded = false;
+                    await loadCalendarOverrides();
+                    renderCalendarMonth();
+                } catch (err) {
+                    console.error('Add Calendar error:', err);
+                    showToast('error', err.message || 'Failed to update calendar');
+                }
+            };
+        }
+    }
+    initAddCalendarModal();
     function esc(s) { return (s||'').replace(/'/g, "\'"); }
     function escHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
     function setEl(id, val) { const el = document.getElementById(id); if (el) el.textContent = val ?? ''; }
@@ -1307,7 +1694,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         c.appendChild(t); setTimeout(() => t.remove(), 3500);
     }
 
-    document.getElementById('logoutBtn')?.addEventListener('click', () => { localStorage.clear(); window.location.href = 'index.html'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    });
+
+    if (typeof AnalogClockPicker !== 'undefined') {
+        AnalogClockPicker.attach(document.getElementById('alterStartTime'));
+        AnalogClockPicker.attach(document.getElementById('alterEndTime'));
+    }
 
     loadODs();
     // Load the certificates badge count in the background too, so it's ready before the tab is clicked

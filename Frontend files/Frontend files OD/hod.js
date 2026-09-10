@@ -26,8 +26,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (period === 'week') {
             const d = new Date(now); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d;
         }
-        if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
-        if (period === 'year')  return new Date(now.getFullYear(), 0, 1);
+        if (period === 'month') {
+            const d = new Date(now.getFullYear(), now.getMonth(), 1); d.setHours(0,0,0,0); return d;
+        }
+        if (period === 'year') {
+            const d = new Date(now.getFullYear(), 0, 1); d.setHours(0,0,0,0); return d;
+        }
         return null;
     }
 
@@ -35,8 +39,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const start = periodStart(period);
         if (!start) return ods;
         return ods.filter(o => {
-            const d = o.appliedDate ? new Date(o.appliedDate) : null;
-            return d && d >= start;
+            const raw = o.appliedDate ?? o.AppliedDate ?? o.fromDate ?? o.FromDate;
+            if (!raw) return false;
+            const d = new Date(raw);
+            return !isNaN(d) && d >= start;
         });
     }
 
@@ -652,10 +658,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('odDetailCollege', od.collegeIndustry || '');
         setEl('odDetailFromDate', fmtDate(od.fromDate));
         setEl('odDetailToDate', fmtDate(od.toDate));
-        const countdown = odDateCountdownLabel(od.fromDate, od.toDate);
-        setEl('odDetailDays', od.numberOfDays ? `${od.numberOfDays}${countdown.text ? ' (' + countdown.text + ')' : ''}` : '-');
+        // Start Time / End Time — display as 12-hr or '-' for old ODs
+        function fmt12hHod(t) {
+            if (!t) return '-';
+            const [h, m] = t.split(':').map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
+        }
+        setEl('odDetailStartTime', fmt12hHod(od.startTime ?? od.StartTime ?? null));
+        setEl('odDetailEndTime',   fmt12hHod(od.endTime   ?? od.EndTime   ?? null));
         setEl('odDetailApplied', fmtDT(od.appliedDate));
         setEl('odDetailReason', od.reason || 'No reason provided');
+
+        // Alter-days panel — show Edit button for pending ODs
+        alterDaysOdId = od.odId;
+        const isPending = (od.hodStatus === 'Pending' || od.facultyStatus === 'Pending');
+        if (editDatesRow)  editDatesRow.style.display  = isPending ? 'flex' : 'none';
+        if (alterPanel)    alterPanel.style.display    = 'none';
+        if (alterFromInp)  alterFromInp.value          = toInputDate(od.fromDate);
+        if (alterToInp)    alterToInp.value            = toInputDate(od.toDate);
+        if (alterStartInp) alterStartInp.value         = od.startTime || od.StartTime || '';
+        if (alterEndInp)   alterEndInp.value           = od.endTime   || od.EndTime   || '';
+        if (alterDaysInp)  alterDaysInp.value          = od.numberOfDays ?? '';
+        recomputeDaysAndTime();
 
         const facBadge = document.getElementById('odDetailFacultyStatus');
         if (facBadge) { facBadge.className = `badge-${bdg(od.facultyStatus)}`; facBadge.textContent = od.facultyStatus || 'Pending'; }
@@ -688,6 +713,143 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closeOdDetailModal() { odDetailOverlay?.classList.remove('active'); }
     document.getElementById('odDetailCloseBtn')?.addEventListener('click', closeOdDetailModal);
     odDetailOverlay?.addEventListener('click', (e) => { if (e.target === odDetailOverlay) closeOdDetailModal(); });
+
+    // ── Alter OD Days & Time ────────────────────────────────────────────────
+    let alterDaysOdId = null;
+
+    const btnEditDates  = document.getElementById('btnEditDates');
+    const alterPanel    = document.getElementById('alterDaysPanel');
+    const editDatesRow  = document.getElementById('editDatesRow');
+    const alterFromInp  = document.getElementById('alterFromDate');
+    const alterToInp    = document.getElementById('alterToDate');
+    const alterStartInp = document.getElementById('alterStartTime');
+    const alterEndInp   = document.getElementById('alterEndTime');
+    const alterDaysInp  = document.getElementById('alterDaysCount');
+    const alterHoursEl  = document.getElementById('alterHoursText');
+    const alterCancel   = document.getElementById('alterDaysCancel');
+    const alterSave     = document.getElementById('alterDaysSave');
+
+    function toInputDate(raw) {
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (isNaN(d)) return '';
+        return d.toISOString().split('T')[0];
+    }
+
+    function recomputeDaysAndTime() {
+        const f = alterFromInp?.value, t = alterToInp?.value;
+        const s = alterStartInp?.value, e = alterEndInp?.value;
+
+        if (f && t && t >= f) {
+            const diff = Math.round((new Date(t) - new Date(f)) / 86400000) + 1;
+            if (alterDaysInp) alterDaysInp.value = diff;
+        } else {
+            if (alterDaysInp) alterDaysInp.value = '';
+        }
+
+        if (s && e) {
+            if (e <= s) {
+                if (alterHoursEl) {
+                    alterHoursEl.style.display = 'block';
+                    alterHoursEl.style.color = '#ef4444';
+                    alterHoursEl.textContent = '⚠️ End Time must be later than Start Time.';
+                }
+            } else {
+                const [sh, sm] = s.split(':').map(Number);
+                const [eh, em] = e.split(':').map(Number);
+                const diffMins = (eh * 60 + em) - (sh * 60 + sm);
+                const hours = (diffMins / 60).toFixed(1).replace(/\.0$/, '');
+
+                const format12 = (t24) => {
+                    const [h, m] = t24.split(':').map(Number);
+                    const p = h >= 12 ? 'PM' : 'AM';
+                    return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${p}`;
+                };
+
+                if (alterHoursEl) {
+                    alterHoursEl.style.display = 'block';
+                    alterHoursEl.style.color = 'var(--primary, #3b82f6)';
+                    alterHoursEl.textContent = `${format12(s)} → ${format12(e)} = ${hours} working hours/day`;
+                }
+            }
+        } else {
+            if (alterHoursEl) alterHoursEl.style.display = 'none';
+        }
+    }
+
+    alterFromInp?.addEventListener('change', recomputeDaysAndTime);
+    alterToInp?.addEventListener('change', recomputeDaysAndTime);
+    alterStartInp?.addEventListener('change', recomputeDaysAndTime);
+    alterStartInp?.addEventListener('input', recomputeDaysAndTime);
+    alterEndInp?.addEventListener('change', recomputeDaysAndTime);
+    alterEndInp?.addEventListener('input', recomputeDaysAndTime);
+
+    btnEditDates?.addEventListener('click', () => {
+        if (alterPanel) alterPanel.style.display = 'block';
+        if (editDatesRow) editDatesRow.style.display = 'none';
+        recomputeDaysAndTime();
+    });
+
+    alterCancel?.addEventListener('click', () => {
+        if (alterPanel) alterPanel.style.display = 'none';
+        if (editDatesRow) editDatesRow.style.display = 'flex';
+    });
+
+    alterSave?.addEventListener('click', async () => {
+        const from  = alterFromInp?.value;
+        const to    = alterToInp?.value;
+        const start = alterStartInp?.value || null;
+        const end   = alterEndInp?.value || null;
+        const days  = parseInt(alterDaysInp?.value || '1', 10);
+
+        if (!from || !to || to < from) {
+            showToast('error', 'Invalid dates — To Date must be on or after From Date.');
+            return;
+        }
+        if (start && end && end <= start) {
+            showToast('error', 'Invalid time range — End Time must be later than Start Time.');
+            return;
+        }
+        if (!alterDaysOdId) return;
+
+        alterSave.disabled = true;
+        alterSave.textContent = 'Saving…';
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${alterDaysOdId}/AlterDays`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days })
+            });
+            if (!res.ok) {
+                const msg = await res.text();
+                showToast('error', msg || 'Failed to update dates & time.');
+                return;
+            }
+            const updated = await res.json();
+            setEl('odDetailFromDate',  fmtDate(updated.fromDate));
+            setEl('odDetailToDate',    fmtDate(updated.toDate));
+            setEl('odDetailStartTime', updated.startTime ? fmtTime(updated.startTime) : '-');
+            setEl('odDetailEndTime',   updated.endTime   ? fmtTime(updated.endTime)   : '-');
+            setEl('odDetailDays',      updated.numberOfDays?.toString() || '-');
+            if (odsById[alterDaysOdId]) {
+                odsById[alterDaysOdId].fromDate     = updated.fromDate;
+                odsById[alterDaysOdId].toDate       = updated.toDate;
+                odsById[alterDaysOdId].startTime    = updated.startTime;
+                odsById[alterDaysOdId].endTime      = updated.endTime;
+                odsById[alterDaysOdId].numberOfDays = updated.numberOfDays;
+            }
+            showToast('success', 'OD dates & time updated successfully.');
+            if (alterPanel) alterPanel.style.display = 'none';
+            if (editDatesRow) editDatesRow.style.display = 'flex';
+            loadODs();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error — could not update dates.');
+        } finally {
+            alterSave.disabled = false;
+            alterSave.textContent = 'Save Changes';
+        }
+    });
 
     document.getElementById('requestsContainer')?.addEventListener('click', (e) => {
         const btn = e.target.closest('.view-details-btn');
@@ -1092,6 +1254,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
     });
 
+    function initAddCalendarModal() {
+        const openBtn = document.getElementById('openAddCalendarModalBtn');
+        const modal = document.getElementById('addCalendarModal');
+        const closeBtn = document.getElementById('closeAddCalendarModalBtn');
+        const cancelBtn = document.getElementById('cancelAddCalendarBtn');
+        const form = document.getElementById('addCalendarForm');
+
+        if (!openBtn || !modal) return;
+
+        function open() {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+        function close() {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+
+        openBtn.onclick = open;
+        if (closeBtn) closeBtn.onclick = close;
+        if (cancelBtn) cancelBtn.onclick = close;
+
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const fromDate = document.getElementById('addCalFromDate')?.value;
+                const toDate = document.getElementById('addCalToDate')?.value;
+                const isWorking = document.getElementById('addCalIsWorking')?.value === 'true';
+
+                if (!fromDate || !toDate) {
+                    showToast('error', 'Please select both From Date and To Date.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE}/api/WorkingDay/AddCalendar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fromDate, toDate, isWorking })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.message || 'Failed to update calendar');
+                    }
+
+                    showToast('success', `Calendar updated successfully for ${fromDate} to ${toDate}.`);
+                    close();
+
+                    if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                        await CollegeWorkingDays.syncWithBackend(API_BASE);
+                    }
+
+                    calendarOverridesLoaded = false;
+                    await loadCalendarOverrides();
+                    renderCalendarMonth();
+                } catch (err) {
+                    console.error('Add Calendar error:', err);
+                    showToast('error', err.message || 'Failed to update calendar');
+                }
+            };
+        }
+    }
+    initAddCalendarModal();
+
     document.getElementById('calendarGrid')?.addEventListener('click', (e) => {
         const cell = e.target.closest('.calendar-day[data-date]');
         if (!cell) return;
@@ -1181,7 +1408,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const makeWorking = !!addBtn;
         const label = removeBtn ? 'remove this day from the calendar' : 'add this day to the calendar';
-        if (!confirm(`Are you sure you want to ${label}?`)) return;
+        const ok = await showConfirmModal({
+            title: 'Update Calendar Day',
+            message: `Are you sure you want to ${label}?`,
+            icon: '📅',
+            confirmText: 'Yes, Proceed',
+            cancelText: 'Cancel',
+            isDanger: !!removeBtn
+        });
+        if (!ok) return;
 
         const btn = removeBtn || addBtn;
         btn.disabled = true;
@@ -1248,13 +1483,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         else loadODs();
     });
 
+    // ── Custom Themed Confirmation Modal ──────────────────────────────────────
+    function showConfirmModal({ title, message, icon = '❓', confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false, isSuccess = false }) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('modalOverlay');
+            const titleEl = document.getElementById('modalTitle');
+            const msgEl   = document.getElementById('modalMessage');
+            const iconEl  = document.getElementById('modalIcon');
+            const confirmBtn = document.getElementById('modalConfirm');
+            const cancelBtn  = document.getElementById('modalCancel');
+
+            if (!overlay || !confirmBtn || !cancelBtn) {
+                resolve(true);
+                return;
+            }
+
+            if (titleEl) titleEl.textContent = title;
+            if (msgEl)   msgEl.textContent   = message;
+            if (iconEl)  {
+                iconEl.textContent = icon;
+                iconEl.className = 'modal-icon ' + (isDanger ? 'icon-danger' : (isSuccess ? 'icon-success' : ''));
+            }
+            if (confirmBtn) {
+                confirmBtn.textContent = confirmText;
+                confirmBtn.style.background = isDanger ? '#ef4444' : (isSuccess ? '#10b981' : '');
+                confirmBtn.style.color = '#ffffff';
+            }
+            if (cancelBtn) cancelBtn.textContent = cancelText;
+
+            const cleanup = () => {
+                overlay.classList.remove('active');
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+            };
+
+            const onConfirm = () => { cleanup(); resolve(true); };
+            const onCancel  = () => { cleanup(); resolve(false); };
+
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+
+            overlay.classList.add('active');
+        });
+    }
+
     window.approveOD = async (odId, name) => {
-        if (!confirm(`Grant final HOD approval for ${name}?`)) return;
-        await updateStatus(odId, 'Approved');
+        const ok = await showConfirmModal({
+            title: 'Grant HOD Approval?',
+            message: `Are you sure you want to grant final HOD approval for ${name || 'this student'}?`,
+            icon: '✅',
+            confirmText: 'Approve',
+            cancelText: 'Cancel',
+            isDanger: false,
+            isSuccess: true
+        });
+        if (ok) await updateStatus(odId, 'Approved');
     };
+
     window.rejectOD = async (odId, name) => {
-        if (!confirm(`Reject OD for ${name}?`)) return;
-        await updateStatus(odId, 'Rejected');
+        const ok = await showConfirmModal({
+            title: 'Reject OD?',
+            message: `Are you sure you want to reject the OD request for ${name || 'this student'}?`,
+            icon: '⚠️',
+            confirmText: 'Reject',
+            cancelText: 'Cancel',
+            isDanger: true
+        });
+        if (ok) await updateStatus(odId, 'Rejected');
     };
 
     async function updateStatus(odId, status) {
@@ -1264,6 +1559,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             if (res.ok) {
                 showToast('success', `OD ${status.toLowerCase()} by HOD!`);
+                if (odsById[odId]) {
+                    odsById[odId].hodStatus = status;
+                }
+                if (odDetailOverlay?.classList.contains('active')) {
+                    const hodBadge = document.getElementById('odDetailHodStatus');
+                    if (hodBadge) {
+                        hodBadge.className = `badge-${bdg(status)}`;
+                        hodBadge.textContent = status;
+                    }
+                }
                 if (status === 'Approved') {
                     const overlay = document.getElementById('successOverlay');
                     if (overlay) {
@@ -1286,7 +1591,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.hodOverrideMember = async (odId, reg) => {
-        if (!confirm(`Approve ${reg} despite faculty rejection?`)) return;
+        const ok = await showConfirmModal({
+            title: 'HOD Override Approval?',
+            message: `Approve register number ${reg} despite faculty rejection?`,
+            icon: '⚡',
+            confirmText: 'Override & Approve',
+            cancelText: 'Cancel',
+            isDanger: false
+        });
+        if (!ok) return;
         try {
             const res = await fetch(`${API_BASE}/api/OdApply/${odId}/HodOverrideMember?registerNumber=${encodeURIComponent(reg)}`, {
                 method: 'PUT'
@@ -1302,11 +1615,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // ── Auto-refresh so newly finished ODs / uploaded certs reflect without manual refresh ──
-    setInterval(() => {
-        loadODs();
-        if (certsLoaded) loadCertificates();
-    }, 15000);
+    // Auto-refresh disabled — use the manual Refresh button instead.
 
     function bdg(s) { return s === 'Approved' ? 'approved' : s === 'Rejected' ? 'rejected' : 'pending'; }
     function fmtDate(d) { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB'); } catch { return d; } }
@@ -1354,7 +1663,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         c.appendChild(t); setTimeout(() => t.remove(), 3500);
     }
 
-    document.getElementById('logoutBtn')?.addEventListener('click', () => { localStorage.clear(); window.location.href = 'index.html'; });
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    });
+
+    if (typeof AnalogClockPicker !== 'undefined') {
+        AnalogClockPicker.attach(document.getElementById('alterStartTime'));
+        AnalogClockPicker.attach(document.getElementById('alterEndTime'));
+    }
 
     loadODs();
     // Load certificate badge count in background so it's ready before the tab is clicked

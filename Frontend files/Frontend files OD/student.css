@@ -470,6 +470,14 @@ body {
     color: var(--error);
 }
 
+.optional-badge {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--surface-400);
+    text-transform: none;
+    margin-left: 4px;
+}
+
 .input-wrapper {
     position: relative;
     display: flex;
@@ -501,6 +509,7 @@ body {
 }
 
 .input-wrapper input,
+.input-wrapper select,
 .input-wrapper textarea {
     width: 100%;
     padding: 13px 14px 13px 46px;
@@ -512,6 +521,12 @@ body {
     color: white;
     outline: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color-scheme: dark;
+}
+
+select option {
+    background: #0f172a;
+    color: white;
 }
 
 .input-wrapper textarea {
@@ -574,6 +589,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     transition: all 0.3s ease;
 }
 
+.error-message:not(:empty),
 .input-group.error .error-message {
     opacity: 1;
     transform: translateY(0);
@@ -916,7 +932,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     position: fixed;
     top: 24px;
     right: 24px;
-    z-index: 9999;
+    z-index: 10100;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1247,7 +1263,83 @@ textarea:focus-visible {
 .modal-body { display: flex; flex-direction: column; gap: 14px; }
 
 .modal-row { display: flex; flex-direction: column; gap: 4px; }
+.modal-row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) {
+    .modal-row-grid { grid-template-columns: 1fr; }
+}
 .modal-row.full { width: 100%; }
+
+/* ── Inline error banner inside the Edit OD form ── */
+.edit-od-error-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: var(--radius-md);
+    color: #fca5a5;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.4;
+    animation: fadeInDown 0.2s ease;
+}
+.edit-od-error-banner::before {
+    content: '⚠';
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+[data-theme="light"] .edit-od-error-banner {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #be123c;
+}
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+.readonly-days-input {
+    width: 100%;
+    padding: 13px 14px 13px 46px;
+    background: rgba(99, 102, 241, 0.1) !important;
+    border: 1.5px solid rgba(99, 102, 241, 0.25) !important;
+    border-radius: var(--radius-md);
+    font-family: var(--font-family);
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--primary-300, #a5b4fc) !important;
+    cursor: not-allowed;
+    outline: none;
+}
+
+.competition-select {
+    width: 100%;
+    padding: 12px 16px 12px 48px;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    font-size: 0.92rem;
+    font-family: var(--font-family);
+    background: rgba(255, 255, 255, 0.04);
+    color: white;
+    color-scheme: dark;
+    outline: none;
+    cursor: pointer;
+    appearance: auto;
+}
+
+[data-theme="light"] .readonly-days-input {
+    background: #f0f4ff !important;
+    border-color: #c7d2fe !important;
+    color: #4f46e5 !important;
+}
+
+[data-theme="light"] .competition-select {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
 
 .modal-label {
     font-size: 0.72rem;
@@ -1570,6 +1662,25 @@ select.cert-text-input {
     cursor: pointer;
 }
 
+/* Light-theme: flip select dropdowns back to a native light appearance */
+[data-theme="light"] select.cert-text-input,
+[data-theme="light"] select.cert-text-input option {
+    color-scheme: light;
+}
+
+/* Light-theme overrides for all cert-text-inputs (modal form fields) */
+[data-theme="light"] .cert-text-input {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .cert-text-input::placeholder { color: #94a3b8 !important; }
+[data-theme="light"] .cert-text-input:focus {
+    border-color: #6366f1 !important;
+    background: #fafbff !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.10) !important;
+}
+
 .cert-file-drop {
     display: flex;
     flex-direction: column;
@@ -1596,6 +1707,18 @@ select.cert-text-input {
 .cert-file-drop svg {
     color: var(--primary-400);
 }
+
+[data-theme="light"] .cert-file-drop {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+[data-theme="light"] .cert-file-drop:hover {
+    background: #f0f4ff;
+    border-color: #a5b4fc;
+    color: #4f46e5;
+}
+[data-theme="light"] .cert-file-drop svg { color: #6366f1; }
 /* ── Competition Type Tag ── */
 .competition-tag {
     display: inline-flex;
@@ -1720,6 +1843,10 @@ select.cert-text-input {
 /* ── Form labels ── */
 [data-theme="light"] .input-group label { color: #374151 !important; }
 [data-theme="light"] .required { color: #ef4444 !important; }
+[data-theme="light"] .optional-badge { color: #64748b !important; }
+
+/* ── Inputs, textareas, selects ── */
+[data-theme="light"] .input-wrapper input[type="time"] { color-scheme: light !important; }
 
 /* ── Inputs, textareas, selects ── */
 [data-theme="light"] .input-wrapper input,
@@ -1843,13 +1970,21 @@ select.cert-text-input {
 [data-theme="light"] .od-status-card .card-meta span strong { color: #374151 !important; }
 [data-theme="light"] .od-status-card .status-item strong { color: #374151 !important; }
 
-/* ── OD Detail Modal ── */
-[data-theme="light"] .od-detail-modal,
+/* ── OD Detail Modal & Overlay ── */
 [data-theme="light"] .modal-overlay {
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-theme="light"] .od-detail-modal,
+[data-theme="light"] .modal-card,
+[data-theme="light"] .modal-content,
+[data-theme="light"] .modal {
     background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
     box-shadow: 0 8px 40px rgba(0,0,0,0.12) !important;
-    color: #1e293b !important;
+    color: #0f172a !important;
 }
 [data-theme="light"] .modal-header,
 [data-theme="light"] .od-detail-header {
@@ -1961,9 +2096,10 @@ select.cert-text-input {
 [data-theme="light"] .empty-state p  { color: #94a3b8 !important; }
 
 /* ── Toast ── */
-[data-theme="light"] .toast.success { background: #166534 !important; color: #fff !important; }
-[data-theme="light"] .toast.error   { background: #be123c !important; color: #fff !important; }
-[data-theme="light"] .toast         { background: #1e293b !important; color: #fff !important; }
+[data-theme="light"] .toast { background: #ffffff !important; color: #0f172a !important; box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important; }
+[data-theme="light"] .toast.success { background: #f0fdf4 !important; border-color: #bbf7d0 !important; color: #166534 !important; }
+[data-theme="light"] .toast.error   { background: #fef2f2 !important; border-color: #fecaca !important; color: #991b1b !important; }
+[data-theme="light"] .toast.info    { background: #eff6ff !important; border-color: #bfdbfe !important; color: #1e40af !important; }
 
 /* ── Search inputs ── */
 [data-theme="light"] .search-input,
@@ -2112,3 +2248,218 @@ select.cert-text-input {
 [data-theme="light"] .member-chip .chip-remove { background: rgba(0,0,0,0.06); color: #374151; }
 [data-theme="light"] .member-chip .chip-remove:hover { background: #fee2e2; color: #dc2626; }
 [data-theme="light"] .member-hint { color: #94a3b8; }
+
+/* ── Mobile Responsive Updates ── */
+@media (max-width: 560px) {
+    .toast {
+        right: 12px !important;
+        left: 12px !important;
+        max-width: calc(100vw - 24px) !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* ── Circular Analog Clock Picker CSS ── */
+.clock-picker-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.clock-picker-modal {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    width: 310px;
+    max-width: 95vw;
+    padding: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    color: #f8fafc;
+    user-select: none;
+}
+[data-theme="light"] .clock-picker-modal {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15) !important;
+}
+.clock-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.clock-picker-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary, #3b82f6);
+}
+.clock-picker-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: inherit;
+    line-height: 1;
+}
+.clock-picker-time-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 14px;
+}
+[data-theme="light"] .clock-picker-time-display { background: #f1f5f9 !important; }
+.clock-time-val {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: monospace;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+.clock-time-val.active {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+}
+.clock-time-colon {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #64748b;
+}
+.clock-ampm-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 8px;
+}
+.clock-ampm-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 4px;
+    cursor: pointer;
+}
+[data-theme="light"] .clock-ampm-btn { border-color: #cbd5e1; color: #64748b; }
+.clock-ampm-btn.active {
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    border-color: #3b82f6 !important;
+}
+.clock-mode-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.clock-mode-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+}
+[data-theme="light"] .clock-mode-btn { border-color: #cbd5e1; color: #475569; }
+.clock-mode-btn.active {
+    background: #3b82f6 !important;
+    color: #fff !important;
+    border-color: #3b82f6 !important;
+}
+.clock-face-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+.clock-face {
+    position: relative;
+    width: 206px;
+    height: 206px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    touch-action: none;
+}
+[data-theme="light"] .clock-face {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+.clock-number {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 50%;
+    color: #cbd5e1;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+[data-theme="light"] .clock-number { color: #334155; }
+.clock-number.active {
+    background: #3b82f6;
+    color: #ffffff !important;
+}
+.clock-hand {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 2px;
+    height: 72px;
+    background: #3b82f6;
+    transform-origin: top center;
+    transform: rotate(0deg);
+    pointer-events: none;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.clock-hand-pin {
+    position: absolute;
+    bottom: -14px; left: -14px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.3);
+    border: 2px solid #3b82f6;
+}
+.clock-picker-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+.clock-btn-clear {
+    padding: 8px 16px;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 8px;
+    cursor: pointer;
+}
+[data-theme="light"] .clock-btn-clear { border-color: #cbd5e1; color: #64748b; }
+.clock-btn-ok {
+    flex: 1;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+}
