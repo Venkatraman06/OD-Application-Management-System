@@ -171,7 +171,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = `${API_BASE}/api/Faculty/PendingODs/${encodeURIComponent(dept)}` +
                         `${section ? `?section=${encodeURIComponent(section)}&` : '?'}_=${Date.now()}`;
             const res = await fetch(url, { cache: 'no-store' });
-            if (!res.ok) { console.error('Load ODs failed:', res.status); return; }
+            if (!res.ok) {
+                console.error('Load ODs failed:', res.status);
+                showToast('error', `Failed to load OD requests (server error ${res.status})`);
+                // Zero out the HTML placeholder counts so stale hardcoded numbers don't remain
+                updateCounts([]);
+                const container = document.getElementById('requestsContainer');
+                if (container) container.innerHTML = `<div style="padding:32px 24px;text-align:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" width="40" height="40" style="margin-bottom:12px;opacity:0.7"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div style="color:#ef4444;font-weight:600;margin-bottom:6px;">Server error (${res.status})</div>
+                    <div style="color:#94a3b8;font-size:13px;">Could not load OD requests. Check the backend console for details.</div>
+                    <div style="margin-top:14px;color:#64748b;font-size:12px;">Use the <strong>Refresh</strong> button to try again.</div>
+                </div>`;
+                return;
+            }
             allODs = await res.json();
             updateCounts(allODs);
             if (currentFilter !== 'certificates' && currentFilter !== 'analytics') applyFilter(currentFilter);

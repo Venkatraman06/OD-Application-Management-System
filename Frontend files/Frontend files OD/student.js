@@ -1303,8 +1303,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('OD status response code:', res.status);
 
             if (!res.ok) {
-                list.innerHTML = `<div style="padding:24px;text-align:center;color:#ef4444">
-                    Server error ${res.status} — check backend console</div>`;
+                const errMsg = `Server error ${res.status} — could not load your OD requests.`;
+                showToast('error', errMsg);
+                list.innerHTML = `<div style="padding:32px 24px;text-align:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" width="40" height="40" style="margin-bottom:12px;opacity:0.7"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div style="color:#ef4444;font-weight:600;margin-bottom:6px;">Server error (${res.status})</div>
+                    <div style="color:#94a3b8;font-size:13px;">Could not load OD requests. Check the backend console for details.</div>
+                    <div style="margin-top:14px;color:#64748b;font-size:12px;">Use the <strong>Refresh</strong> button above to try again.</div>
+                </div>`;
                 return;
             }
 
@@ -1485,8 +1491,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (err) {
             console.error('loadODStatus error:', err);
-            list.innerHTML = `<div style="padding:24px;text-align:center;color:#ef4444">
-                Network error — make sure backend is running on ${API_BASE}</div>`;
+            showToast('error', `Could not reach backend — make sure it is running on ${API_BASE}`);
+            list.innerHTML = `<div style="padding:32px 24px;text-align:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" width="40" height="40" style="margin-bottom:12px;opacity:0.8"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div style="color:#f59e0b;font-weight:600;margin-bottom:6px;">Cannot reach backend</div>
+                <div style="color:#94a3b8;font-size:13px;">Make sure the backend server is running on <code style="background:#1e293b;padding:2px 6px;border-radius:4px;font-size:12px;">${API_BASE}</code></div>
+                <div style="margin-top:14px;color:#64748b;font-size:12px;">Use the <strong>Refresh</strong> button above to try again once the server is up.</div>
+            </div>`;
         }
     }
 
