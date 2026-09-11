@@ -15,5 +15,7 @@ namespace OnlineOD.Data
         public DbSet<Hod> Hods { get; set; }
         public DbSet<OdApply> OdApplies { get; set; }
         public DbSet<OdCertificate> OdCertificates { get; set; }
+        public DbSet<ContactAdminRequest> ContactAdminRequests { get; set; }
+        public DbSet<WorkingDayOverride> WorkingDayOverrides { get; set; }
     }
 }

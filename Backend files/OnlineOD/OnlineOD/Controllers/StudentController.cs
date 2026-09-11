@@ -34,6 +34,22 @@ namespace OnlineOD.Controllers
             return Ok(student);
         }
 
+        // Validate a register number exists — used when adding a Group OD
+        // member, so only real students can be added to the group.
+        // GET /api/Student/ValidateRegisterNumber/{regNo}
+        [HttpGet("ValidateRegisterNumber/{regNo}")]
+        public async Task<IActionResult> ValidateRegisterNumber(string regNo)
+        {
+            if (string.IsNullOrWhiteSpace(regNo))
+                return BadRequest(new { message = "Register number is required" });
+
+            var student = await _studentService.GetByRegisterNumberAsync(regNo.Trim());
+            if (student == null)
+                return NotFound(new { message = "No user found" });
+
+            return Ok(new { name = student.Name, registerNumber = student.RegisterNumber, department = student.Department });
+        }
+
 
         // this will add the student details to the database
         [HttpPost]

@@ -71,5 +71,14 @@ namespace OnlineOD.Service
                     s.RegisterNumber == registerNumber &&
                     s.Password == password);
         }
+
+        // Look up a student by register number only (used to validate group
+        // members before they're added to a Group OD — no password needed).
+        public async Task<Student> GetByRegisterNumberAsync(string registerNumber)
+        {
+            if (string.IsNullOrWhiteSpace(registerNumber)) return null;
+            return await _context.Students
+                .FirstOrDefaultAsync(s => s.RegisterNumber == registerNumber);
+        }
     }
 }

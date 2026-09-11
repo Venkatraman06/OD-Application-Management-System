@@ -1,4 +1,4 @@
-﻿using OnlineOD.Dtos;
+using OnlineOD.Dtos;
 using OnlineOD.Models;
 
 namespace OnlineOD.Service
@@ -47,7 +47,15 @@ namespace OnlineOD.Service
         Task<OdApply?> UnrejectGroupMemberAsync(int odId, string registerNumber, int staffId);
         Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber);
 
-        /// <summary>Staff alters the FromDate / ToDate / NumberOfDays of a pending OD.</summary>
-        Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays);
+        /// <summary>Staff or HOD alters FromDate, ToDate, StartTime, EndTime, and NumberOfDays of a pending OD.</summary>
+        Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null);
+
+        /// <summary>
+        /// Student edits their own Group OD (dates, event, reason, members, etc.)
+        /// — only allowed while both FacultyStatus and HodStatus are still
+        /// "Pending", i.e. before any decision has been made on it.
+        /// Returns (null, error) if not found or not editable.
+        /// </summary>
+        Task<(OdApply? od, string? error)> EditGroupOdAsync(int odId, OnlineOD.Dtos.EditGroupOdDto dto);
     }
 }

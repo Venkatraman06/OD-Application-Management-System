@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnlineOD.Data;
 
@@ -11,9 +12,11 @@ using OnlineOD.Data;
 namespace OnlineOD.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901170754_AddContactAdminRequests")]
+    partial class AddContactAdminRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,7 +36,8 @@ namespace OnlineOD.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Dob")
+                    b.Property<string>("Email")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsResolved")
@@ -43,11 +47,14 @@ namespace OnlineOD.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("RegisterNumber")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Role")
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Subject")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -108,12 +115,6 @@ namespace OnlineOD.Migrations
                     b.Property<string>("CompetitionType")
                         .HasColumnType("nvarchar(max)");
 
-<<<<<<< HEAD
-=======
-                    b.Property<string>("EndTime")
-                        .HasColumnType("nvarchar(max)");
-
->>>>>>> a26a20e17a0cec75fb6ec567a1a913961705542d
                     b.Property<string>("Event")
                         .HasColumnType("nvarchar(max)");
 
@@ -153,9 +154,6 @@ namespace OnlineOD.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Section")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("StartTime")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("StudentId")
@@ -288,25 +286,6 @@ namespace OnlineOD.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("Students");
-<<<<<<< HEAD
-=======
-                });
-
-            modelBuilder.Entity("OnlineOD.Models.WorkingDayOverride", b =>
-                {
-                    b.Property<string>("Date")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("IsWorking")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Date");
-
-                    b.ToTable("WorkingDayOverrides");
->>>>>>> a26a20e17a0cec75fb6ec567a1a913961705542d
                 });
 #pragma warning restore 612, 618
         }

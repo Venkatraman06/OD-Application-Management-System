@@ -82,12 +82,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const workingDaysCalendar = (typeof CollegeWorkingDays !== 'undefined') ? CollegeWorkingDays : null;
 
-    // Restrict the native date pickers to the published calendar period
-    // so students can't even scroll to an out-of-range date.
+    const todayStr = new Date().toISOString().slice(0, 10);
     ['fromDate', 'toDate', 'groupFromDate', 'groupToDate'].forEach(id => {
         const el = document.getElementById(id);
         if (el && workingDaysCalendar) {
-            el.min = workingDaysCalendar.minDate;
+            el.min = todayStr > workingDaysCalendar.minDate ? todayStr : workingDaysCalendar.minDate;
             el.max = workingDaysCalendar.maxDate;
         }
     });
@@ -149,37 +148,104 @@ document.addEventListener('DOMContentLoaded', async () => {
     const fromEl = document.getElementById('fromDate');
     const toEl   = document.getElementById('toDate');
     const daysEl = document.getElementById('numberOfDays');
+    const startTimeEl = document.getElementById('startTime');
+    const endTimeEl   = document.getElementById('endTime');
+
+    // Convert HH:MM string to total minutes
+    function timeToMinutes(t) {
+        if (!t) return null;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    }
+
+    // Format HH:MM (24-hr) to 12-hr AM/PM string
+    function formatTime12h(t) {
+        if (!t) return '-';
+        const [h, m] = t.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+    }
+
+    function buildDaysText(days, startTime, endTime) {
+        if (!days || days <= 0) return '0 working days (range covers no published working days)';
+        const label = days === 1 ? 'working day' : 'working days';
+        const sMin = timeToMinutes(startTime);
+        const eMin = timeToMinutes(endTime);
+        if (sMin !== null && eMin !== null && eMin > sMin) {
+            const diffH = (eMin - sMin) / 60;
+            const hoursLabel = diffH % 1 === 0 ? `${diffH} working hours` : `${diffH.toFixed(1)} working hours`;
+            return `${days} ${label} (${hoursLabel}/day)`;
+        }
+        return `${days} ${label}`;
+    }
 
     function calcDays() {
         if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value <= toEl.value) {
             const d = countWorkingDays(fromEl.value, toEl.value);
             if (daysEl) {
-                daysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers no published working days)';
+                daysEl.value = buildDaysText(d, startTimeEl?.value, endTimeEl?.value);
             }
         } else {
             if (daysEl) daysEl.value = '';
         }
     }
-    if (fromEl) fromEl.addEventListener('change', () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date'); calcDays(); });
-    if (toEl)   toEl.addEventListener('change',   () => { guardWeekendInput(toEl,   'toDate-error',   'To Date');   calcDays(); });
+    if (fromEl)      fromEl.addEventListener('change',      () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date'); calcDays(); });
+    if (toEl)        toEl.addEventListener('change',        () => { guardWeekendInput(toEl,   'toDate-error',   'To Date');   calcDays(); });
+    if (startTimeEl) startTimeEl.addEventListener('change', () => { calcDays(); validateTimes(); });
+    if (endTimeEl)   endTimeEl.addEventListener('change',   () => { calcDays(); validateTimes(); });
+
+    function validateTimes() {
+        const sMin = timeToMinutes(startTimeEl?.value);
+        const eMin = timeToMinutes(endTimeEl?.value);
+        const errEl = document.getElementById('endTime-error');
+        const grp   = document.getElementById('endTime-group');
+        if (sMin !== null && eMin !== null && eMin <= sMin) {
+            if (errEl) errEl.textContent = 'End Time must be later than Start Time.';
+            if (grp)   grp.classList.add('error');
+            return false;
+        }
+        if (errEl) errEl.textContent = '';
+        if (grp)   grp.classList.remove('error');
+        return true;
+    }
 
     // ── Auto-calculate days (group OD) — working days only ──
-    const groupFromEl = document.getElementById('groupFromDate');
-    const groupToEl   = document.getElementById('groupToDate');
-    const groupDaysEl = document.getElementById('groupNumberOfDays');
+    const groupFromEl  = document.getElementById('groupFromDate');
+    const groupToEl    = document.getElementById('groupToDate');
+    const groupDaysEl  = document.getElementById('groupNumberOfDays');
+    const grpStartTimeEl = document.getElementById('groupStartTime');
+    const grpEndTimeEl   = document.getElementById('groupEndTime');
 
     function calcGroupDays() {
         if (groupFromEl && groupToEl && groupFromEl.value && groupToEl.value && groupFromEl.value <= groupToEl.value) {
             const d = countWorkingDays(groupFromEl.value, groupToEl.value);
             if (groupDaysEl) {
-                groupDaysEl.value = d > 0 ? (d + (d === 1 ? ' working day' : ' working days')) : '0 working days (range covers no published working days)';
+                groupDaysEl.value = buildDaysText(d, grpStartTimeEl?.value, grpEndTimeEl?.value);
             }
         } else {
             if (groupDaysEl) groupDaysEl.value = '';
         }
     }
-    if (groupFromEl) groupFromEl.addEventListener('change', () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date'); calcGroupDays(); });
-    if (groupToEl)   groupToEl.addEventListener('change',   () => { guardWeekendInput(groupToEl,   'groupToDate-error',   'To Date');   calcGroupDays(); });
+    if (groupFromEl)  groupFromEl.addEventListener('change',  () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date'); calcGroupDays(); });
+    if (groupToEl)    groupToEl.addEventListener('change',    () => { guardWeekendInput(groupToEl,   'groupToDate-error',   'To Date');   calcGroupDays(); });
+    if (grpStartTimeEl) grpStartTimeEl.addEventListener('change', () => { calcGroupDays(); validateGroupTimes(); });
+    if (grpEndTimeEl)   grpEndTimeEl.addEventListener('change',   () => { calcGroupDays(); validateGroupTimes(); });
+
+    function validateGroupTimes() {
+        const sMin = timeToMinutes(grpStartTimeEl?.value);
+        const eMin = timeToMinutes(grpEndTimeEl?.value);
+        const errEl = document.getElementById('groupEndTime-error');
+        const grp   = document.getElementById('groupEndTime-group');
+        if (sMin !== null && eMin !== null && eMin <= sMin) {
+            if (errEl) errEl.textContent = 'End Time must be later than Start Time.';
+            if (grp)   grp.classList.add('error');
+            return false;
+        }
+        if (errEl) errEl.textContent = '';
+        if (grp)   grp.classList.remove('error');
+        return true;
+    }
 
     // ── Tab switching ──
     const tabIndicator = document.getElementById('tabIndicator');
@@ -208,17 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    // ── Auto-refresh status while tab is open ──
-    let statusPollInterval = null;
-    function startStatusPolling() {
-        if (statusPollInterval) clearInterval(statusPollInterval);
-        statusPollInterval = setInterval(() => {
-            if (document.getElementById('apply-status')?.classList.contains('active')) {
-                loadODStatus();
-            }
-        }, 15000);
-    }
-    startStatusPolling();
+    // Auto-refresh disabled — data updates via manual refresh button or tab switch
 
     // ── Force a fresh reload when returning to this page via browser
     //    back/forward cache (bfcache). Without this, the browser can restore
@@ -258,6 +314,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const college  = document.getElementById('collegeName')?.value.trim() || '';
         const reason   = document.getElementById('reason')?.value.trim()      || '';
         const competitionType = document.getElementById('competitionType')?.value || '';
+        const startTime = startTimeEl?.value || null;
+        const endTime   = endTimeEl?.value   || null;
 
         if (!fromDate || !toDate || !event || !college || !reason || !competitionType) {
             showToast('error', 'All fields required'); return;
@@ -277,6 +335,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (reason.length < 5) {
             showToast('error', 'Reason too short'); return;
         }
+        // Validate times if provided
+        if (startTime && endTime && !validateTimes()) {
+            showToast('error', 'End Time must be later than Start Time.'); return;
+        }
+        if ((startTime && !endTime) || (!startTime && endTime)) {
+            showToast('error', 'Please provide both Start Time and End Time, or leave both empty.'); return;
+        }
 
         const days = countWorkingDays(fromDate, toDate);
         if (days <= 0) {
@@ -295,7 +360,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             event,
             competitionType,
             collegeIndustry: college,
-            reason
+            reason,
+            startTime:       startTime || null,
+            endTime:         endTime   || null
         };
 
         console.log('Submitting OD:', odData);
@@ -346,6 +413,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const groupName = document.getElementById('groupName')?.value.trim()       || '';
         const regNumbersRaw = document.getElementById('registerNumbers')?.value.trim() || '';
         const groupCompetitionType = document.getElementById('groupCompetitionType')?.value || '';
+        const grpStartTime = grpStartTimeEl?.value || null;
+        const grpEndTime   = grpEndTimeEl?.value   || null;
 
         if (!fromDate || !toDate || !event || !college || !reason || !groupName || !groupCompetitionType) {
             showToast('error', 'All fields required'); return;
@@ -367,6 +436,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (reason.length < 5) {
             showToast('error', 'Reason too short'); return;
+        }
+        // Validate times if provided
+        if (grpStartTime && grpEndTime && !validateGroupTimes()) {
+            showToast('error', 'End Time must be later than Start Time.'); return;
+        }
+        if ((grpStartTime && !grpEndTime) || (!grpStartTime && grpEndTime)) {
+            showToast('error', 'Please provide both Start Time and End Time, or leave both empty.'); return;
         }
 
         const regNumbers = [...window.groupMemberList];
@@ -391,7 +467,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             competitionType: groupCompetitionType,
             isGroupOd:       true,
             groupName:       groupName,
-            registerNumbers: regNumbers.join(',')
+            registerNumbers: regNumbers.join(','),
+            startTime:       grpStartTime || null,
+            endTime:         grpEndTime   || null
         };
 
         console.log('Submitting Group OD:', odData);
@@ -542,6 +620,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modalCompEl) { modalCompEl.textContent = compType || '-'; modalCompEl.closest('.modal-row').style.display = compType ? '' : 'none'; }
         setEl('modalFromDate', fmtDate(fromDate));
         setEl('modalToDate', fmtDate(toDate));
+        // Start Time / End Time
+        const odStartTime = od.StartTime ?? od.startTime ?? null;
+        const odEndTime   = od.EndTime   ?? od.endTime   ?? null;
+        setEl('modalStartTime', odStartTime ? formatTime12h(odStartTime) : '-');
+        setEl('modalEndTime',   odEndTime   ? formatTime12h(odEndTime)   : '-');
         setEl('modalDays', numDays ? `${numDays}${odDateCountdownLabel(fromDate, toDate) ? ' (' + odDateCountdownLabel(fromDate, toDate) + ')' : ''}` : '-');
         setEl('modalReason', reason || 'No reason provided');
 
@@ -701,7 +784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    function addMember() {
+    async function addMember() {
         const input = document.getElementById('memberRegInput');
         if (!input) return;
         const val = input.value.trim().toUpperCase();
@@ -711,10 +794,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             input.value = '';
             return;
         }
-        window.groupMemberList.push(val);
-        renderMemberList();
-        input.value = '';
-        input.focus();
+
+        const addBtn = document.getElementById('addMemberBtn');
+        if (addBtn) addBtn.disabled = true;
+        input.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Student/ValidateRegisterNumber/${encodeURIComponent(val)}`);
+
+            if (res.status === 404) {
+                showToast('error', 'No user found');
+                return;
+            }
+            if (!res.ok) {
+                showToast('error', 'Could not verify register number. Try again.');
+                return;
+            }
+
+            window.groupMemberList.push(val);
+            renderMemberList();
+            input.value = '';
+        } catch (err) {
+            console.error('Validate register number error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (addBtn) addBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
     }
 
     document.getElementById('addMemberBtn')?.addEventListener('click', addMember);
@@ -724,6 +831,235 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialise with own reg number on page load
     renderMemberList();
+
+    // ══════════════════════════════════════════════════
+    // EDIT GROUP OD (only while still Pending with faculty)
+    // ══════════════════════════════════════════════════
+    const editGroupOdModal = document.getElementById('editGroupOdModal');
+    window.editMemberList = []; // array of uppercase reg numbers, for the edit modal
+
+    function renderEditMemberList() {
+        const myRegNo = (localStorage.getItem('registerNumber') || '').trim().toUpperCase();
+        const list = document.getElementById('editMemberList');
+        if (!list) return;
+
+        list.innerHTML = window.editMemberList.map((reg, i) => {
+            const isSelf = reg === myRegNo;
+            return `<span class="member-chip${isSelf ? ' is-self' : ''}" data-reg="${reg}">
+                <span class="chip-label">${reg}${isSelf ? ' (You)' : ''}</span>
+                ${!isSelf ? `<button type="button" class="chip-remove" data-index="${i}" title="Remove">×</button>` : ''}
+            </span>`;
+        }).join('');
+
+        const errEl = document.getElementById('editRegisterNumbers-error');
+        if (errEl && window.editMemberList.length >= 2) errEl.textContent = '';
+
+        list.querySelectorAll('.chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const reg = btn.closest('.member-chip').dataset.reg;
+                window.editMemberList = window.editMemberList.filter(r => r !== reg);
+                renderEditMemberList();
+            });
+        });
+    }
+
+    async function addEditMember() {
+        const input = document.getElementById('editMemberRegInput');
+        if (!input) return;
+        const val = input.value.trim().toUpperCase();
+        if (!val) { showToast('error', 'Enter a register number'); return; }
+        if (window.editMemberList.includes(val)) {
+            showToast('error', `${val} is already added`);
+            input.value = '';
+            return;
+        }
+
+        const addBtn = document.getElementById('editAddMemberBtn');
+        if (addBtn) addBtn.disabled = true;
+        input.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Student/ValidateRegisterNumber/${encodeURIComponent(val)}`);
+            if (res.status === 404) {
+                showFieldError(input, 'editRegisterNumbers-error', 'No user found with this register number');
+                showToast('error', 'No user found');
+                return;
+            }
+            if (!res.ok) {
+                showToast('error', 'Could not verify register number. Try again.');
+                return;
+            }
+            window.editMemberList.push(val);
+            renderEditMemberList();
+            input.value = '';
+        } catch (err) {
+            console.error('Validate register number error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (addBtn) addBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+    }
+
+    document.getElementById('editAddMemberBtn')?.addEventListener('click', addEditMember);
+    document.getElementById('editMemberRegInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addEditMember(); }
+    });
+
+    function openEditGroupOdModal(od) {
+        const rawFacultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
+        const rawHodStatus = od.HodStatus ?? od.hodStatus ?? 'Pending';
+        if (rawFacultyStatus === 'Approved' && rawHodStatus === 'Approved') {
+            showToast('error', 'This OD has already been approved and cannot be edited.');
+            return;
+        }
+
+        const isGroup = !!(od.IsGroupOd ?? od.isGroupOd);
+        const modalTitle = document.querySelector('#editGroupOdModal .modal-header h3');
+        if (modalTitle) modalTitle.textContent = isGroup ? 'Edit Group OD' : 'Edit OD Application';
+
+        const groupNameRow = document.getElementById('editGroupName')?.closest('.modal-row');
+        const memberListRow = document.getElementById('editMemberList')?.closest('.modal-row');
+        if (groupNameRow) groupNameRow.style.display = isGroup ? 'block' : 'none';
+        if (memberListRow) memberListRow.style.display = isGroup ? 'block' : 'none';
+
+        const odId = od.OdId ?? od.odId ?? '';
+        document.getElementById('editOdId').value = odId;
+        if (editGroupOdModal) editGroupOdModal.dataset.isgroup = isGroup ? 'true' : 'false';
+
+        document.getElementById('editGroupFromDate').value = toInputDateStr(od.FromDate ?? od.fromDate);
+        document.getElementById('editGroupToDate').value = toInputDateStr(od.ToDate ?? od.toDate);
+        document.getElementById('editGroupCollegeName').value = od.CollegeIndustry ?? od.collegeIndustry ?? '';
+        document.getElementById('editGroupEventName').value = od.Event ?? od.event ?? '';
+        document.getElementById('editGroupCompetitionType').value = od.CompetitionType ?? od.competitionType ?? '';
+        document.getElementById('editGroupName').value = od.GroupName ?? od.groupName ?? '';
+        document.getElementById('editGroupReason').value = od.Reason ?? od.reason ?? '';
+
+        const userReg = (localStorage.getItem('registerNumber') || '').trim().toUpperCase();
+        const regNumbersRaw = od.RegisterNumbers ?? od.registerNumbers ?? userReg;
+        window.editMemberList = regNumbersRaw
+            ? regNumbersRaw.split(',').map(r => r.trim().toUpperCase()).filter(Boolean)
+            : (userReg ? [userReg] : []);
+        renderEditMemberList();
+
+        if (editGroupOdModal) {
+            const banner = document.getElementById('editOdErrorBanner');
+            if (banner) { banner.textContent = ''; banner.style.display = 'none'; }
+            editGroupOdModal.style.display = 'flex';
+        }
+    }
+
+    function toInputDateStr(raw) {
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toISOString().split('T')[0];
+    }
+
+    document.getElementById('editGroupOdCloseBtn')?.addEventListener('click', () => {
+        if (editGroupOdModal) editGroupOdModal.style.display = 'none';
+    });
+    editGroupOdModal?.addEventListener('click', (e) => {
+        if (e.target === editGroupOdModal) editGroupOdModal.style.display = 'none';
+    });
+
+    document.getElementById('editGroupOdForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        function showEditError(msg) {
+            const banner = document.getElementById('editOdErrorBanner');
+            if (banner) {
+                banner.textContent = msg;
+                banner.style.display = 'flex';
+                banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            showToast('error', msg);
+        }
+        function clearEditError() {
+            const banner = document.getElementById('editOdErrorBanner');
+            if (banner) { banner.textContent = ''; banner.style.display = 'none'; }
+        }
+
+        clearEditError();
+
+        const odId = document.getElementById('editOdId').value;
+        const isGroup = editGroupOdModal?.dataset.isgroup === 'true';
+        const fromDate = document.getElementById('editGroupFromDate').value;
+        const toDate = document.getElementById('editGroupToDate').value;
+        const college = document.getElementById('editGroupCollegeName').value.trim();
+        const event = document.getElementById('editGroupEventName').value.trim();
+        const competitionType = document.getElementById('editGroupCompetitionType').value;
+        const groupName = document.getElementById('editGroupName').value.trim();
+        const reason = document.getElementById('editGroupReason').value.trim();
+
+        if (!fromDate || !toDate || !college || !event || !competitionType || !reason || (isGroup && !groupName)) {
+            showEditError('All fields are required. Please fill in every field before saving.'); return;
+        }
+        if (isGroup && window.editMemberList.length < 2) {
+            showEditError('Add at least 2 group members.'); return;
+        }
+        if (fromDate > toDate) {
+            showEditError('To date must be after from date.'); return;
+        }
+        if (isWeekend(fromDate)) {
+            showEditError('From Date must be a college working day (Mon–Fri).'); return;
+        }
+        if (isWeekend(toDate)) {
+            showEditError('To Date must be a college working day (Mon–Fri).'); return;
+        }
+        if (reason.length < 5) {
+            showEditError('Reason is too short — please provide more detail.'); return;
+        }
+
+        const days = countWorkingDays(fromDate, toDate);
+        if (days <= 0) {
+            showEditError('The selected date range contains no college working days.'); return;
+        }
+
+        const userReg = (localStorage.getItem('registerNumber') || '').trim().toUpperCase();
+        const finalMembers = isGroup ? window.editMemberList : (userReg ? [userReg] : []);
+
+        const submitBtn = document.getElementById('editGroupOdSubmitBtn');
+        const btnText = submitBtn?.querySelector('.btn-text');
+        const btnLoader = submitBtn?.querySelector('.btn-loader');
+        if (btnText) btnText.style.display = 'none';
+        if (btnLoader) btnLoader.style.display = 'inline';
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/EditGroupOd`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fromDate, toDate, numberOfDays: days,
+                    event, collegeIndustry: college, competitionType,
+                    reason, groupName: isGroup ? groupName : 'Solo OD',
+                    registerNumbers: finalMembers.join(',')
+                })
+            });
+
+            if (res.ok) {
+                showToast('success', 'OD application updated successfully!');
+                const banner = document.getElementById('editOdErrorBanner');
+                if (banner) { banner.textContent = ''; banner.style.display = 'none'; }
+                if (editGroupOdModal) editGroupOdModal.style.display = 'none';
+                await loadODStatus();
+            } else {
+                const errText = await res.text();
+                console.error('Edit OD failed:', res.status, errText);
+                const errMsg = errText || `Failed to update OD (${res.status})`;
+                showEditError(errMsg);
+            }
+        } catch (err) {
+            console.error('Edit OD network error:', err);
+            showToast('error', 'Network error — check backend is running');
+        } finally {
+            if (btnText) btnText.style.display = 'inline';
+            if (btnLoader) btnLoader.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
 
     function escapeCompType(t) {
         const icons = { hackathon: '⚡', cultural: '🎭', sports: '🏆', technical: '💡', 'paper presentation': '📄', workshop: '🔧', symposium: '🎓', other: '🏅' };
@@ -934,6 +1270,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function showRejectionToast(eventName, rejectedBy, odId) {
+        const title = "OD Request Rejected";
+        const label = eventName ? ` (${eventName})` : (odId ? ` (OD #${odId})` : '');
+        const message = `Your OD request${label} was rejected by ${rejectedBy || 'Faculty/HOD'}.`;
+        showToast('error', message, title);
+    }
+
     // ── Load OD Status (solo + group, via register number) ──
     async function loadODStatus() {
         const list  = document.getElementById('statusList');
@@ -1012,10 +1355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const rawFacultyStatus = od.FacultyStatus ?? od.facultyStatus ?? 'Pending';
                 const canCancel = rawFacultyStatus === 'Pending';
 
-                const competitionType = od.CompetitionType ?? od.competitionType ?? '';
-                const competitionTag = competitionType
-                    ? `<span class="competition-tag competition-tag--${competitionType.toLowerCase().replace(/\s+/g,'-')}" title="Competition Type">${escapeCompType(competitionType)}</span>`
-                    : '';
+                const myRegUpper = (localStorage.getItem('registerNumber') || '').trim().toUpperCase();
                 const groupTag = isGroup
                     ? `<span class="status-program" style="margin-left:8px">Group: ${groupName}</span>`
                     : '';
@@ -1023,21 +1363,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? `<span class="badge-rejected" style="margin-left:6px">Your OD: Rejected</span>`
                     : '';
 
-                // One-time alert for this student's rejection on this OD.
-                // Guarded with localStorage so it fires exactly once ever —
-                // never again on login, page refresh, or the 5s status poll.
+                // One-time top-right toast notification for this student's rejection on this OD.
+                // Guarded with localStorage using unique odId + regNo so it fires exactly once per rejection event.
                 if (iAmRejected) {
-                    const alertKey = `odRejectSeen_${odId}_${myRegNo}`;
-                    if (!localStorage.getItem(alertKey)) {
+                    const alertKey = `odRejectNotice_${odId}_${myRegUpper}`;
+                    const fallbackKey = `odRejectNotice_${odId}`;
+                    const legacyKey = `odRejectSeen_${odId}_${myRegUpper}`;
+                    const legacyFallback = `odRejectSeen_${odId}`;
+                    if (!localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
+                        !localStorage.getItem(legacyKey) && !localStorage.getItem(legacyFallback)) {
                         localStorage.setItem(alertKey, '1');
-                        setTimeout(() => alert(`Your OD request (${eventName}) was rejected by faculty.`), 100);
+                        localStorage.setItem(fallbackKey, '1');
+                        localStorage.setItem(legacyKey, '1');
+                        localStorage.setItem(legacyFallback, '1');
+                        setTimeout(() => showRejectionToast(eventName, 'faculty', odId), 100);
                     }
                 } else if (hodStatus === 'Rejected') {
                     // Whole OD (solo or group) rejected at the HOD stage.
-                    const alertKey = `odHodRejectSeen_${odId}_${myRegNo}`;
-                    if (!localStorage.getItem(alertKey)) {
+                    const alertKey = `odHodRejectNotice_${odId}_${myRegUpper}`;
+                    const fallbackKey = `odHodRejectNotice_${odId}`;
+                    const legacyKey = `odHodRejectSeen_${odId}_${myRegUpper}`;
+                    const legacyFallback = `odHodRejectSeen_${odId}`;
+                    if (!localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
+                        !localStorage.getItem(legacyKey) && !localStorage.getItem(legacyFallback)) {
                         localStorage.setItem(alertKey, '1');
-                        setTimeout(() => alert(`Your OD request (${eventName}) was rejected by HOD.`), 100);
+                        localStorage.setItem(fallbackKey, '1');
+                        localStorage.setItem(legacyKey, '1');
+                        localStorage.setItem(legacyFallback, '1');
+                        setTimeout(() => showRejectionToast(eventName, 'HOD', odId), 100);
                     }
                 }
 
@@ -1067,11 +1420,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </button>`
                     : '';
 
+                const isRejectedOrEditable = myFacultyStatus === 'Rejected' || hodStatus === 'Rejected' || od.isEditable === true || od.status === 'Returned';
+                const canEdit = isRejectedOrEditable && !iAmApproved;
+
                 return `
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
                     <div class="card-top">
                         <div>
-                            <h4>${eventName} ${competitionTag} ${groupTag} ${myStatusTag}</h4>
+                            <h4>${eventName} ${groupTag} ${myStatusTag}</h4>
                             <p>${college}</p>
                         </div>
                         <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(myFacultyStatus, hodStatus)}</span>
@@ -1104,6 +1460,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             Print Report
                         </button>`}
                         ${certBtnHtml}
+                        ${canEdit ? `
+                        <button type="button" class="edit-group-od-btn" data-odid="${odId}" title="Edit and resubmit this OD request">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Edit OD
+                        </button>` : ''}
                         ${canCancel ? `
                         <button type="button" class="cancel-od-btn" data-odid="${odId}" title="Withdraw this OD request before staff reviews it">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
@@ -1145,6 +1509,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.closest('.cancel-od-btn')) {
             e.stopPropagation();
             cancelOdApplication(odId, od);
+            return;
+        }
+
+        if (e.target.closest('.edit-group-od-btn')) {
+            e.stopPropagation();
+            openEditGroupOdModal(od);
             return;
         }
 
@@ -1204,14 +1574,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = on;
     }
 
-    function showToast(type, msg) {
+    function showToast(type, msg, title) {
         const c = document.getElementById('toastContainer');
         if (!c) return;
         const t = document.createElement('div');
-        t.className   = `toast ${type}`;
-        t.textContent = msg;
+        t.className = `toast ${type}`;
+
+        const icons = {
+            success: `<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;min-width:20px;margin-top:2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+            error: `<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;min-width:20px;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+            info: `<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;min-width:20px;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+        };
+
+        const iconHtml = icons[type] || icons.error;
+        const titleHtml = title ? `<div style="font-weight:700;font-size:0.92rem;margin-bottom:3px;line-height:1.2;">${title}</div>` : '';
+
+        t.innerHTML = `
+            ${iconHtml}
+            <div style="display:flex;flex-direction:column;flex:1;">
+                ${titleHtml}
+                <span class="toast-message" style="font-size:0.86rem;line-height:1.4;opacity:0.9;">${msg}</span>
+            </div>
+            <button class="toast-close" aria-label="Close" style="background:none;border:none;cursor:pointer;opacity:0.6;padding:4px;display:flex;align-items:center;margin-left:8px;color:inherit;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        `;
+
         c.appendChild(t);
-        setTimeout(() => t.remove(), 3500);
+
+        const closeBtn = t.querySelector('.toast-close');
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                t.classList.add('toast-exit');
+                setTimeout(() => t.remove(), 300);
+            };
+        }
+
+        setTimeout(() => {
+            if (t.parentNode) {
+                t.classList.add('toast-exit');
+                setTimeout(() => t.remove(), 300);
+            }
+        }, 5000);
     }
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
@@ -1219,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // otherwise clearing localStorage wipes them out and the rejection
         // popup incorrectly fires again the next time this student logs in.
         const seenEntries = Object.keys(localStorage)
-            .filter(k => k.startsWith('odRejectSeen_') || k.startsWith('odHodRejectSeen_'))
+            .filter(k => k.startsWith('odReject') || k.startsWith('odHodReject'))
             .map(k => [k, localStorage.getItem(k)]);
 
         localStorage.clear();
@@ -1228,4 +1634,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         window.location.href = 'index.html';
     });
+
+    // Attach Circular Analog Clock Picker to time inputs
+    if (typeof AnalogClockPicker !== 'undefined') {
+        AnalogClockPicker.attach(document.getElementById('startTime'));
+        AnalogClockPicker.attach(document.getElementById('endTime'));
+        AnalogClockPicker.attach(document.getElementById('grpStartTime'));
+        AnalogClockPicker.attach(document.getElementById('grpEndTime'));
+    }
 });

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnlineOD.Data;
 
@@ -11,9 +12,11 @@ using OnlineOD.Data;
 namespace OnlineOD.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910073748_AddStartTimeEndTimeToOdApply")]
+    partial class AddStartTimeEndTimeToOdApply
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -108,12 +111,9 @@ namespace OnlineOD.Migrations
                     b.Property<string>("CompetitionType")
                         .HasColumnType("nvarchar(max)");
 
-<<<<<<< HEAD
-=======
                     b.Property<string>("EndTime")
                         .HasColumnType("nvarchar(max)");
 
->>>>>>> a26a20e17a0cec75fb6ec567a1a913961705542d
                     b.Property<string>("Event")
                         .HasColumnType("nvarchar(max)");
 
@@ -288,8 +288,6 @@ namespace OnlineOD.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("Students");
-<<<<<<< HEAD
-=======
                 });
 
             modelBuilder.Entity("OnlineOD.Models.WorkingDayOverride", b =>
@@ -306,7 +304,6 @@ namespace OnlineOD.Migrations
                     b.HasKey("Date");
 
                     b.ToTable("WorkingDayOverrides");
->>>>>>> a26a20e17a0cec75fb6ec567a1a913961705542d
                 });
 #pragma warning restore 612, 618
         }

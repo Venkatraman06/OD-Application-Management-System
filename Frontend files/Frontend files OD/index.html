@@ -158,6 +158,52 @@
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Contact Admin Modal -->
+    <div class="modal-overlay" id="contactAdminOverlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Contact Admin</h3>
+                <button type="button" class="modal-close" id="contactAdminClose" aria-label="Close">&times;</button>
+            </div>
+            <form id="contactAdminForm" class="modal-body" novalidate>
+                <div class="input-group">
+                    <label for="contactRegNo">Register / Staff Number</label>
+                    <input type="text" id="contactRegNo" name="contactRegNo" placeholder="Enter your register/staff number" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="contactDob">Date of Birth</label>
+                    <input type="date" id="contactDob" name="contactDob" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="contactPassword">Password</label>
+                    <input type="password" id="contactPassword" name="contactPassword" placeholder="Enter your password" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="contactRole">You are a</label>
+                    <select id="contactRole" name="contactRole" required>
+                        <option value="Student">Student</option>
+                        <option value="Staff">Staff</option>
+                        <option value="HOD">HOD</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="contactReport">Report / Issue</label>
+                    <textarea id="contactReport" name="contactReport" rows="4" placeholder="Describe your issue (e.g. no account, forgot password, login problem)" required></textarea>
+                </div>
+
+                <button type="submit" class="login-btn" id="contactAdminSubmit">
+                    <span class="btn-text">Send to Admin</span>
+                    <span class="btn-loader" style="display:none"><span class="spinner"></span></span>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script src="script.js?v=20260821"></script>
 </body>
 </html>

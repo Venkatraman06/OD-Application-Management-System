@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
@@ -14,14 +14,16 @@ namespace OnlineOD.Controllers
         private readonly IOdApplyService _odService;
         private readonly IHodService _hodService;
         private readonly EmailService _emailService;
+        private readonly EmailQueue _emailQueue;
 
         public StaffController(IStaffService staffService, IOdApplyService odService,
-             IHodService hodService, EmailService emailService)
+             IHodService hodService, EmailService emailService, EmailQueue emailQueue)
         {
             _staffService = staffService;
             _odService = odService;
             _hodService = hodService;
             _emailService = emailService;
+            _emailQueue = emailQueue;
         }
 
         [HttpGet]
@@ -192,23 +194,26 @@ namespace OnlineOD.Controllers
                     }
                     else
                     {
-                        await _emailService.SendOdApprovalEmailAsync(
-                            toEmail: hod.Email,
-                            hodName: hod.Name,
-                            studentName: od.StudentName ?? "",
-                            registerNumber: od.registerNumber ?? "",
-                            eventName: od.Event ?? "",
-                            department: od.department ?? "",
-                            fromDate: od.FromDate ?? "",
-                            toDate: od.ToDate ?? "",
-                            odId: od.OdId,
-                            isGroup: od.IsGroupOd,
-                            groupName: od.GroupName ?? "",
-                            registerNumbers: od.RegisterNumbers ?? "",
-                            collegeIndustry: od.CollegeIndustry ?? ""
-                        );
-                        emailStatus = "sent";
-                        Console.WriteLine($"[Email] HOD notify sent to {hod.Email} for OD #{od.OdId}");
+                        _emailQueue.Enqueue(new EmailJob
+                        {
+                            Type = "Approval",
+                            ToEmail = hod.Email,
+                            HodName = hod.Name,
+                            StudentName = od.StudentName ?? "",
+                            RegisterNumber = od.registerNumber ?? "",
+                            EventName = od.Event ?? "",
+                            Department = od.department ?? "",
+                            FromDate = od.FromDate ?? "",
+                            ToDate = od.ToDate ?? "",
+                            OdId = od.OdId,
+                            IsGroup = od.IsGroupOd,
+                            GroupName = od.GroupName ?? "",
+                            RegisterNumbers = od.RegisterNumbers ?? "",
+                            CollegeIndustry = od.CollegeIndustry ?? "",
+                            StartTime = od.StartTime,
+                            EndTime = od.EndTime
+                        });
+                        emailStatus = "queued";
                     }
                 }
                 catch (Exception ex)
