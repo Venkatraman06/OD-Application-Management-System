@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
@@ -13,13 +13,15 @@ namespace OnlineOD.Controllers
         private readonly IOdApplyService _service;
         private readonly IStaffService _staffService;
         private readonly EmailService _emailService;
+        private readonly EmailQueue _emailQueue;
 
         public OdApplyController(IOdApplyService service, IStaffService staffService,
-            EmailService emailService)
+            EmailService emailService, EmailQueue emailQueue)
         {
             _service = service;
             _staffService = staffService;
             _emailService = emailService;
+            _emailQueue = emailQueue;
         }
 
         // GET /api/OdApply — all ODs
@@ -97,12 +99,8 @@ namespace OnlineOD.Controllers
 
             var result = await _service.CreateOdApplyAsync(dto);
 
-            // Send email to every staff whose Department + Section matches ANY
-            // section actually involved in this OD — for a group OD spanning
-            // multiple sections (e.g. Section A + Section B students in one
-            // group), this notifies BOTH class staffs, not just the section of
-            // whichever student happened to create the group.
-            string emailStatus = "not_applicable";
+            // Enqueue staff email notifications to background worker so HTTP API response completes fast (<50ms)
+            string emailStatus = "queued";
             string? emailDetail = null;
             try
             {
@@ -127,40 +125,39 @@ namespace OnlineOD.Controllers
                     emailDetail = involvedSections.Count == 0
                         ? "No Section was set on this OD, so no matching staff could be found."
                         : $"No staff found for department '{dto.department}' + section(s) '{string.Join(", ", involvedSections)}' with an Email set.";
-                    Console.WriteLine($"[Email] Staff notify skipped — {emailDetail}");
                 }
                 else
                 {
                     foreach (var staff in deptStaff)
                     {
-                        await _emailService.SendOdSubmissionEmailAsync(
-                            toEmail: staff.Email,
-                            staffName: staff.Name,
-                            studentName: dto.StudentName ?? "",
-                            registerNumber: dto.registerNumber ?? "",
-                            eventName: dto.Event ?? "",
-                            department: dto.department ?? "",
-                            fromDate: dto.FromDate ?? "",
-                            toDate: dto.ToDate ?? "",
-                            odId: result.OdId,
-                            staffId: staff.StaffId,
-                            isGroup: dto.IsGroupOd,
-                            groupName: dto.GroupName ?? "",
-                            registerNumbers: dto.RegisterNumbers ?? "",
-                            collegeIndustry: dto.CollegeIndustry ?? ""
-                        );
+                        _emailQueue.Enqueue(new EmailJob
+                        {
+                            Type = "Submission",
+                            ToEmail = staff.Email,
+                            StaffName = staff.Name,
+                            StudentName = dto.StudentName ?? "",
+                            RegisterNumber = dto.registerNumber ?? "",
+                            EventName = dto.Event ?? "",
+                            Department = dto.department ?? "",
+                            FromDate = dto.FromDate ?? "",
+                            ToDate = dto.ToDate ?? "",
+                            OdId = result.OdId,
+                            StaffId = staff.StaffId,
+                            IsGroup = dto.IsGroupOd,
+                            GroupName = dto.GroupName ?? "",
+                            RegisterNumbers = dto.RegisterNumbers ?? "",
+                            CollegeIndustry = dto.CollegeIndustry ?? "",
+                            StartTime = dto.StartTime,
+                            EndTime = dto.EndTime
+                        });
                     }
-                    emailStatus = "sent";
-                    Console.WriteLine($"[Email] Staff notify sent to {deptStaff.Count} staff (sections: {string.Join(", ", involvedSections)}) for OD #{result.OdId}");
+                    emailStatus = "queued";
                 }
             }
             catch (Exception ex)
             {
                 emailStatus = "failed";
-                emailDetail = ex.InnerException != null
-                    ? $"{ex.Message} | Inner: {ex.InnerException.Message}"
-                    : ex.Message;
-                Console.WriteLine($"[Email] Staff notify FAILED — {emailDetail}");
+                emailDetail = ex.Message;
             }
 
             // Surface the email outcome via a response header instead of
@@ -267,7 +264,7 @@ namespace OnlineOD.Controllers
             // Server recomputes days; client hint is a fallback
             int days = dto.NumberOfDays ?? 1;
 
-            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days);
+            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime);
             if (result == null)
                 return BadRequest("OD not found or is no longer in Pending status — dates cannot be altered.");
 
@@ -276,8 +273,26 @@ namespace OnlineOD.Controllers
                 result.OdId,
                 result.FromDate,
                 result.ToDate,
+                result.StartTime,
+                result.EndTime,
                 result.NumberOfDays
             });
+        }
+
+        // PUT /api/OdApply/{odId}/EditGroupOd
+        // Student edits their own Group OD (dates, event, reason, members) —
+        // only while it is still Pending with both faculty and HOD.
+        [HttpPut("{odId}/EditGroupOd")]
+        public async Task<IActionResult> EditGroupOd(int odId, [FromBody] EditGroupOdDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Edit data is required.");
+
+            var (od, error) = await _service.EditGroupOdAsync(odId, dto);
+            if (error != null)
+                return BadRequest(error);
+
+            return Ok(od);
         }
 
         // POST /api/OdApply/{odId}/UploadCertificate

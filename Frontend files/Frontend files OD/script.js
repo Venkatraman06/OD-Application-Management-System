@@ -20,6 +20,75 @@ document.addEventListener('DOMContentLoaded', () => {
     rollNumberInput.addEventListener('input', () => clearError('rollno'));
     passwordInput.addEventListener('input', () => clearError('password'));
 
+    // ── Contact Admin modal ──────────────────────────────────────────────
+    const signupLink = document.getElementById('signupLink');
+    const contactAdminOverlay = document.getElementById('contactAdminOverlay');
+    const contactAdminClose = document.getElementById('contactAdminClose');
+    const contactAdminForm = document.getElementById('contactAdminForm');
+    const contactAdminSubmit = document.getElementById('contactAdminSubmit');
+
+    if (signupLink && contactAdminOverlay) {
+        signupLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            contactAdminOverlay.style.display = 'flex';
+        });
+
+        contactAdminClose.addEventListener('click', () => {
+            contactAdminOverlay.style.display = 'none';
+        });
+
+        contactAdminOverlay.addEventListener('click', (e) => {
+            if (e.target === contactAdminOverlay) contactAdminOverlay.style.display = 'none';
+        });
+
+        contactAdminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const registerNumber = document.getElementById('contactRegNo').value.trim();
+            const dob = document.getElementById('contactDob').value;
+            const password = document.getElementById('contactPassword').value.trim();
+            const role = document.getElementById('contactRole').value;
+            const message = document.getElementById('contactReport').value.trim();
+
+            if (!registerNumber || !dob || !password || !message) {
+                showToast('error', 'Please fill in all fields');
+                return;
+            }
+
+            setContactLoading(true);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/Admin/ContactAdmin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ registerNumber, dob, password, role, message })
+                });
+
+                if (response.ok) {
+                    showToast('success', 'Your request has been sent to the admin.');
+                    contactAdminForm.reset();
+                    contactAdminOverlay.style.display = 'none';
+                } else {
+                    const err = await response.json().catch(() => ({}));
+                    showToast('error', err.message || 'Could not send your request.');
+                }
+            } catch (err) {
+                console.error('Contact admin error:', err);
+                showToast('error', 'Could not reach the server. Please try again.');
+            } finally {
+                setContactLoading(false);
+            }
+        });
+    }
+
+    function setContactLoading(on) {
+        const btnText = contactAdminSubmit.querySelector('.btn-text');
+        const btnLoader = contactAdminSubmit.querySelector('.btn-loader');
+        if (btnText) btnText.style.display = on ? 'none' : 'block';
+        if (btnLoader) btnLoader.style.display = on ? 'block' : 'none';
+        contactAdminSubmit.disabled = on;
+    }
+
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearError('rollno');

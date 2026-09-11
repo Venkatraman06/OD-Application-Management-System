@@ -1,4 +1,4 @@
-﻿using OnlineOD.Data;
+using OnlineOD.Data;
 using OnlineOD.Models;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Dtos;
@@ -261,6 +261,8 @@ namespace OnlineOD.Service
                 Section = dto.Section,
                 FromDate = dto.FromDate,
                 ToDate = dto.ToDate,
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
                 NumberOfDays = WorkingDaysCalendar.CountWorkingDays(dto.FromDate, dto.ToDate) is int wd && wd > 0 ? wd : dto.NumberOfDays,
                 Event = dto.Event,
                 CompetitionType = dto.CompetitionType,
@@ -457,6 +459,11 @@ namespace OnlineOD.Service
                 .ToListAsync();
             var certsByOd = allCerts.GroupBy(c => c.OdId).ToDictionary(g => g.Key, g => g.ToList());
 
+            var studentIds = ods.Select(o => o.StudentId).Distinct().ToList();
+            var studentYears = await _context.Students
+                .Where(s => studentIds.Contains(s.StudentId))
+                .ToDictionaryAsync(s => s.StudentId, s => s.Year);
+
             return ods.Select(od => new OdWithCertificatesDto
             {
                 OdId = od.OdId,
@@ -467,10 +474,14 @@ namespace OnlineOD.Service
                 Section = od.Section,
                 FromDate = od.FromDate,
                 ToDate = od.ToDate,
+                StartTime = od.StartTime,
+                EndTime = od.EndTime,
                 NumberOfDays = od.NumberOfDays,
                 Event = od.Event,
+                CompetitionType = od.CompetitionType,
                 Reason = od.Reason,
                 CollegeIndustry = od.CollegeIndustry,
+                Year = studentYears.TryGetValue(od.StudentId, out var yr) ? yr : (int?)null,
                 AppliedDate = od.AppliedDate,
                 FacultyStatus = od.FacultyStatus,
                 HodStatus = od.HodStatus,
@@ -588,7 +599,7 @@ namespace OnlineOD.Service
         }
 
 
-        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays)
+        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
@@ -605,10 +616,83 @@ namespace OnlineOD.Service
 
             od.FromDate = fromDate;
             od.ToDate = toDate;
+            od.StartTime = startTime;
+            od.EndTime = endTime;
             od.NumberOfDays = computedDays;
 
             await _context.SaveChangesAsync();
             return od;
+        }
+
+        // Student edits their own Group OD — only while nobody (faculty or
+        // HOD) has made a decision on it yet.
+        public async Task<(OdApply? od, string? error)> EditGroupOdAsync(int odId, EditGroupOdDto dto)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return (null, "OD not found.");
+
+            // Approved applications cannot be edited
+            if (string.Equals(od.FacultyStatus, "Approved", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(od.HodStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                return (null, "This OD has already been approved and cannot be edited.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
+                return (null, "From Date and To Date are required.");
+
+            var dateError = WorkingDaysCalendar.ValidateRange(dto.FromDate, dto.ToDate);
+            if (dateError != null)
+                return (null, dateError);
+
+            List<string> memberList = new();
+            if (od.IsGroupOd)
+            {
+                memberList = (dto.RegisterNumbers ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(r => r.ToUpperInvariant())
+                    .Distinct()
+                    .ToList();
+
+                if (memberList.Count < 2)
+                    return (null, "A Group OD needs at least 2 members.");
+
+                var validRegNumbers = await _context.Students
+                    .Select(s => s.RegisterNumber.ToUpper())
+                    .ToListAsync();
+                var invalidMembers = memberList.Where(r => !validRegNumbers.Contains(r)).ToList();
+                if (invalidMembers.Count > 0)
+                    return (null, $"No user found for: {string.Join(", ", invalidMembers)}");
+            }
+
+            int computedDays = WorkingDaysCalendar.CountWorkingDays(dto.FromDate, dto.ToDate);
+            if (computedDays <= 0)
+                computedDays = dto.NumberOfDays;
+
+            od.FromDate = dto.FromDate;
+            od.ToDate = dto.ToDate;
+            if (!string.IsNullOrWhiteSpace(dto.StartTime)) od.StartTime = dto.StartTime;
+            if (!string.IsNullOrWhiteSpace(dto.EndTime)) od.EndTime = dto.EndTime;
+            od.NumberOfDays = computedDays;
+            if (!string.IsNullOrWhiteSpace(dto.Event)) od.Event = dto.Event;
+            if (!string.IsNullOrWhiteSpace(dto.CompetitionType)) od.CompetitionType = dto.CompetitionType;
+            if (!string.IsNullOrWhiteSpace(dto.Reason)) od.Reason = dto.Reason;
+            if (!string.IsNullOrWhiteSpace(dto.CollegeIndustry)) od.CollegeIndustry = dto.CollegeIndustry;
+
+            if (od.IsGroupOd)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.GroupName)) od.GroupName = dto.GroupName;
+                if (memberList.Count > 0) od.RegisterNumbers = string.Join(",", memberList);
+            }
+
+            // Reset status back to Pending when edited so staff & HOD can re-evaluate
+            od.FacultyStatus = "Pending";
+            od.HodStatus = "Pending";
+            od.FacultyRejectedRegisterNumbers = null;
+            od.HodApprovedRegisterNumbers = null;
+
+            await _context.SaveChangesAsync();
+            return (od, null);
         }
     }
 }

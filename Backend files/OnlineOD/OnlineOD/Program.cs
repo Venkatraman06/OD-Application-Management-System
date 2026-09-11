@@ -47,8 +47,28 @@ builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IHodService, HodService>();
 builder.Services.AddScoped<IOdApplyService, OdApplyService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddHostedService<EmailBackgroundWorker>();
 
 var app = builder.Build();
+
+// Load any HOD-made calendar overrides from the database into the live
+// in-memory working-days set, so edits/removals persist across restarts
+// and are honored by server-side OD-date validation immediately.
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var overrides = db.WorkingDayOverrides.ToList();
+        WorkingDaysCalendar.LoadOverrides(
+            overrides.Select(o => (o.Date, o.IsWorking)));
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] Could not load working-day overrides — {ex.Message}");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
