@@ -48,7 +48,7 @@ namespace OnlineOD.Services
             await smtp.DisconnectAsync(true);
         }
 
-        // ── Approve/Reject button block ───────────────────────────────────────
+        // ── Approve/Reject/Edit button block ────────────────────────────────
         // staffId is embedded for role=="faculty" links only — it's what lets
         // EmailApproveController know WHICH staff clicked, so it can decide
         // only that staff's own section's members on a multi-section group OD.
@@ -57,9 +57,11 @@ namespace OnlineOD.Services
             var baseUrl = _config["EmailSettings:AppBaseUrl"] ?? "http://localhost:5088";
             var approveToken = GenerateToken(odId, "Approved");
             var rejectToken = GenerateToken(odId, "Rejected");
+            var editToken = GenerateToken(odId, "EditDates");
             var staffIdParam = role == "faculty" ? $"&staffId={staffId}" : "";
             var approveUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
             var rejectUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
+            var editUrl = $"{baseUrl}/api/EmailEditDates?odId={odId}&role={role}{staffIdParam}&token={editToken}";
 
             return $@"
             <div style='text-align:center;margin:24px 0'>
@@ -72,13 +74,19 @@ namespace OnlineOD.Services
                 <a href='{rejectUrl}'
                    style='display:inline-block;padding:12px 32px;background:#ef4444;color:white;
                           border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;
-                          letter-spacing:0.5px'>
+                          margin-right:12px;letter-spacing:0.5px'>
                     ✕ Reject
+                </a>
+                <a href='{editUrl}'
+                   style='display:inline-block;padding:12px 32px;background:#f59e0b;color:white;
+                          border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;
+                          letter-spacing:0.5px'>
+                    ✎ Edit Dates
                 </a>
             </div>
             <p style='color:#9ca3af;font-size:12px;text-align:center'>
-                Clicking a button updates the status instantly — no login required.<br>
-                Each link works only once.
+                Clicking Approve/Reject updates the status instantly — no login required.<br>
+                Edit Dates lets you change the From/To date and time before deciding.
             </p>";
         }
 

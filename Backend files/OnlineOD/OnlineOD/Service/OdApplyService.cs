@@ -263,7 +263,8 @@ namespace OnlineOD.Service
                 ToDate = dto.ToDate,
                 StartTime = dto.StartTime,
                 EndTime = dto.EndTime,
-                NumberOfDays = WorkingDaysCalendar.CountWorkingDays(dto.FromDate, dto.ToDate) is int wd && wd > 0 ? wd : dto.NumberOfDays,
+                NumberOfDays = WorkingDaysCalendar.CountWorkingDaysExcluding(dto.FromDate, dto.ToDate, dto.ExcludedDates) is int wd && wd > 0 ? wd : dto.NumberOfDays,
+                ExcludedDates = dto.ExcludedDates,
                 Event = dto.Event,
                 CompetitionType = dto.CompetitionType,
                 Reason = dto.Reason,
@@ -494,6 +495,13 @@ namespace OnlineOD.Service
                 WinningStatus = od.WinningStatus,
                 CertificatePhotoUrl = od.CertificatePhotoUrl,
                 CertificateVerified = od.CertificateVerified,
+                DatesAlteredByStaff = od.DatesAlteredByStaff,
+                DatesAlteredAt = od.DatesAlteredAt,
+                DatesAlteredByRole = od.DatesAlteredByRole,
+                PreviousFromDate = od.PreviousFromDate,
+                PreviousToDate = od.PreviousToDate,
+                PreviousStartTime = od.PreviousStartTime,
+                PreviousEndTime = od.PreviousEndTime,
                 IsOngoing = IsOdOngoing(od.FromDate, od.ToDate),
                 Certificates = certsByOd.TryGetValue(od.OdId, out var list) ? list : new List<OdCertificate>()
             }).ToList();
@@ -599,13 +607,19 @@ namespace OnlineOD.Service
         }
 
 
-        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null)
+        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null, string role = "faculty")
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
 
-            // Only allow altering while the OD is still Pending with faculty
-            if (!string.Equals(od.FacultyStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+            // Only allow altering while the OD is still Pending at the stage
+            // the editor belongs to — faculty can alter while FacultyStatus is
+            // Pending; HOD can alter once it's reached them and HodStatus is
+            // Pending (even though FacultyStatus is already Approved by then).
+            var statusToCheck = string.Equals(role, "hod", StringComparison.OrdinalIgnoreCase)
+                ? od.HodStatus
+                : od.FacultyStatus;
+            if (!string.Equals(statusToCheck, "Pending", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             // Recompute days server-side to stay consistent — count only
@@ -614,12 +628,32 @@ namespace OnlineOD.Service
             if (computedDays <= 0)
                 computedDays = numberOfDays;
 
+            // Snapshot the old values and flag the change before overwriting,
+            // so Student + HOD dashboards can show what it used to be.
+            od.PreviousFromDate = od.FromDate;
+            od.PreviousToDate = od.ToDate;
+            od.PreviousStartTime = od.StartTime;
+            od.PreviousEndTime = od.EndTime;
+            od.DatesAlteredByStaff = true;
+            od.DatesAlteredByRole = string.Equals(role, "hod", StringComparison.OrdinalIgnoreCase) ? "hod" : "faculty";
+            od.DatesAlteredAt = DateTime.Now;
+
             od.FromDate = fromDate;
             od.ToDate = toDate;
             od.StartTime = startTime;
             od.EndTime = endTime;
             od.NumberOfDays = computedDays;
 
+            await _context.SaveChangesAsync();
+            return od;
+        }
+
+        public async Task<OdApply?> AcknowledgeDateChangeAsync(int odId)
+        {
+            var od = await _context.OdApplies.FindAsync(odId);
+            if (od == null) return null;
+
+            od.DatesAlteredByStaff = false;
             await _context.SaveChangesAsync();
             return od;
         }

@@ -21,6 +21,24 @@ namespace OnlineOD.Models
         public string? StartTime { get; set; }
         public string? EndTime { get; set; }
         public int NumberOfDays { get; set; }
+
+        // Set whenever staff/HOD alters FromDate/ToDate/StartTime/EndTime via
+        // AlterDays, so Student + HOD dashboards can show a
+        // "dates changed by staff" notice with what it used to be.
+        public bool DatesAlteredByStaff { get; set; } = false;
+        public DateTime? DatesAlteredAt { get; set; }
+        // Which role actually made the change ("faculty" or "hod"), so the
+        // student dashboard can say who changed it instead of just "staff".
+        public string? DatesAlteredByRole { get; set; }
+        public string? PreviousFromDate { get; set; }
+        public string? PreviousToDate { get; set; }
+        public string? PreviousStartTime { get; set; }
+        public string? PreviousEndTime { get; set; }
+
+        // Comma-separated yyyy-MM-dd dates that fall inside FromDate–ToDate but were
+        // explicitly excluded by the student (e.g. a Saturday in a Friday→Monday OD
+        // that they confirmed they don't need) — kept out of NumberOfDays.
+        public string? ExcludedDates { get; set; }
         public string? Event { get; set; }
 
         // Which competition the student is participating in (e.g. Hackathon, Cultural, Sports)

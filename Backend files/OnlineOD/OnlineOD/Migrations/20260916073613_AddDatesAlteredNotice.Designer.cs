@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnlineOD.Data;
 
@@ -11,9 +12,11 @@ using OnlineOD.Data;
 namespace OnlineOD.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916073613_AddDatesAlteredNotice")]
+    partial class AddDatesAlteredNotice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -108,15 +111,6 @@ namespace OnlineOD.Migrations
                     b.Property<string>("CompetitionType")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("DatesAlteredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DatesAlteredByRole")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("DatesAlteredByStaff")
-                        .HasColumnType("bit");
-
                     b.Property<string>("EndTime")
                         .HasColumnType("nvarchar(max)");
 
@@ -154,18 +148,6 @@ namespace OnlineOD.Migrations
 
                     b.Property<int>("NumberOfDays")
                         .HasColumnType("int");
-
-                    b.Property<string>("PreviousEndTime")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PreviousFromDate")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PreviousStartTime")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PreviousToDate")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Reason")
                         .HasColumnType("nvarchar(max)");

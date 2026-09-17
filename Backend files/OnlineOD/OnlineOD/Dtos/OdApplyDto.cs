@@ -12,6 +12,7 @@ namespace OnlineOD.Dtos
         public string? StartTime { get; set; }
         public string? EndTime { get; set; }
         public int NumberOfDays { get; set; }
+        public string? ExcludedDates { get; set; } // comma-separated yyyy-MM-dd dates the student opted out of (e.g. an in-range Saturday)
         public string? Event { get; set; }
         public string? CompetitionType { get; set; } // e.g. Hackathon, Cultural, Sports, Technical, Other
         public string? Reason { get; set; }

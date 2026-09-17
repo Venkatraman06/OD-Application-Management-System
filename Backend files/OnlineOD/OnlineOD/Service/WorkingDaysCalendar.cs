@@ -88,6 +88,34 @@ namespace OnlineOD.Service
                 string.Compare(d, to, StringComparison.Ordinal) <= 0);
         }
 
+        /// <summary>
+        /// Counts published working days in [fromStr, toStr], inclusive, minus any dates
+        /// in excludedCsv (comma-separated yyyy-MM-dd) that the student opted out of —
+        /// e.g. a Saturday that falls inside a Friday→Monday OD range but wasn't needed.
+        /// </summary>
+        public static int CountWorkingDaysExcluding(string? fromStr, string? toStr, string? excludedCsv)
+        {
+            var total = CountWorkingDays(fromStr, toStr);
+            if (string.IsNullOrWhiteSpace(excludedCsv)) return total;
+
+            var from = Normalize(fromStr);
+            var to = Normalize(toStr);
+            if (from == null || to == null) return total;
+
+            var excluded = excludedCsv
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(Normalize)
+                .Where(d => d != null)
+                .Where(d => WorkingDays.Contains(d!) &&
+                            string.Compare(d, from, StringComparison.Ordinal) >= 0 &&
+                            string.Compare(d, to, StringComparison.Ordinal) <= 0)
+                .Distinct()
+                .Count();
+
+            var result = total - excluded;
+            return result > 0 ? result : 0;
+        }
+
         /// <summary>Validates a From/To OD date range against the working-days calendar.
         /// Returns null when valid, or an error message describing the problem.</summary>
         public static string? ValidateRange(string? fromStr, string? toStr)

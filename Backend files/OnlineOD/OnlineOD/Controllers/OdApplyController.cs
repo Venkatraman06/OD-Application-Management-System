@@ -264,7 +264,7 @@ namespace OnlineOD.Controllers
             // Server recomputes days; client hint is a fallback
             int days = dto.NumberOfDays ?? 1;
 
-            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime);
+            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime, dto.Role);
             if (result == null)
                 return BadRequest("OD not found or is no longer in Pending status — dates cannot be altered.");
 
@@ -275,8 +275,24 @@ namespace OnlineOD.Controllers
                 result.ToDate,
                 result.StartTime,
                 result.EndTime,
-                result.NumberOfDays
+                result.NumberOfDays,
+                result.DatesAlteredByStaff,
+                result.DatesAlteredAt,
+                result.PreviousFromDate,
+                result.PreviousToDate,
+                result.PreviousStartTime,
+                result.PreviousEndTime
             });
+        }
+
+        // PUT /api/OdApply/{odId}/AcknowledgeDateChange
+        // Student or HOD has seen the "dates changed by staff" notice — clears the flag.
+        [HttpPut("{odId}/AcknowledgeDateChange")]
+        public async Task<IActionResult> AcknowledgeDateChange(int odId)
+        {
+            var result = await _service.AcknowledgeDateChangeAsync(odId);
+            if (result == null) return NotFound("OD not found.");
+            return Ok(new { result.OdId, result.DatesAlteredByStaff });
         }
 
         // PUT /api/OdApply/{odId}/EditGroupOd

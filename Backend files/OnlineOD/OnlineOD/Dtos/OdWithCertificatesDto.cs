@@ -42,6 +42,15 @@ namespace OnlineOD.Dtos
         public string? CertificatePhotoUrl { get; set; }
         public bool CertificateVerified { get; set; }
 
+        // "Dates changed by staff" notice — mirrors OdApply's own fields.
+        public bool DatesAlteredByStaff { get; set; }
+        public DateTime? DatesAlteredAt { get; set; }
+        public string? DatesAlteredByRole { get; set; }
+        public string? PreviousFromDate { get; set; }
+        public string? PreviousToDate { get; set; }
+        public string? PreviousStartTime { get; set; }
+        public string? PreviousEndTime { get; set; }
+
         // True while today falls within FromDate/ToDate — lets the frontend
         // split the pending list into "Ongoing OD" (already started, awaiting
         // no further action window) vs "No Action OD" (not started yet, still

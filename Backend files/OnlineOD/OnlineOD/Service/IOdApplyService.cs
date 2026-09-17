@@ -48,7 +48,10 @@ namespace OnlineOD.Service
         Task<OdApply?> HodOverrideGroupMemberAsync(int odId, string registerNumber);
 
         /// <summary>Staff or HOD alters FromDate, ToDate, StartTime, EndTime, and NumberOfDays of a pending OD.</summary>
-        Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null);
+        Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null, string role = "faculty");
+
+        /// <summary>Student or HOD acknowledges the "dates changed by staff" notice, clearing the flag.</summary>
+        Task<OdApply?> AcknowledgeDateChangeAsync(int odId);
 
         /// <summary>
         /// Student edits their own Group OD (dates, event, reason, members, etc.)
