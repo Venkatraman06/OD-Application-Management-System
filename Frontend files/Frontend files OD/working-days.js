@@ -216,7 +216,7 @@ const AnalogClockPicker = (() => {
                 });
                 face.appendChild(num);
             }
-            const deg = selectedHour * 30;
+            const deg = selectedHour * 30 + 180;
             hand.style.transform = `rotate(${deg}deg)`;
         } else {
             for (let m = 0; m < 60; m += 5) {
@@ -236,7 +236,7 @@ const AnalogClockPicker = (() => {
                 });
                 face.appendChild(num);
             }
-            const deg = selectedMin * 6;
+            const deg = selectedMin * 6 + 180;
             hand.style.transform = `rotate(${deg}deg)`;
         }
 

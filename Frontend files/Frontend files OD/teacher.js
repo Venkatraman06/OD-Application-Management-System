@@ -8,6 +8,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const name = localStorage.getItem('userName') || 'Faculty';
 
+    // Tell working-days.js where the backend actually is — without this,
+    // its background calendar sync falls back to window.API_BASE (which is
+    // never set, since API_BASE here is a local const) and ends up fetching
+    // a relative URL that hits the frontend's own live-server instead of
+    // the backend, producing a 404 on /api/WorkingDay.
+    if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+        CollegeWorkingDays.syncWithBackend(API_BASE);
+    }
+
     // ── Set faculty details ──
     setEl('teacherName', name);
     setEl('teacherDept', section ? `${dept} • Section ${section}` : dept);
@@ -686,7 +695,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}${od.section ? ' &bull; Sec ' + od.section : ''}</p>
                     </div>
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
-                </div>`;>`acultyStatus)}">${od.facultyStatus || 'Pending'}</span>
                 </div>
                 <div class="card-body">
                     <p><strong>Event:</strong> ${od.event || ''}</p>
@@ -766,10 +774,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('odDetailApplied', fmtDT(od.appliedDate));
         setEl('odDetailReason', od.reason || 'No reason provided');
 
-        // Alter-days panel — only show Edit button for still-pending ODs
+        // Alter-days panel — show Edit button until HOD gives final approval
         alterDaysOdId = od.odId;
-        const isPending = od.facultyStatus === 'Pending';
-        if (editDatesRow)  editDatesRow.style.display  = isPending ? 'flex' : 'none';
+        const isEditable = od.hodStatus !== 'Approved';
+        if (editDatesRow)  editDatesRow.style.display  = isEditable ? 'flex' : 'none';
         if (alterPanel)    alterPanel.style.display    = 'none';
         if (alterFromInp)  alterFromInp.value          = toInputDate(od.fromDate);
         if (alterToInp)    alterToInp.value            = toInputDate(od.toDate);
@@ -914,7 +922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${API_BASE}/api/OdApply/${alterDaysOdId}/AlterDays`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days })
+                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days, role: 'faculty' })
             });
             if (!res.ok) {
                 const msg = await res.text();
@@ -1446,6 +1454,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     function bdg(s) { return s === 'Approved' ? 'approved' : s === 'Rejected' ? 'rejected' : 'pending'; }
     function fmtDate(d) { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB'); } catch { return d; } }
     function fmtDT(d)   { if (!d) return ''; try { const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB') + ' ' + dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); } catch { return d; } }
+    // "HH:MM" (24h) → "H:MM AM/PM" — used after AlterDays save to redisplay the updated time.
+    function fmtTime(t) {
+        if (!t) return '-';
+        const [h, m] = t.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return t;
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+    }
+
 
     // ── Human-readable "how many days until/since this OD" label ──
     // Shown at the top of every OD card so staff can immediately see which

@@ -609,8 +609,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         ods.forEach(od => { odsById[od.odId] = od; });
         if (container) container.innerHTML = ods.map(od => {
             const countdown = odDateCountdownLabel(od.fromDate, od.toDate);
+            const datesChangedByStaff = od.datesAlteredByStaff ?? od.DatesAlteredByStaff ?? false;
+            const datesChangedByRole = od.datesAlteredByRole ?? od.DatesAlteredByRole ?? '';
+            const prevFromDate  = od.previousFromDate  ?? od.PreviousFromDate  ?? '';
+            const prevToDate    = od.previousToDate    ?? od.PreviousToDate    ?? '';
+            const prevStartTime = od.previousStartTime ?? od.PreviousStartTime ?? '';
+            const prevEndTime   = od.previousEndTime   ?? od.PreviousEndTime   ?? '';
+            if (datesChangedByStaff) maybeShowDateChangeToast(od, od.odId);
+            const dateChangeBannerHtml = datesChangedByStaff ? `
+                <div class="od-datechange-banner" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12.5px;font-weight:600;">
+                    <span>⚠ Dates/time changed by ${roleChangeLabel(datesChangedByRole)}${(prevFromDate && prevToDate) ? ` — was ${fmtDate(prevFromDate)} → ${fmtDate(prevToDate)}${(prevStartTime && prevEndTime) ? ` (${prevStartTime}–${prevEndTime})` : ''}, now ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)}${(od.startTime && od.endTime) ? ` (${od.startTime}–${od.endTime})` : ''}` : ''}</span>
+                    <button type="button" class="ack-datechange-btn" data-odid="${od.odId}" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:6px;padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Got it</button>
+                </div>` : '';
             return `
             <div class="request-card" data-odid="${od.odId}">
+                ${dateChangeBannerHtml}
                 ${countdown.text ? `<div class="od-countdown-banner ${countdown.cls}">${countdown.text}</div>` : ''}
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
@@ -831,7 +844,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${API_BASE}/api/OdApply/${alterDaysOdId}/AlterDays`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days })
+                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days, role: 'hod' })
             });
             if (!res.ok) {
                 const msg = await res.text();
@@ -865,6 +878,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('requestsContainer')?.addEventListener('click', (e) => {
+        if (e.target.closest('.ack-datechange-btn')) {
+            e.stopPropagation();
+            const odId = parseInt(e.target.closest('.ack-datechange-btn').dataset.odid, 10);
+            acknowledgeDateChange(odId);
+            return;
+        }
         const btn = e.target.closest('.view-details-btn');
         if (btn) {
             const odId = parseInt(btn.dataset.odid, 10);
@@ -1675,6 +1694,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
         c.appendChild(t); setTimeout(() => t.remove(), 3500);
     }
+
+    function roleChangeLabel(role) {
+        return role === 'hod' ? 'HOD' : (role === 'faculty' ? 'Faculty' : 'staff');
+    }
+
+    // One-time-per-change toast: fires once per (odId, datesAlteredAt) pair,
+    // so reloading the page doesn't spam it, but a fresh staff edit fires again.
+    function maybeShowDateChangeToast(od, odId) {
+        const alteredAt = od.datesAlteredAt ?? od.DatesAlteredAt ?? '';
+        const changedByRole = od.datesAlteredByRole ?? od.DatesAlteredByRole ?? '';
+        const noticeKey = `odDateChangeToastShown_${odId}_${alteredAt}`;
+        if (!localStorage.getItem(noticeKey)) {
+            localStorage.setItem(noticeKey, '1');
+            setTimeout(() => showToast('warning', `OD #${odId}: dates/time were changed by ${roleChangeLabel(changedByRole)} — please check the updated schedule.`), 100);
+        }
+    }
+
+    // Clears the shared flag server-side (Student side also stops showing it).
+    async function acknowledgeDateChange(odId) {
+        try {
+            await fetch(`${API_BASE}/api/OdApply/${odId}/AcknowledgeDateChange`, { method: 'PUT' });
+        } catch (err) {
+            console.error('acknowledgeDateChange error:', err);
+        } finally {
+            loadODs();
+        }
+    }
+    window.acknowledgeDateChange = acknowledgeDateChange;
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
         localStorage.clear();

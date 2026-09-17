@@ -82,6 +82,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const workingDaysCalendar = (typeof CollegeWorkingDays !== 'undefined') ? CollegeWorkingDays : null;
 
+    // Tell working-days.js where the backend actually is — without this,
+    // its background calendar sync falls back to window.API_BASE (which is
+    // never set, since API_BASE here is a local const) and ends up fetching
+    // a relative URL that hits the frontend's own live-server instead of
+    // the backend, producing a 404 on /api/WorkingDay.
+    if (workingDaysCalendar && workingDaysCalendar.syncWithBackend) {
+        workingDaysCalendar.syncWithBackend(API_BASE);
+    }
+
     const todayStr = new Date().toISOString().slice(0, 10);
     ['fromDate', 'toDate', 'groupFromDate', 'groupToDate'].forEach(id => {
         const el = document.getElementById(id);
@@ -144,6 +153,98 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (errEl) errEl.textContent = '';
     }
 
+    // ============================================
+    // Saturday-inclusion confirm
+    // The working-days calendar treats Saturday as a normal working day,
+    // so a range like Friday → Monday would otherwise silently include it.
+    // Instead, whenever a picked range straddles one or more Saturdays,
+    // ask the student for each one whether it should count as part of
+    // this OD. Declined Saturdays are excluded from the day count and
+    // sent to the backend as ExcludedDates so it isn't recalculated back in.
+    // ============================================
+
+    /** Returns every Saturday (YYYY-MM-DD) that falls within [fromStr, toStr], inclusive. */
+    function getSaturdaysInRange(fromStr, toStr) {
+        if (!fromStr || !toStr || fromStr > toStr) return [];
+        const out = [];
+        const d = new Date(fromStr + 'T00:00:00');
+        const end = new Date(toStr + 'T00:00:00');
+        while (d <= end) {
+            if (d.getDay() === 6) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                out.push(`${yyyy}-${mm}-${dd}`);
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        return out;
+    }
+
+    function formatDateLong(dateStr) {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+
+    /** Shows a Yes/No confirm dialog for one Saturday. Resolves true (include) / false (exclude). */
+    function confirmSaturdayInclusion(dateStr) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay saturday-confirm-overlay';
+            overlay.innerHTML = `
+                <div class="modal-box saturday-confirm-box">
+                    <div class="modal-header">
+                        <h3>Include this Saturday?</h3>
+                    </div>
+                    <div class="modal-body">
+                        <p class="saturday-confirm-text">
+                            Your OD range includes <strong>Saturday, ${formatDateLong(dateStr)}</strong>.
+                            Do you need OD for this Saturday too?
+                        </p>
+                    </div>
+                    <div class="modal-actions saturday-confirm-actions">
+                        <button type="button" class="btn-secondary" data-choice="no">No, skip it</button>
+                        <button type="button" class="btn-primary" data-choice="yes"><span class="btn-text">Yes, include it</span></button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            function cleanup(choice) {
+                overlay.remove();
+                resolve(choice);
+            }
+            overlay.querySelector('[data-choice="yes"]').addEventListener('click', () => cleanup(true));
+            overlay.querySelector('[data-choice="no"]').addEventListener('click', () => cleanup(false));
+        });
+    }
+
+    /**
+     * Walks every Saturday in the given range and asks about each one,
+     * skipping the prompt if this exact range was already resolved.
+     * `state` = { lastKey, excluded: Set<string> }
+     */
+    async function resolveSaturdaysForRange(fromStr, toStr, state) {
+        if (!fromStr || !toStr || fromStr > toStr) {
+            state.lastKey = '';
+            state.excluded.clear();
+            return;
+        }
+        const key = `${fromStr}_${toStr}`;
+        if (key === state.lastKey) return; // already asked for this exact range
+        state.lastKey = key;
+        state.excluded.clear();
+
+        const saturdays = getSaturdaysInRange(fromStr, toStr);
+        for (const sat of saturdays) {
+            const include = await confirmSaturdayInclusion(sat);
+            if (!include) state.excluded.add(sat);
+        }
+    }
+
+    const soloSaturdayState  = { lastKey: '', excluded: new Set() };
+    const groupSaturdayState = { lastKey: '', excluded: new Set() };
+
     // ── Auto-calculate days (solo OD) — working days only ──
     const fromEl = document.getElementById('fromDate');
     const toEl   = document.getElementById('toDate');
@@ -182,16 +283,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function calcDays() {
         if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value <= toEl.value) {
-            const d = countWorkingDays(fromEl.value, toEl.value);
+            let d = countWorkingDays(fromEl.value, toEl.value) - soloSaturdayState.excluded.size;
+            if (d < 0) d = 0;
             if (daysEl) {
-                daysEl.value = buildDaysText(d, startTimeEl?.value, endTimeEl?.value);
+                let text = buildDaysText(d, startTimeEl?.value, endTimeEl?.value);
+                if (soloSaturdayState.excluded.size > 0) {
+                    text += ` (Saturday${soloSaturdayState.excluded.size > 1 ? 's' : ''} excluded)`;
+                }
+                daysEl.value = text;
             }
         } else {
             if (daysEl) daysEl.value = '';
         }
     }
-    if (fromEl)      fromEl.addEventListener('change',      () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date'); calcDays(); });
-    if (toEl)        toEl.addEventListener('change',        () => { guardWeekendInput(toEl,   'toDate-error',   'To Date');   calcDays(); });
+    async function handleSoloDateChange(inputEl, errorElId, label) {
+        if (!guardWeekendInput(inputEl, errorElId, label)) {
+            soloSaturdayState.lastKey = '';
+            soloSaturdayState.excluded.clear();
+            calcDays();
+            return;
+        }
+        await resolveSaturdaysForRange(fromEl?.value, toEl?.value, soloSaturdayState);
+        calcDays();
+    }
+    if (fromEl)      fromEl.addEventListener('change',      () => handleSoloDateChange(fromEl, 'fromDate-error', 'From Date'));
+    if (toEl)        toEl.addEventListener('change',        () => handleSoloDateChange(toEl,   'toDate-error',   'To Date'));
     if (startTimeEl) startTimeEl.addEventListener('change', () => { calcDays(); validateTimes(); });
     if (endTimeEl)   endTimeEl.addEventListener('change',   () => { calcDays(); validateTimes(); });
 
@@ -219,16 +335,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function calcGroupDays() {
         if (groupFromEl && groupToEl && groupFromEl.value && groupToEl.value && groupFromEl.value <= groupToEl.value) {
-            const d = countWorkingDays(groupFromEl.value, groupToEl.value);
+            let d = countWorkingDays(groupFromEl.value, groupToEl.value) - groupSaturdayState.excluded.size;
+            if (d < 0) d = 0;
             if (groupDaysEl) {
-                groupDaysEl.value = buildDaysText(d, grpStartTimeEl?.value, grpEndTimeEl?.value);
+                let text = buildDaysText(d, grpStartTimeEl?.value, grpEndTimeEl?.value);
+                if (groupSaturdayState.excluded.size > 0) {
+                    text += ` (Saturday${groupSaturdayState.excluded.size > 1 ? 's' : ''} excluded)`;
+                }
+                groupDaysEl.value = text;
             }
         } else {
             if (groupDaysEl) groupDaysEl.value = '';
         }
     }
-    if (groupFromEl)  groupFromEl.addEventListener('change',  () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date'); calcGroupDays(); });
-    if (groupToEl)    groupToEl.addEventListener('change',    () => { guardWeekendInput(groupToEl,   'groupToDate-error',   'To Date');   calcGroupDays(); });
+    async function handleGroupDateChange(inputEl, errorElId, label) {
+        if (!guardWeekendInput(inputEl, errorElId, label)) {
+            groupSaturdayState.lastKey = '';
+            groupSaturdayState.excluded.clear();
+            calcGroupDays();
+            return;
+        }
+        await resolveSaturdaysForRange(groupFromEl?.value, groupToEl?.value, groupSaturdayState);
+        calcGroupDays();
+    }
+    if (groupFromEl)  groupFromEl.addEventListener('change',  () => handleGroupDateChange(groupFromEl, 'groupFromDate-error', 'From Date'));
+    if (groupToEl)    groupToEl.addEventListener('change',    () => handleGroupDateChange(groupToEl,   'groupToDate-error',   'To Date'));
     if (grpStartTimeEl) grpStartTimeEl.addEventListener('change', () => { calcGroupDays(); validateGroupTimes(); });
     if (grpEndTimeEl)   grpEndTimeEl.addEventListener('change',   () => { calcGroupDays(); validateGroupTimes(); });
 
@@ -343,7 +474,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('error', 'Please provide both Start Time and End Time, or leave both empty.'); return;
         }
 
-        const days = countWorkingDays(fromDate, toDate);
+        const excludedDatesArr = [...soloSaturdayState.excluded].sort();
+        const days = countWorkingDays(fromDate, toDate) - excludedDatesArr.length;
         if (days <= 0) {
             showToast('error', 'Selected range contains no working days'); return;
         }
@@ -357,6 +489,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fromDate,
             toDate,
             numberOfDays:    days,
+            excludedDates:   excludedDatesArr.join(',') || null,
             event,
             competitionType,
             collegeIndustry: college,
@@ -387,6 +520,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('odForm').reset();
                 if (daysEl) daysEl.value = '';
+                soloSaturdayState.lastKey = '';
+                soloSaturdayState.excluded.clear();
                 switchTab('apply-status');
             } else {
                 const errText = await res.text();
@@ -447,7 +582,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const regNumbers = [...window.groupMemberList];
 
-        const days = countWorkingDays(fromDate, toDate);
+        const excludedDatesArr = [...groupSaturdayState.excluded].sort();
+        const days = countWorkingDays(fromDate, toDate) - excludedDatesArr.length;
         if (days <= 0) {
             showToast('error', 'Selected range contains no working days'); return;
         }
@@ -461,6 +597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fromDate,
             toDate,
             numberOfDays:    days,
+            excludedDates:   excludedDatesArr.join(',') || null,
             event,
             collegeIndustry: college,
             reason,
@@ -495,6 +632,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('groupOdForm').reset();
                 if (groupDaysEl) groupDaysEl.value = '';
+                groupSaturdayState.lastKey = '';
+                groupSaturdayState.excluded.clear();
                 // Reset dynamic member list
                 window.groupMemberList = [];
                 renderMemberList();
@@ -1277,6 +1416,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         showToast('error', message, title);
     }
 
+    function roleChangeLabel(role) {
+        return role === 'hod' ? 'HOD' : (role === 'faculty' ? 'Faculty' : 'staff');
+    }
+
+    function showDateChangeToast(eventName, odId, changedByRole) {
+        const title = "OD Dates Changed";
+        const label = eventName ? ` (${eventName})` : (odId ? ` (OD #${odId})` : '');
+        const message = `Your OD request${label} had its dates/time changed by ${roleChangeLabel(changedByRole)}. Please check the updated schedule.`;
+        showToast('info', message, title);
+    }
+
+    // One-time-per-change toast guard: fires once per (odId, DatesAlteredAt)
+    // pair, so re-loading the page doesn't spam the toast, but a fresh staff
+    // edit (new DatesAlteredAt) fires a new toast even if an older one from
+    // the same OD was already shown.
+    function maybeShowDateChangeToast(od, odId, eventName) {
+        const alteredAt = od.DatesAlteredAt ?? od.datesAlteredAt ?? '';
+        const changedByRole = od.DatesAlteredByRole ?? od.datesAlteredByRole ?? '';
+        const noticeKey = `odDateChangeToastShown_${odId}_${alteredAt}`;
+        if (!localStorage.getItem(noticeKey)) {
+            localStorage.setItem(noticeKey, '1');
+            setTimeout(() => showDateChangeToast(eventName, odId, changedByRole), 100);
+        }
+    }
+
+    // Student clicks "Got it" on the date-change banner — clears the flag on
+    // the server so it stops showing (for both Student and HOD dashboards),
+    // then re-renders the list.
+    async function acknowledgeDateChange(odId) {
+        try {
+            await fetch(`${API_BASE}/api/OdApply/${odId}/AcknowledgeDateChange`, { method: 'PUT' });
+        } catch (err) {
+            console.error('acknowledgeDateChange error:', err);
+        } finally {
+            loadODStatus();
+        }
+    }
+    window.acknowledgeDateChange = acknowledgeDateChange;
+
     // ── Load OD Status (solo + group, via register number) ──
     async function loadODStatus() {
         const list  = document.getElementById('statusList');
@@ -1400,6 +1578,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
+                // Staff/HOD altered this OD's dates or time — server tracks
+                // this via DatesAlteredByStaff, set/cleared by AlterDays /
+                // AcknowledgeDateChange. Show a banner with what it used to
+                // be, plus a one-time toast per change.
+                const startTime = od.StartTime ?? od.startTime ?? '';
+                const endTime   = od.EndTime   ?? od.endTime   ?? '';
+                const datesChangedByStaff = od.DatesAlteredByStaff ?? od.datesAlteredByStaff ?? false;
+                const datesChangedByRole = od.DatesAlteredByRole ?? od.datesAlteredByRole ?? '';
+                const prevFromDate  = od.PreviousFromDate  ?? od.previousFromDate  ?? '';
+                const prevToDate    = od.PreviousToDate    ?? od.previousToDate    ?? '';
+                const prevStartTime = od.PreviousStartTime ?? od.previousStartTime ?? '';
+                const prevEndTime   = od.PreviousEndTime   ?? od.previousEndTime   ?? '';
+                if (datesChangedByStaff) {
+                    maybeShowDateChangeToast(od, odId, eventName);
+                }
+
                 // Certificate upload is only offered once the OD is FULLY
                 // APPROVED (both staff and HOD) AND the OD's own dates have
                 // passed — and never once staff has verified the certificate.
@@ -1427,10 +1621,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '';
 
                 const isRejectedOrEditable = myFacultyStatus === 'Rejected' || hodStatus === 'Rejected' || od.isEditable === true || od.status === 'Returned';
-                const canEdit = isRejectedOrEditable && !iAmApproved;
+                // Show "Edit OD" both for a rejected/returned OD (edit &
+                // resubmit) AND for one still awaiting the very first staff
+                // decision (Faculty status still Pending) — lets the student
+                // fix a mistake themselves before anyone reviews it.
+                const canEditPending = rawFacultyStatus === 'Pending';
+                const canEdit = (isRejectedOrEditable || canEditPending) && !fullyApproved;
+
+                const dateChangeBannerHtml = datesChangedByStaff ? `
+                    <div class="od-datechange-banner" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12.5px;font-weight:600;">
+                        <span>⚠ Dates/time changed by ${roleChangeLabel(datesChangedByRole)}${(prevFromDate && prevToDate) ? ` — was ${fmtDate(prevFromDate)} → ${fmtDate(prevToDate)}${(prevStartTime && prevEndTime) ? ` (${prevStartTime}–${prevEndTime})` : ''}, now ${fmtDate(fromDate)} → ${fmtDate(toDate)}${(startTime && endTime) ? ` (${startTime}–${endTime})` : ''}` : ''}</span>
+                        <button type="button" class="ack-datechange-btn" data-odid="${odId}" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:6px;padding:3px 10px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Got it</button>
+                    </div>` : '';
 
                 return `
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
+                    ${dateChangeBannerHtml}
                     <div class="card-top">
                         <div>
                             <h4>${eventName} ${groupTag} ${myStatusTag}</h4>
@@ -1510,6 +1716,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             o => String(o.OdId ?? o.odId ?? '') === String(odId)
         );
         if (!od) { showToast('error', 'Could not find OD details'); return; }
+
+        if (e.target.closest('.ack-datechange-btn')) {
+            e.stopPropagation();
+            acknowledgeDateChange(odId);
+            return;
+        }
 
         if (e.target.closest('.print-report-btn')) {
             e.stopPropagation();

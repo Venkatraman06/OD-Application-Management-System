@@ -2463,3 +2463,58 @@ select.cert-text-input {
     border-radius: 8px;
     cursor: pointer;
 }
+/* ============================================
+   Saturday-inclusion confirm dialog
+   Shown whenever a student's From/To OD range straddles a Saturday,
+   so they can choose whether that Saturday is part of the OD or not.
+   ============================================ */
+.saturday-confirm-overlay {
+    z-index: 10500; /* above the OD detail modal */
+}
+
+.saturday-confirm-box {
+    max-width: 420px;
+    text-align: left;
+}
+
+.saturday-confirm-box .modal-header {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+}
+
+.saturday-confirm-box .modal-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.saturday-confirm-box .modal-header h3::before {
+    content: '📅';
+    font-size: 1.1rem;
+}
+
+.saturday-confirm-text {
+    color: var(--surface-300, #cbd5e1);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.saturday-confirm-text strong {
+    color: #fff;
+}
+
+[data-theme="light"] .saturday-confirm-text { color: #475569; }
+[data-theme="light"] .saturday-confirm-text strong { color: #1e293b; }
+
+.saturday-confirm-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 0;
+}
+
+.saturday-confirm-actions .btn-secondary,
+.saturday-confirm-actions .btn-primary {
+    flex: 1;
+}
