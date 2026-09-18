@@ -105,8 +105,10 @@ namespace OnlineOD.Controllers
             {
                 facultyId = staff.StaffId,
                 name = staff.Name,
+                rollNumber = staff.RollNumber,
                 department = staff.Department,
-                section = staff.Section
+                section = staff.Section,
+                year = staff.Year
             });
         }
 

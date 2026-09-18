@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 namespace OnlineOD.Models
@@ -35,5 +35,9 @@ namespace OnlineOD.Models
         // Store HASH, not plain password
         [Required]
         public string Password { get; set; }
+
+        public string? Email { get; set; }
+
+        public bool IsActive { get; set; } = true;
     }
 }

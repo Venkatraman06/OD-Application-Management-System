@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -43,8 +43,12 @@ namespace OnlineOD.Service
             if (existing == null) return null;
 
             existing.Name = hod.Name;
+            existing.RollNumber = hod.RollNumber;
             existing.Department = hod.Department;
-            existing.Password = hod.Password;
+            if (!string.IsNullOrWhiteSpace(hod.Password))
+            {
+                existing.Password = hod.Password;
+            }
             existing.Email = hod.Email;
 
             await _context.SaveChangesAsync();

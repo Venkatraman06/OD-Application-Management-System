@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
@@ -39,8 +39,17 @@ namespace OnlineOD.Controllers
 
         //this will add the hod details to the database
         [HttpPost]
-        public async Task<IActionResult> AddHod([FromBody] Hod hod)
+        public async Task<IActionResult> AddHod([FromBody] HodDto dto)
         {
+            if (dto == null) return BadRequest("HOD data is required");
+            var hod = new Hod
+            {
+                Name = dto.Name,
+                RollNumber = dto.RollNumber,
+                Department = dto.Department,
+                Email = dto.Email,
+                Password = dto.Password ?? string.Empty
+            };
             var added = await _hodService.AddHodAsync(hod);
             return Ok(added);
         }
@@ -48,14 +57,25 @@ namespace OnlineOD.Controllers
 
         //this will update the hod details in the database
         [HttpPut]
-        public async Task<IActionResult> UpdateHod([FromBody] Hod hod)
+        public async Task<IActionResult> UpdateHod([FromBody] HodDto dto)
         {
+            if (dto == null) return BadRequest("HOD data is required");
+            var hod = new Hod
+            {
+                HodId = dto.HodId,
+                Name = dto.Name,
+                RollNumber = dto.RollNumber,
+                Department = dto.Department,
+                Email = dto.Email,
+                Password = dto.Password ?? string.Empty
+            };
             var updated = await _hodService.UpdateHodAsync(hod);
+            if (updated == null) return NotFound();
             return Ok(updated);
         }
 
 
-        //this will delete the hod details from the database
+        // this will delete the hod details from the database
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteHod(int id)
         {
@@ -80,6 +100,7 @@ namespace OnlineOD.Controllers
             {
                 hodId = hod.HodId,
                 name = hod.Name,
+                rollNumber = hod.RollNumber,
                 department = hod.Department
             });
         }

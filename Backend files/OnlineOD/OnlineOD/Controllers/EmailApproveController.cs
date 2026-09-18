@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
@@ -55,14 +55,14 @@ namespace OnlineOD.Controllers
                     "This decision cannot be changed.", false), "text/html");
             }
 
-            // ── Lock: once the OD is already ongoing (today falls within its
-            // From/To range), the one-click email link can no longer approve
+            // ── Lock: once the OD is already ongoing or in the past (today is
+            // on/after FromDate), the one-click email link can no longer approve
             // or reject it either — same rule enforced on the staff/HOD
             // webpages, so this can't be used to bypass that restriction.
             if (IsOdOngoing(existingOd.FromDate, existingOd.ToDate))
             {
-                return Content(Page("⚠️ OD already ongoing.",
-                    $"OD #{odId} is already in progress (its dates have started). " +
+                return Content(Page("⚠️ OD decision window closed.",
+                    $"OD #{odId} is already in progress or has passed (its decision window has closed). " +
                     "It can no longer be approved or rejected.", false), "text/html");
             }
 
@@ -146,14 +146,16 @@ namespace OnlineOD.Controllers
                 true), "text/html");
         }
 
-        // True while today falls within the OD's own From/To date range —
-        // used to lock out approve/reject once the OD has actually started.
+        // True once today is on/after the OD's own FromDate — covers an OD
+        // currently in progress AND one whose dates are already fully over.
+        // Used to lock out approve/reject once the decision window has
+        // begun or passed with no action taken.
         private static bool IsOdOngoing(string? fromDateRaw, string? toDateRaw)
         {
-            if (!DateTime.TryParse(fromDateRaw, out var from) || !DateTime.TryParse(toDateRaw, out var to))
+            if (!DateTime.TryParse(fromDateRaw, out var from))
                 return false;
             var today = DateTime.Today;
-            return today >= from.Date && today <= to.Date;
+            return today >= from.Date;
         }
 
         // ── Simple confirmation HTML page ──────────────────────────────────

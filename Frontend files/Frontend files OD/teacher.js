@@ -6,12 +6,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const section   = localStorage.getItem('userSection') || '';
     if (!facultyId || !dept) { window.location.href = 'index.html'; return; }
 
-    const name = localStorage.getItem('userName') || 'Faculty';
+    const name       = localStorage.getItem('userName') || 'Faculty';
+    const rollNumber = localStorage.getItem('userRollNumber') || '';
+    function getOrdinal(n) {
+        const s = ['th', 'st', 'nd', 'rd'];
+        const v = n % 100;
+        return s[(v - 20) % 10] || s[v] || s[0];
+    }
+    const year = localStorage.getItem('userYear') || '';
 
     // ── Set faculty details ──
     setEl('teacherName', name);
-    setEl('teacherDept', section ? `${dept} • Section ${section}` : dept);
-    setEl('teacherID',   'FAC' + facultyId);
+    setEl('teacherDept', dept);
+    setEl('teacherID',   rollNumber || facultyId);
+    setEl('teacherSection', section || '-');
+    setEl('teacherYear', year ? `${year}${getOrdinal(parseInt(year, 10) || 0)} Year` : '-');
     const avatar = document.getElementById('teacherAvatar');
     if (avatar) { const sp = avatar.querySelector('span'); if (sp) sp.textContent = name.charAt(0).toUpperCase(); }
 
@@ -160,6 +169,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             emptyTitle: '',
             emptyText: '',
             icon: '<path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>'
+        },
+        students: {
+            title: 'My Class Students',
+            emptyTitle: 'No Students Found',
+            emptyText: 'No students found for your department and section.',
+            icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
         }
     };
 
@@ -547,10 +562,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         const requestsContainer = document.getElementById('requestsContainer');
         const emptyState = document.getElementById('emptyState');
         const analyticsView = document.getElementById('analyticsView');
-        applySectionMeta(filter);
-
         const timeBar = document.getElementById('timeFilterBar');
         const calendarView = document.getElementById('calendarView');
+        const studentsView = document.getElementById('studentsView');
+        applySectionMeta(filter);
+
+        if (filter === 'students') {
+            if (searchBox) searchBox.style.display = 'none';
+            if (timeBar)   timeBar.style.display = 'none';
+            if (requestsContainer) requestsContainer.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
+            if (analyticsView) analyticsView.style.display = 'none';
+            if (calendarView) calendarView.style.display = 'none';
+            if (studentsView) studentsView.style.display = 'block';
+            setEl('sectionCount', '');
+            if (staffSubtabOdHistory && staffSubtabOdHistory.classList.contains('active')) {
+                loadStaffOdHistory();
+            } else {
+                loadMyStudents();
+            }
+            return;
+        }
+        if (studentsView) studentsView.style.display = 'none';
 
         if (filter === 'calendar') {
             if (searchBox) searchBox.style.display = 'none';
@@ -673,7 +706,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}${od.section ? ' &bull; Sec ' + od.section : ''}</p>
                     </div>
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
-                </div>`;>`acultyStatus)}">${od.facultyStatus || 'Pending'}</span>
                 </div>
                 <div class="card-body">
                     <p><strong>Event:</strong> ${od.event || ''}</p>
@@ -1704,8 +1736,229 @@ document.addEventListener('DOMContentLoaded', async () => {
         AnalogClockPicker.attach(document.getElementById('alterEndTime'));
     }
 
+    // ============================================
+    // My Students (Sub-tabs: All Students & OD History)
+    // ============================================
+    let myStudentsList = [];
+    let staffOdHistoryList = [];
+
+    const staffSubtabAllStudents = document.getElementById('staffSubtabAllStudents');
+    const staffSubtabOdHistory = document.getElementById('staffSubtabOdHistory');
+    const staffSubtabViewAllStudents = document.getElementById('staffSubtabViewAllStudents');
+    const staffSubtabViewOdHistory = document.getElementById('staffSubtabViewOdHistory');
+
+    staffSubtabAllStudents?.addEventListener('click', () => {
+        staffSubtabAllStudents.classList.add('active');
+        staffSubtabOdHistory?.classList.remove('active');
+        if (staffSubtabViewAllStudents) staffSubtabViewAllStudents.style.display = 'block';
+        if (staffSubtabViewOdHistory) staffSubtabViewOdHistory.style.display = 'none';
+        loadMyStudents();
+    });
+
+    staffSubtabOdHistory?.addEventListener('click', () => {
+        staffSubtabOdHistory.classList.add('active');
+        staffSubtabAllStudents?.classList.remove('active');
+        if (staffSubtabViewAllStudents) staffSubtabViewAllStudents.style.display = 'none';
+        if (staffSubtabViewOdHistory) staffSubtabViewOdHistory.style.display = 'block';
+        loadStaffOdHistory();
+    });
+
+    async function loadMyStudents() {
+        const tbody = document.getElementById('studentsTableBody');
+        const sub = document.getElementById('studentsSubtitle');
+        if (sub) sub.textContent = `Department: ${dept || '-'} | Section: ${section || 'All'}`;
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Loading students...</td></tr>';
+
+        try {
+            const url = `${API_BASE}/api/Student/BySection?department=${encodeURIComponent(dept)}` +
+                        `${section ? `&section=${encodeURIComponent(section)}` : ''}&_=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Failed to load students.</td></tr>';
+                showToast('error', 'Failed to load class students.');
+                return;
+            }
+            myStudentsList = await res.json();
+            setEl('studentsCount', myStudentsList.length);
+            renderMyStudents(myStudentsList);
+        } catch (err) {
+            console.error(err);
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Error loading students.</td></tr>';
+            showToast('error', 'Network error while loading students.');
+        }
+    }
+
+    function renderMyStudents(list) {
+        const tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
+        if (!list || !list.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No students found for your section.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(s => {
+            const id = s.studentId ?? s.StudentId;
+            const active = (s.isActive ?? s.IsActive) !== false;
+            const reg = s.registerNumber ?? s.RegisterNumber ?? '';
+            const statusBadge = active
+                ? `<span class="badge-active" id="badge-status-${id}">Active</span>`
+                : `<span class="badge-deactivated" id="badge-status-${id}">Deactivated</span>`;
+
+            return `
+            <tr data-student-row="${id}">
+                <td style="font-weight:600;color:var(--text-primary, #f1f5f9);">${escHtml(s.name ?? s.Name)}</td>
+                <td><span class="reg-badge">${escHtml(reg)}</span></td>
+                <td>${escHtml(s.year ?? s.Year ?? '-')}</td>
+                <td>${escHtml(s.section ?? s.Section ?? '-')}</td>
+                <td>${escHtml(s.email ?? s.Email ?? '-')}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <label class="switch-toggle" title="${active ? 'Deactivate student account' : 'Activate student account'}">
+                        <input type="checkbox" ${active ? 'checked' : ''} data-student-id="${id}" class="student-status-toggle">
+                        <span class="switch-slider"></span>
+                    </label>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ── OD History Sub-tab for Staff ──
+    async function loadStaffOdHistory() {
+        const tbody = document.getElementById('staffOdHistoryTableBody');
+        const sub = document.getElementById('staffOdHistorySubtitle');
+        if (sub) sub.textContent = `Department: ${dept || 'All'} | Section: ${section || 'All'}`;
+        if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Loading OD history...</td></tr>';
+
+        try {
+            const url = `${API_BASE}/api/Student/OdHistory?department=${encodeURIComponent(dept || '')}` +
+                        `${section ? `&section=${encodeURIComponent(section)}` : ''}&_=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Failed to load OD history.</td></tr>';
+                showToast('error', 'Failed to load OD history.');
+                return;
+            }
+            staffOdHistoryList = await res.json();
+            renderStaffOdHistory(staffOdHistoryList);
+        } catch (err) {
+            console.error(err);
+            staffOdHistoryList = [];
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Error loading OD history.</td></tr>';
+            showToast('error', 'Network error while loading OD history.');
+        }
+    }
+
+    function renderStaffOdHistory(list) {
+        const tbody = document.getElementById('staffOdHistoryTableBody');
+        if (!tbody) return;
+        if (!list || !list.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No OD history found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(s => {
+            const total = s.totalOdCount ?? s.TotalOdCount ?? 0;
+            const approved = s.approvedCount ?? s.ApprovedCount ?? 0;
+            const rejected = s.rejectedCount ?? s.RejectedCount ?? 0;
+            return `
+            <tr>
+                <td style="font-weight:600;color:var(--text-primary, #f1f5f9);">${escHtml(s.studentName ?? s.StudentName ?? s.name ?? s.Name)}</td>
+                <td><span class="reg-badge">${escHtml(s.registerNumber ?? s.RegisterNumber)}</span></td>
+                <td>${escHtml(s.class ?? s.Class ?? s.department ?? s.Department ?? '-')}</td>
+                <td>${escHtml(s.section ?? s.Section ?? '-')}</td>
+                <td>${escHtml(s.year ?? s.Year ?? '-')}</td>
+                <td style="text-align:center"><span class="od-count-badge od-count-total">${total}</span></td>
+                <td style="text-align:center"><span class="od-count-badge od-count-approved">${approved}</span></td>
+                <td style="text-align:center"><span class="od-count-badge od-count-rejected">${rejected}</span></td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('staffOdHistorySearch')?.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) { renderStaffOdHistory(staffOdHistoryList); return; }
+        renderStaffOdHistory(staffOdHistoryList.filter(s =>
+            (s.studentName ?? s.StudentName ?? s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
+            (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) ||
+            (s.class ?? s.Class ?? s.department ?? s.Department ?? '').toLowerCase().includes(q) ||
+            (s.section ?? s.Section ?? '').toLowerCase().includes(q)
+        ));
+    });
+
+    document.getElementById('staffOdHistoryRefreshBtn')?.addEventListener('click', () => {
+        loadStaffOdHistory();
+    });
+
+    document.getElementById('studentsSearch')?.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) { renderMyStudents(myStudentsList); return; }
+        renderMyStudents(myStudentsList.filter(s =>
+            (s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
+            (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) ||
+            (s.email ?? s.Email ?? '').toLowerCase().includes(q)
+        ));
+    });
+
+    document.getElementById('studentsRefreshBtn')?.addEventListener('click', () => {
+        loadMyStudents();
+    });
+
+    document.getElementById('studentsTableBody')?.addEventListener('change', async (e) => {
+        if (!e.target.classList.contains('student-status-toggle')) return;
+        const checkbox = e.target;
+        const studentId = checkbox.dataset.studentId;
+        const previousChecked = !checkbox.checked;
+        checkbox.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Student/${studentId}/ToggleStatus?staffId=${facultyId}`, {
+                method: 'PUT'
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                checkbox.checked = previousChecked;
+                showToast('error', errData.message || 'Failed to update student status.');
+                return;
+            }
+            const data = await res.json();
+            const newStatus = data.isActive;
+            checkbox.checked = newStatus;
+
+            // Update in myStudentsList array
+            const student = myStudentsList.find(s => String(s.studentId ?? s.StudentId) === String(studentId));
+            if (student) {
+                student.isActive = newStatus;
+                student.IsActive = newStatus;
+            }
+
+            const badge = document.getElementById(`badge-status-${studentId}`);
+            if (badge) {
+                badge.className = newStatus ? 'badge-active' : 'badge-deactivated';
+                badge.textContent = newStatus ? 'Active' : 'Deactivated';
+            }
+            checkbox.closest('.switch-toggle').title = newStatus ? 'Deactivate student account' : 'Activate student account';
+            showToast('success', data.message || (newStatus ? 'Student activated.' : 'Student deactivated.'));
+        } catch (err) {
+            console.error(err);
+            checkbox.checked = previousChecked;
+            showToast('error', 'Network error while updating student status.');
+        } finally {
+            checkbox.disabled = false;
+        }
+    });
+
     loadODs();
     // Load the certificates badge count in the background too, so it's ready before the tab is clicked
     loadCertificates();
     loadStudentLookup();
+    // Preload my students count for badge
+    (async () => {
+        try {
+            const url = `${API_BASE}/api/Student/BySection?department=${encodeURIComponent(dept)}` +
+                        `${section ? `&section=${encodeURIComponent(section)}` : ''}&_=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                setEl('studentsCount', data.length);
+            }
+        } catch {}
+    })();
 });

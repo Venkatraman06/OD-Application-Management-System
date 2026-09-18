@@ -235,5 +235,32 @@ namespace OnlineOD.Services
             await SendAsync(adminEmail, "Admin",
                 $"Contact Admin — {role} ({registerNumber})", body);
         }
+
+        // ── 4. Forgot Password verification code ─────────────────────────────
+        public async Task SendPasswordResetCodeAsync(string toEmail, string toName, string code)
+        {
+            var content = $@"
+            <div style='text-align:center;padding:10px 0;'>
+                <p style='color:#374151;font-size:15px;margin-bottom:16px;'>
+                    You recently requested to reset your password for the <b>OD Application Management System</b>.
+                </p>
+                <p style='color:#6b7280;font-size:14px;margin-bottom:8px;'>
+                    Use the verification code below to complete your password reset:
+                </p>
+                <div style='display:inline-block;padding:16px 36px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:2px dashed #6366f1;border-radius:12px;margin:16px 0;'>
+                    <span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#4f46e5;'>{code}</span>
+                </div>
+                <p style='color:#ef4444;font-size:13px;font-weight:600;margin-top:12px;'>
+                    ⏳ This code expires in 10 minutes.
+                </p>
+                <p style='color:#9ca3af;font-size:12px;margin-top:20px;border-top:1px solid #f3f4f6;padding-top:14px;'>
+                    If you did not request a password reset, please ignore this email or contact the administrator immediately.
+                </p>
+            </div>";
+
+            var body = Wrap(toName, "Password Reset Request", content, "");
+
+            await SendAsync(toEmail, toName, "Your Password Reset Verification Code — OD Application", body);
+        }
     }
 }

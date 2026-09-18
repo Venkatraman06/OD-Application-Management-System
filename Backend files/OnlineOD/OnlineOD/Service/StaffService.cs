@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
 
@@ -41,7 +41,11 @@ namespace OnlineOD.Service
             if (existing == null) return null;
 
             existing.Name = staff.Name;
+            existing.RollNumber = staff.RollNumber;
             existing.Department = staff.Department;
+            existing.Section = staff.Section;
+            existing.Year = staff.Year;
+            existing.Email = staff.Email;
             existing.Password = staff.Password;
 
             await _context.SaveChangesAsync();
@@ -62,9 +66,9 @@ namespace OnlineOD.Service
         // this will check the staff details in my database for login
         public async Task<Staff> LoginAsync(string username, string password)
             {
-           return  await _context.Staffs
+            return await _context.Staffs
                 .FirstOrDefaultAsync(s =>
-                    s.Name == username &&
+                    (s.Name == username || s.RollNumber == username) &&
                     s.Password == password);
 
            }
