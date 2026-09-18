@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace OnlineOD.Models
@@ -10,6 +10,7 @@ namespace OnlineOD.Models
         [Key]
         public int HodId { get; set; }
         public string Name { get; set; }
+        public string? RollNumber { get; set; }
         public string Department { get; set; }
 
         public string Email { get; set; }

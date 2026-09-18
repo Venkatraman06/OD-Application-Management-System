@@ -252,6 +252,32 @@ namespace OnlineOD.Service
 
         public async Task<OdApply> CreateOdApplyAsync(OdApplyDto dto)
         {
+            var applicant = await _context.Students.FindAsync(dto.StudentId);
+            if (applicant != null && !applicant.IsActive)
+            {
+                throw new InvalidOperationException($"The student with register number {applicant.RegisterNumber} has been deactivated by their class advisor and cannot apply for OD.");
+            }
+
+            if (dto.IsGroupOd && !string.IsNullOrWhiteSpace(dto.RegisterNumbers))
+            {
+                var memberRegs = dto.RegisterNumbers
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(r => r.ToUpper())
+                    .ToList();
+
+                if (memberRegs.Count > 0)
+                {
+                    var allStudents = await _context.Students.ToListAsync();
+                    var deactivated = allStudents
+                        .FirstOrDefault(s => memberRegs.Contains(s.RegisterNumber.ToUpper()) && !s.IsActive);
+
+                    if (deactivated != null)
+                    {
+                        throw new InvalidOperationException($"The student with register number {deactivated.RegisterNumber} has been deactivated by their class advisor and cannot be added to the Group OD.");
+                    }
+                }
+            }
+
             var od = new OdApply
             {
                 StudentId = dto.StudentId,
@@ -271,15 +297,10 @@ namespace OnlineOD.Service
                 AppliedDate = DateTime.Now,
                 FacultyStatus = "Pending",
                 HodStatus = "Pending",
-
-
-
                 IsGroupOd = dto.IsGroupOd,
                 GroupName = dto.GroupName,
                 RegisterNumbers = dto.RegisterNumbers
-
             };
-
 
             _context.OdApplies.Add(od);
             await _context.SaveChangesAsync();
@@ -657,12 +678,18 @@ namespace OnlineOD.Service
                 if (memberList.Count < 2)
                     return (null, "A Group OD needs at least 2 members.");
 
-                var validRegNumbers = await _context.Students
+                var allStudents = await _context.Students.ToListAsync();
+                var validRegNumbers = allStudents
                     .Select(s => s.RegisterNumber.ToUpper())
-                    .ToListAsync();
+                    .ToList();
                 var invalidMembers = memberList.Where(r => !validRegNumbers.Contains(r)).ToList();
                 if (invalidMembers.Count > 0)
                     return (null, $"No user found for: {string.Join(", ", invalidMembers)}");
+
+                var deactivated = allStudents
+                    .FirstOrDefault(s => memberList.Contains(s.RegisterNumber.ToUpper()) && !s.IsActive);
+                if (deactivated != null)
+                    return (null, $"The student with register number {deactivated.RegisterNumber} has been deactivated by their class advisor and cannot be added to the Group OD.");
             }
 
             int computedDays = WorkingDaysCalendar.CountWorkingDays(dto.FromDate, dto.ToDate);

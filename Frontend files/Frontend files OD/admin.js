@@ -125,6 +125,81 @@ function initAdminApp() {
     const studentIdEl = document.getElementById('studentId');
     const studentSubmitBtn = document.getElementById('studentSubmitBtn');
 
+    // ── Internal Sub-tabs for Students (All Students vs OD History) ──
+    let odHistoryList = [];
+    const subtabAllStudents = document.getElementById('subtabAllStudents');
+    const subtabOdHistory = document.getElementById('subtabOdHistory');
+    const subtabViewAllStudents = document.getElementById('subtabViewAllStudents');
+    const subtabViewOdHistory = document.getElementById('subtabViewOdHistory');
+
+    subtabAllStudents?.addEventListener('click', () => {
+        subtabAllStudents.classList.add('active');
+        subtabOdHistory?.classList.remove('active');
+        if (subtabViewAllStudents) subtabViewAllStudents.style.display = 'block';
+        if (subtabViewOdHistory) subtabViewOdHistory.style.display = 'none';
+    });
+
+    subtabOdHistory?.addEventListener('click', () => {
+        subtabOdHistory.classList.add('active');
+        subtabAllStudents?.classList.remove('active');
+        if (subtabViewAllStudents) subtabViewAllStudents.style.display = 'none';
+        if (subtabViewOdHistory) subtabViewOdHistory.style.display = 'block';
+        loadOdHistory();
+    });
+
+    async function loadOdHistory() {
+        const tbody = document.getElementById('odHistoryTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Loading OD history...</td></tr>';
+        try {
+            const res = await fetch(API_BASE + '/api/Student/OdHistory?_=' + Date.now(), { cache: 'no-store' });
+            odHistoryList = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error(err);
+            odHistoryList = [];
+            showToast('error', 'Failed to load student OD history.');
+        }
+        renderOdHistory(odHistoryList);
+    }
+
+    function renderOdHistory(list) {
+        const tbody = document.getElementById('odHistoryTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No OD history found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(s => {
+            const total = s.totalOdCount ?? s.TotalOdCount ?? 0;
+            const approved = s.approvedCount ?? s.ApprovedCount ?? 0;
+            const rejected = s.rejectedCount ?? s.RejectedCount ?? 0;
+            return '<tr>' +
+                '<td style="font-weight:600">' + esc(s.studentName ?? s.StudentName ?? s.name ?? s.Name) + '</td>' +
+                '<td>' + esc(s.registerNumber ?? s.RegisterNumber) + '</td>' +
+                '<td>' + esc(s.class ?? s.Class ?? s.department ?? s.Department) + '</td>' +
+                '<td>' + esc(s.section ?? s.Section ?? '-') + '</td>' +
+                '<td>' + esc(s.year ?? s.Year) + '</td>' +
+                '<td style="text-align:center"><span class="od-count-badge od-count-total">' + total + '</span></td>' +
+                '<td style="text-align:center"><span class="od-count-badge od-count-approved">' + approved + '</span></td>' +
+                '<td style="text-align:center"><span class="od-count-badge od-count-rejected">' + rejected + '</span></td>' +
+            '</tr>';
+        }).join('');
+    }
+
+    document.getElementById('odHistorySearch')?.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) { renderOdHistory(odHistoryList); return; }
+        renderOdHistory(odHistoryList.filter(s =>
+            (s.studentName ?? s.StudentName ?? s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
+            (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) ||
+            (s.class ?? s.Class ?? s.department ?? s.Department ?? '').toLowerCase().includes(q) ||
+            (s.section ?? s.Section ?? '').toLowerCase().includes(q)
+        ));
+    });
+
+    document.getElementById('refreshOdHistoryBtn')?.addEventListener('click', () => {
+        loadOdHistory();
+    });
+
     async function loadStudents() {
         const tbody = document.getElementById('studentTableBody');
         try {
@@ -143,11 +218,15 @@ function initAdminApp() {
         const tbody = document.getElementById('studentTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No students yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No students yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(s => {
             const id = s.studentId ?? s.StudentId;
+            const active = (s.isActive ?? s.IsActive) !== false;
+            const statusBadge = active
+                ? `<span class="badge-active">Active</span>`
+                : `<span class="badge-deactivated">Deactivated</span>`;
             return `
             <tr>
                 <td>${esc(s.name ?? s.Name)}</td>
@@ -156,6 +235,8 @@ function initAdminApp() {
                 <td>${esc(s.section ?? s.Section ?? '-')}</td>
                 <td>${esc(s.year ?? s.Year)}</td>
                 <td>${esc(s.semester ?? s.Semester)}</td>
+                <td>${esc(s.email ?? s.Email ?? '-')}</td>
+                <td>${statusBadge}</td>
                 <td>
                     <div class="row-actions">
                         <button class="row-btn edit-btn" title="Edit" data-id="${id}">
@@ -205,6 +286,7 @@ function initAdminApp() {
         document.getElementById('studentSemester').value = s.semester ?? s.Semester ?? '';
         const dob = s.dob ?? s.dOB ?? s.DOB ?? '';
         document.getElementById('studentDob').value = dob ? String(dob).slice(0, 10) : '';
+        document.getElementById('studentEmail').value = s.email ?? s.Email ?? '';
         document.getElementById('studentPassword').value = ''; // never prefill a password
         studentSubmitBtn.textContent = 'Update Student';
         document.getElementById('panel-students').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -229,6 +311,7 @@ function initAdminApp() {
             year: parseInt(document.getElementById('studentYear').value, 10),
             semester: parseInt(document.getElementById('studentSemester').value, 10),
             dob: document.getElementById('studentDob').value,
+            email: document.getElementById('studentEmail').value.trim(),
             password: document.getElementById('studentPassword').value
         };
 
@@ -302,7 +385,7 @@ function initAdminApp() {
         const tbody = document.getElementById('staffTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No staff yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No staff yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(s => {
@@ -313,6 +396,7 @@ function initAdminApp() {
                 <td>${esc(s.rollNumber ?? s.RollNumber)}</td>
                 <td>${esc(s.department ?? s.Department)}</td>
                 <td>${esc(s.section ?? s.Section ?? '-')}</td>
+                <td>${esc(s.year ?? s.Year ?? '-')}</td>
                 <td>${esc(s.email ?? s.Email)}</td>
                 <td>
                     <div class="row-actions">
@@ -359,6 +443,7 @@ function initAdminApp() {
         document.getElementById('staffRollNumber').value = s.rollNumber ?? s.RollNumber ?? '';
         document.getElementById('staffDept').value = s.department ?? s.Department ?? '';
         document.getElementById('staffSection').value = s.section ?? s.Section ?? '';
+        document.getElementById('staffYear').value = s.year ?? s.Year ?? '';
         document.getElementById('staffEmail').value = s.email ?? s.Email ?? '';
         document.getElementById('staffPassword').value = '';
         staffSubmitBtn.textContent = 'Update Staff';
@@ -376,11 +461,13 @@ function initAdminApp() {
         const id = staffIdEl.value;
         const isEdit = !!id;
 
+        const yearVal = document.getElementById('staffYear').value;
         const payload = {
             name: document.getElementById('staffName').value.trim(),
             rollNumber: document.getElementById('staffRollNumber').value.trim(),
             department: document.getElementById('staffDept').value.trim(),
             section: document.getElementById('staffSection').value.trim(),
+            year: yearVal ? parseInt(yearVal, 10) : null,
             email: document.getElementById('staffEmail').value.trim(),
             password: document.getElementById('staffPassword').value
         };
@@ -456,7 +543,7 @@ function initAdminApp() {
         const tbody = document.getElementById('hodTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="table-empty">No HODs yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No HODs yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(h => {
@@ -464,6 +551,7 @@ function initAdminApp() {
             return `
             <tr>
                 <td>${esc(h.name ?? h.Name)}</td>
+                <td>${esc(h.rollNumber ?? h.RollNumber ?? '-')}</td>
                 <td>${esc(h.department ?? h.Department)}</td>
                 <td>${esc(h.email ?? h.Email ?? '-')}</td>
                 <td>
@@ -485,6 +573,7 @@ function initAdminApp() {
         if (!q) { renderHods(hods); return; }
         renderHods(hods.filter(h =>
             (h.name ?? h.Name ?? '').toLowerCase().includes(q) ||
+            (h.rollNumber ?? h.RollNumber ?? '').toLowerCase().includes(q) ||
             (h.department ?? h.Department ?? '').toLowerCase().includes(q)
         ));
     });
@@ -507,6 +596,7 @@ function initAdminApp() {
     function fillHodForm(h) {
         hodIdEl.value = h.hodId ?? h.HodId ?? '';
         document.getElementById('hodName').value = h.name ?? h.Name ?? '';
+        document.getElementById('hodRollNumber').value = h.rollNumber ?? h.RollNumber ?? '';
         document.getElementById('hodDeptInput').value = h.department ?? h.Department ?? '';
         document.getElementById('hodEmail').value = h.email ?? h.Email ?? '';
         document.getElementById('hodPassword').value = ''; // Hod.Password is [JsonIgnore]d anyway
@@ -527,6 +617,7 @@ function initAdminApp() {
 
         const payload = {
             name: document.getElementById('hodName').value.trim(),
+            rollNumber: document.getElementById('hodRollNumber').value.trim(),
             department: document.getElementById('hodDeptInput').value.trim(),
             email: document.getElementById('hodEmail').value.trim(),
             password: document.getElementById('hodPassword').value

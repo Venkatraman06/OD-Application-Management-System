@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnlineOD.Data;
 
@@ -11,9 +12,11 @@ using OnlineOD.Data;
 namespace OnlineOD.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260827153734_LatestUpdates")]
+    partial class LatestUpdates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,40 +24,6 @@ namespace OnlineOD.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("OnlineOD.Models.ContactAdminRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Dob")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsResolved")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RegisterNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ContactAdminRequests");
-                });
 
             modelBuilder.Entity("OnlineOD.Models.Hod", b =>
                 {
@@ -78,9 +47,6 @@ namespace OnlineOD.Migrations
 
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RollNumber")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("HodId");
@@ -109,9 +75,6 @@ namespace OnlineOD.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CompetitionType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EndTime")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Event")
@@ -153,9 +116,6 @@ namespace OnlineOD.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Section")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("StartTime")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("StudentId")
@@ -213,43 +173,6 @@ namespace OnlineOD.Migrations
                     b.ToTable("OdCertificates");
                 });
 
-            modelBuilder.Entity("OnlineOD.Models.PasswordResetCode", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ExpiryTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsUsed")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PasswordResetCodes");
-                });
-
             modelBuilder.Entity("OnlineOD.Models.Staff", b =>
                 {
                     b.Property<int>("StaffId")
@@ -281,9 +204,6 @@ namespace OnlineOD.Migrations
                     b.Property<string>("Section")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("Year")
-                        .HasColumnType("int");
-
                     b.HasKey("StaffId");
 
                     b.ToTable("Staffs");
@@ -303,14 +223,6 @@ namespace OnlineOD.Migrations
                     b.Property<string>("Department")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -336,22 +248,6 @@ namespace OnlineOD.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("Students");
-                });
-
-            modelBuilder.Entity("OnlineOD.Models.WorkingDayOverride", b =>
-                {
-                    b.Property<string>("Date")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("IsWorking")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Date");
-
-                    b.ToTable("WorkingDayOverrides");
                 });
 #pragma warning restore 612, 618
         }

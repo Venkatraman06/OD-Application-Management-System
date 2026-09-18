@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using OnlineOD.Models;
 
 namespace OnlineOD.Data
@@ -17,5 +17,15 @@ namespace OnlineOD.Data
         public DbSet<OdCertificate> OdCertificates { get; set; }
         public DbSet<ContactAdminRequest> ContactAdminRequests { get; set; }
         public DbSet<WorkingDayOverride> WorkingDayOverrides { get; set; }
+        public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Student>()
+                .Property(s => s.IsActive)
+                .HasDefaultValue(true);
+        }
     }
 }

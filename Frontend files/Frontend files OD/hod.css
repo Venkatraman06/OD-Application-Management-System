@@ -2326,20 +2326,85 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
-.calendar-header-row {
+.calendar-header-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 18px;
-    margin-bottom: 14px;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    position: relative;
 }
 
+.calendar-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0 auto;
+}
+
+.calendar-nav-group h3,
 .calendar-header-row h3 {
     font-size: 1.15rem;
     font-weight: 700;
     color: white;
     min-width: 180px;
     text-align: center;
+    margin: 0;
+}
+
+.calendar-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius-md, 10px);
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.calendar-add-btn:hover {
+    background: linear-gradient(135deg, #4f46e5, #4338ca);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+}
+
+.calendar-add-btn:active {
+    transform: translateY(0);
+}
+
+.calendar-add-btn svg {
+    flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+    .calendar-header-bar {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+    .calendar-nav-group {
+        margin: 0;
+    }
+    .calendar-add-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.calendar-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 14px;
 }
 
 .calendar-nav-btn {
