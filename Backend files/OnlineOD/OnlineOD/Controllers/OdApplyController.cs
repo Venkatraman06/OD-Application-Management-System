@@ -97,7 +97,15 @@ namespace OnlineOD.Controllers
             if (dateError != null)
                 return BadRequest(dateError);
 
-            var result = await _service.CreateOdApplyAsync(dto);
+            OdApply result;
+            try
+            {
+                result = await _service.CreateOdApplyAsync(dto);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
 
             // Enqueue staff email notifications to background worker so HTTP API response completes fast (<50ms)
             string emailStatus = "queued";

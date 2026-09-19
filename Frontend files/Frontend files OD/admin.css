@@ -309,3 +309,92 @@ body {
 .status-resolved { background: rgba(16, 185, 129, 0.18); color: #34d399; }
 .resolve-btn { color: #34d399; }
 .resolve-btn:hover { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); }
+/* -- Student status badges ----------------------------------- */
+.badge-active {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    white-space: nowrap;
+}
+.badge-deactivated {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    white-space: nowrap;
+}
+[data-theme="light"] .badge-active  { background: rgba(16, 185, 129, 0.12); color: #059669; }
+[data-theme="light"] .badge-deactivated { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+
+/* ── Internal Sub-tabs (Students -> All Students / OD History) ── */
+.sub-tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sub-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--surface-300);
+    font-family: var(--font-family);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sub-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.sub-tab-btn.active {
+    background: rgba(99, 102, 241, 0.18);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #c7d2fe;
+}
+
+.sub-tab-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.od-count-badge {
+    display: inline-block;
+    min-width: 26px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.od-count-total {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+}
+
+.od-count-approved {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.od-count-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}

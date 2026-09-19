@@ -78,68 +78,118 @@
 
         <!-- ============== STUDENTS ============== -->
         <section class="admin-panel active" id="panel-students">
-            <div class="admin-grid">
-                <div class="admin-card form-card">
-                    <h2>Add Student</h2>
-                    <form id="studentForm" class="admin-form" novalidate>
-                        <input type="hidden" id="studentId" value="">
-                        <div class="form-row">
-                            <label>Name</label>
-                            <input type="text" id="studentName" required placeholder="Full name">
-                        </div>
-                        <div class="form-row">
-                            <label>Register Number</label>
-                            <input type="text" id="studentRegNo" required placeholder="e.g. 21CS045">
-                        </div>
-                        <div class="form-row two-col">
-                            <div>
-                                <label>Department</label>
-                                <input type="text" id="studentDept" list="deptList" required placeholder="e.g. CSE">
-                            </div>
-                            <div>
-                                <label>Section</label>
-                                <input type="text" id="studentSection" placeholder="e.g. A">
-                            </div>
-                        </div>
-                        <div class="form-row two-col">
-                            <div>
-                                <label>Year</label>
-                                <input type="number" id="studentYear" min="1" max="5" required placeholder="1-5">
-                            </div>
-                            <div>
-                                <label>Semester</label>
-                                <input type="number" id="studentSemester" min="1" max="10" required placeholder="1-10">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <label>Date of Birth</label>
-                            <input type="date" id="studentDob" required>
-                        </div>
-                        <div class="form-row">
-                            <label>Password</label>
-                            <input type="text" id="studentPassword" required placeholder="Login password">
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn-secondary" id="studentResetBtn">Clear</button>
-                            <button type="submit" class="btn-primary" id="studentSubmitBtn">Add Student</button>
-                        </div>
-                    </form>
-                </div>
+            <div class="sub-tabs-container">
+                <button type="button" class="sub-tab-btn active" id="subtabAllStudents">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    All Students
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabOdHistory">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    OD History
+                </button>
+            </div>
 
-                <div class="admin-card list-card">
+            <div id="subtabViewAllStudents">
+                <div class="admin-grid">
+                    <div class="admin-card form-card">
+                        <h2>Add Student</h2>
+                        <form id="studentForm" class="admin-form" novalidate>
+                            <input type="hidden" id="studentId" value="">
+                            <div class="form-row">
+                                <label>Name</label>
+                                <input type="text" id="studentName" required placeholder="Full name">
+                            </div>
+                            <div class="form-row">
+                                <label>Register Number</label>
+                                <input type="text" id="studentRegNo" required placeholder="e.g. 21CS045">
+                            </div>
+                            <div class="form-row two-col">
+                                <div>
+                                    <label>Department</label>
+                                    <input type="text" id="studentDept" list="deptList" required placeholder="e.g. CSE">
+                                </div>
+                                <div>
+                                    <label>Section</label>
+                                    <input type="text" id="studentSection" placeholder="e.g. A">
+                                </div>
+                            </div>
+                            <div class="form-row two-col">
+                                <div>
+                                    <label>Year</label>
+                                    <input type="number" id="studentYear" min="1" max="5" required placeholder="1-5">
+                                </div>
+                                <div>
+                                    <label>Semester</label>
+                                    <input type="number" id="studentSemester" min="1" max="10" required placeholder="1-10">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>Date of Birth</label>
+                                <input type="date" id="studentDob" required>
+                            </div>
+                            <div class="form-row">
+                                <label>Email</label>
+                                <input type="email" id="studentEmail" placeholder="student@college.edu">
+                            </div>
+                            <div class="form-row">
+                                <label>Password</label>
+                                <input type="text" id="studentPassword" required placeholder="Login password">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-secondary" id="studentResetBtn">Clear</button>
+                                <button type="submit" class="btn-primary" id="studentSubmitBtn">Add Student</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="admin-card list-card">
+                        <div class="list-card-header">
+                            <h2>All Students</h2>
+                            <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / register no. / dept...">
+                        </div>
+                        <div class="table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th><th>Reg. No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Sem</th><th>Email</th><th>Status</th><th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentTableBody">
+                                    <tr><td colspan="9" class="table-empty">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="subtabViewOdHistory" style="display:none">
+                <div class="admin-card list-card" style="width:100%">
                     <div class="list-card-header">
-                        <h2>All Students</h2>
-                        <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / register no. / dept...">
+                        <h2>Student OD History</h2>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="text" class="admin-search" id="odHistorySearch" placeholder="Search name / reg no / dept / section...">
+                            <button class="action-btn icon-btn" id="refreshOdHistoryBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="table-wrap">
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th><th>Reg. No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Sem</th><th></th>
+                                    <th>Student Name</th>
+                                    <th>Register Number</th>
+                                    <th>Class</th>
+                                    <th>Section</th>
+                                    <th>Year</th>
+                                    <th style="text-align:center">Total OD Count</th>
+                                    <th style="text-align:center">Approved Count</th>
+                                    <th style="text-align:center">Rejected Count</th>
                                 </tr>
                             </thead>
-                            <tbody id="studentTableBody">
-                                <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                            <tbody id="odHistoryTableBody">
+                                <tr><td colspan="8" class="table-empty">Loading OD history...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -173,6 +223,10 @@
                             </div>
                         </div>
                         <div class="form-row">
+                            <label>Year (Class Advisor Year)</label>
+                            <input type="number" id="staffYear" min="1" max="5" placeholder="e.g. 2">
+                        </div>
+                        <div class="form-row">
                             <label>Email</label>
                             <input type="email" id="staffEmail" required placeholder="name@college.edu">
                         </div>
@@ -196,11 +250,11 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Sec</th><th>Email</th><th></th>
+                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Email</th><th></th>
                                 </tr>
                             </thead>
                             <tbody id="staffTableBody">
-                                <tr><td colspan="6" class="table-empty">Loading...</td></tr>
+                                <tr><td colspan="7" class="table-empty">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -218,6 +272,10 @@
                         <div class="form-row">
                             <label>Name</label>
                             <input type="text" id="hodName" required placeholder="Full name">
+                        </div>
+                        <div class="form-row">
+                            <label>Roll / Staff Number</label>
+                            <input type="text" id="hodRollNumber" placeholder="e.g. HOD1001">
                         </div>
                         <div class="form-row">
                             <label>Department</label>
@@ -247,11 +305,11 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th><th>Dept</th><th>Email</th><th></th>
+                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Email</th><th></th>
                                 </tr>
                             </thead>
                             <tbody id="hodTableBody">
-                                <tr><td colspan="4" class="table-empty">Loading...</td></tr>
+                                <tr><td colspan="5" class="table-empty">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>

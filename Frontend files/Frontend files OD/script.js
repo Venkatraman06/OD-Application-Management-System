@@ -89,6 +89,232 @@ document.addEventListener('DOMContentLoaded', () => {
         contactAdminSubmit.disabled = on;
     }
 
+    // ── Forgot Password flow ─────────────────────────────────────────────
+    const forgotPasswordLink = document.getElementById('forgotPassword');
+    const forgotPasswordOverlay = document.getElementById('forgotPasswordOverlay');
+    const forgotPasswordClose = document.getElementById('forgotPasswordClose');
+    const forgotModalTitle = document.getElementById('forgotModalTitle');
+
+    const forgotStep1Form = document.getElementById('forgotStep1Form');
+    const forgotEmailInput = document.getElementById('forgotEmail');
+    const forgotSendCodeBtn = document.getElementById('forgotSendCodeBtn');
+
+    const forgotStep2Form = document.getElementById('forgotStep2Form');
+    const forgotCodeInput = document.getElementById('forgotCode');
+    const forgotEmailDisplay = document.getElementById('forgotEmailDisplay');
+    const forgotVerifyCodeBtn = document.getElementById('forgotVerifyCodeBtn');
+    const forgotBackToStep1Btn = document.getElementById('forgotBackToStep1Btn');
+    const forgotResendLink = document.getElementById('forgotResendLink');
+
+    const forgotStep3Form = document.getElementById('forgotStep3Form');
+    const forgotNewPasswordInput = document.getElementById('forgotNewPassword');
+    const forgotConfirmPasswordInput = document.getElementById('forgotConfirmPassword');
+    const forgotResetSubmitBtn = document.getElementById('forgotResetSubmitBtn');
+
+    const forgotStep4Success = document.getElementById('forgotStep4Success');
+    const forgotSuccessLoginBtn = document.getElementById('forgotSuccessLoginBtn');
+
+    let currentResetEmail = '';
+    let verifiedResetCode = '';
+
+    function showForgotStep(step) {
+        if (forgotStep1Form) forgotStep1Form.style.display = step === 1 ? 'block' : 'none';
+        if (forgotStep2Form) forgotStep2Form.style.display = step === 2 ? 'block' : 'none';
+        if (forgotStep3Form) forgotStep3Form.style.display = step === 3 ? 'block' : 'none';
+        if (forgotStep4Success) forgotStep4Success.style.display = step === 4 ? 'block' : 'none';
+
+        if (forgotModalTitle) {
+            if (step === 1) forgotModalTitle.textContent = 'Forgot Password';
+            else if (step === 2) forgotModalTitle.textContent = 'Enter Verification Code';
+            else if (step === 3) forgotModalTitle.textContent = 'Create New Password';
+            else if (step === 4) forgotModalTitle.textContent = 'Password Reset';
+        }
+    }
+
+    function resetForgotForms() {
+        if (forgotStep1Form) forgotStep1Form.reset();
+        if (forgotStep2Form) forgotStep2Form.reset();
+        if (forgotStep3Form) forgotStep3Form.reset();
+        currentResetEmail = '';
+        verifiedResetCode = '';
+        showForgotStep(1);
+    }
+
+    if (forgotPasswordLink && forgotPasswordOverlay) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetForgotForms();
+            forgotPasswordOverlay.style.display = 'flex';
+        });
+
+        forgotPasswordClose?.addEventListener('click', () => {
+            forgotPasswordOverlay.style.display = 'none';
+        });
+
+        forgotPasswordOverlay.addEventListener('click', (e) => {
+            if (e.target === forgotPasswordOverlay) forgotPasswordOverlay.style.display = 'none';
+        });
+
+        forgotBackToStep1Btn?.addEventListener('click', () => {
+            showForgotStep(1);
+        });
+
+        forgotSuccessLoginBtn?.addEventListener('click', () => {
+            forgotPasswordOverlay.style.display = 'none';
+            resetForgotForms();
+        });
+
+        // Step 1: Submit Email -> Send Code
+        forgotStep1Form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = forgotEmailInput.value.trim();
+            if (!email) {
+                showToast('error', 'Please enter your registered Gmail address.');
+                return;
+            }
+
+            setBtnLoading(forgotSendCodeBtn, true, 'Sending Code...');
+            try {
+                const res = await fetch(API_BASE + '/api/Auth/ForgotPassword/SendCode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    currentResetEmail = email;
+                    if (forgotEmailDisplay) forgotEmailDisplay.textContent = email;
+                    showToast('success', data.message || 'Verification code sent to your email.');
+                    showForgotStep(2);
+                    if (forgotCodeInput) forgotCodeInput.focus();
+                } else {
+                    showToast('error', data.message || 'Could not send verification code.');
+                }
+            } catch (err) {
+                console.error('SendCode error:', err);
+                showToast('error', 'Network error. Please try again.');
+            } finally {
+                setBtnLoading(forgotSendCodeBtn, false, 'Send Verification Code');
+            }
+        });
+
+        // Resend code link in step 2
+        forgotResendLink?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!currentResetEmail) {
+                showForgotStep(1);
+                return;
+            }
+            showToast('info', 'Resending verification code...');
+            try {
+                const res = await fetch(API_BASE + '/api/Auth/ForgotPassword/SendCode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentResetEmail })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    showToast('success', 'A new verification code has been sent.');
+                } else {
+                    showToast('error', data.message || 'Could not resend code.');
+                }
+            } catch (err) {
+                showToast('error', 'Network error. Please try again.');
+            }
+        });
+
+        // Step 2: Submit Code -> Verify
+        forgotStep2Form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = forgotCodeInput.value.trim();
+            if (!code || code.length < 4) {
+                showToast('error', 'Please enter the verification code.');
+                return;
+            }
+
+            setBtnLoading(forgotVerifyCodeBtn, true, 'Verifying...');
+            try {
+                const res = await fetch(API_BASE + '/api/Auth/ForgotPassword/VerifyCode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentResetEmail, code })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    verifiedResetCode = code;
+                    showToast('success', 'Verification code confirmed.');
+                    showForgotStep(3);
+                    if (forgotNewPasswordInput) forgotNewPasswordInput.focus();
+                } else {
+                    showToast('error', data.message || 'Invalid verification code.');
+                }
+            } catch (err) {
+                console.error('VerifyCode error:', err);
+                showToast('error', 'Network error. Please try again.');
+            } finally {
+                setBtnLoading(forgotVerifyCodeBtn, false, 'Verify');
+            }
+        });
+
+        // Step 3: Submit New Password & Confirm -> Reset Password
+        forgotStep3Form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPassword = forgotNewPasswordInput.value.trim();
+            const confirmPassword = forgotConfirmPasswordInput.value.trim();
+
+            if (!newPassword || !confirmPassword) {
+                showToast('error', 'Please enter and confirm your new password.');
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showToast('error', 'New Password and Confirm Password do not match.');
+                return;
+            }
+
+            setBtnLoading(forgotResetSubmitBtn, true, 'Resetting Password...');
+            try {
+                const res = await fetch(API_BASE + '/api/Auth/ForgotPassword/ResetPassword', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: currentResetEmail,
+                        code: verifiedResetCode,
+                        newPassword,
+                        confirmPassword
+                    })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    showToast('success', 'Password reset successfully!');
+                    showForgotStep(4);
+                } else {
+                    showToast('error', data.message || 'Could not reset password.');
+                }
+            } catch (err) {
+                console.error('ResetPassword error:', err);
+                showToast('error', 'Network error. Please try again.');
+            } finally {
+                setBtnLoading(forgotResetSubmitBtn, false, 'Reset Password');
+            }
+        });
+    }
+
+    function setBtnLoading(btn, on, text) {
+        if (!btn) return;
+        const btnText = btn.querySelector('.btn-text');
+        const btnLoader = btn.querySelector('.btn-loader');
+        if (btnText) {
+            btnText.textContent = text;
+            btnText.style.display = on ? 'none' : 'block';
+        }
+        if (btnLoader) btnLoader.style.display = on ? 'block' : 'none';
+        btn.disabled = on;
+    }
+
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearError('rollno');
@@ -124,9 +350,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Class section (e.g. "A", "B") — used to route this student's OD
             // requests to only the staff assigned to the same section.
             localStorage.setItem('userSection', studentResult.data.section || '');
+            localStorage.setItem('userEmail', studentResult.data.email || '');
             localStorage.setItem('registerNumber', studentResult.data.registerNumber);
             showToast('success', 'Student login successful!');
             setTimeout(() => window.location.href = 'student.html', 1200);
+            return;
+        }
+
+        if (studentResult.error && studentResult.status === 403) {
+            showToast('error', studentResult.error);
+            setLoading(false);
             return;
         }
 
@@ -139,10 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userType', 'faculty');
             localStorage.setItem('facultyId', facultyResult.data.facultyId);
             localStorage.setItem('userName', facultyResult.data.name);
+            localStorage.setItem('userRollNumber', facultyResult.data.rollNumber || '');
             localStorage.setItem('userDept', facultyResult.data.department);
-            // The class section this staff member teaches — restricts which
-            // OD requests they see/get emailed about to just their own class.
             localStorage.setItem('userSection', facultyResult.data.section || '');
+            localStorage.setItem('userYear', facultyResult.data.year || '');
             showToast('success', 'Faculty login successful!');
             setTimeout(() => window.location.href = 'teacher.html', 1200);
             return;
@@ -157,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userType', 'hod');
             localStorage.setItem('hodId', hodResult.data.hodId);
             localStorage.setItem('userName', hodResult.data.name);
+            localStorage.setItem('userRollNumber', hodResult.data.rollNumber || '');
             localStorage.setItem('userDept', hodResult.data.department);
             showToast('success', 'HOD login successful!');
             setTimeout(() => window.location.href = 'hod.html', 1200);
@@ -178,10 +412,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 return { success: true, data };
             }
-            return { success: false, data: null };
+            const errData = await response.json().catch(() => ({}));
+            return { success: false, data: null, error: errData.message || null, status: response.status };
         } catch (err) {
             console.error('Login error:', err);
-            return { success: false, data: null };
+            return { success: false, data: null, error: null, status: 0 };
         }
     }
 

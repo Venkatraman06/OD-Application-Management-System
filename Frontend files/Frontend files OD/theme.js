@@ -7,11 +7,12 @@
     function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem(STORAGE_KEY, theme);
-        // update all toggle buttons on the page
         document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
             btn.setAttribute('aria-label', theme === DARK ? 'Switch to light mode' : 'Switch to dark mode');
-            btn.querySelector('.theme-icon-sun')?.style  && (btn.querySelector('.theme-icon-sun').style.display  = theme === DARK  ? 'none'  : 'block');
-            btn.querySelector('.theme-icon-moon')?.style && (btn.querySelector('.theme-icon-moon').style.display = theme === LIGHT ? 'none'  : 'block');
+            const sun = btn.querySelector('.theme-icon-sun');
+            const moon = btn.querySelector('.theme-icon-moon');
+            if (sun) sun.style.display = theme === DARK ? 'block' : 'none';
+            if (moon) moon.style.display = theme === LIGHT ? 'block' : 'none';
         });
     }
 

@@ -44,11 +44,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const yr    = s.year           || s.Year           || '';
             const sem   = s.semester       || s.Semester       || '';
             const dob   = s.dob            || s.Dob            || s.DOB || '';
+            const email = s.email          || s.Email          || localStorage.getItem('userEmail') || '';
 
             setEl('studentName',   name);
             setEl('studentDept',   sect ? `${dept} • Section ${sect}` : dept);
             setEl('studentRollNo', regNo);
             setEl('studentYear',   `Year ${yr} / Sem ${sem}`);
+            setEl('studentEmail',  email || '-');
 
             const dobEl = document.getElementById('studentDOB');
             if (dobEl && dob) {
@@ -68,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('registerNumber', regNo);
             localStorage.setItem('userDept',       dept);
             localStorage.setItem('userSection',    sect);
+            if (email) localStorage.setItem('userEmail', email);
         }
     } catch (err) { console.error('Student load error:', err); }
 

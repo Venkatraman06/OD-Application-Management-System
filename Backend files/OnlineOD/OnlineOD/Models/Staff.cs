@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace OnlineOD.Models
 {
@@ -14,6 +14,8 @@ namespace OnlineOD.Models
         // requests are routed only to the staff whose Department + Section
         // match the applying student's own Department + Section.
         public string? Section { get; set; }
+
+        public int? Year { get; set; }
 
         public string Password { get; set; }
 

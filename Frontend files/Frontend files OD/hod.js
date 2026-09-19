@@ -4,12 +4,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dept  = localStorage.getItem('userDept');
     if (!hodId || !dept) { window.location.href = 'index.html'; return; }
 
-    const name = localStorage.getItem('userName') || 'HOD';
+    const name       = localStorage.getItem('userName') || 'HOD';
+    const rollNumber = localStorage.getItem('userRollNumber') || '';
 
     // ── Set HOD details ──
     setEl('hodName', name);
     setEl('hodDept', dept);
-    setEl('hodID',   'HOD' + hodId);
+    setEl('hodID',   rollNumber || ('HOD' + hodId));
     const avatar = document.getElementById('hodAvatar');
     if (avatar) { const sp = avatar.querySelector('span'); if (sp) sp.textContent = name.charAt(0).toUpperCase(); }
 
