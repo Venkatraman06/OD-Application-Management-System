@@ -1,0 +1,351 @@
+/* ==========================================================================
+   OD Application - Universal Mobile & Responsive Stylesheet (responsive.css)
+   Preserves 100% of Desktop/PC UI while providing fluid mobile experience
+   ========================================================================== */
+
+/* ── Base Touch & Viewport Utilities ── */
+@media (max-width: 992px) {
+    /* Admin Grid: 2-column desktop collapses to single column */
+    .admin-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    /* Teacher / HOD Layout: Adjust main content offset */
+    .teacher-main,
+    .hod-main,
+    .main-content {
+        margin-left: 0 !important;
+        padding: 16px !important;
+        width: 100% !important;
+    }
+
+    /* Split panels stack vertically */
+    .split-layout,
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* ── Global Containers ── */
+    body {
+        font-size: 14px;
+    }
+
+    .app-container,
+    .student-shell,
+    .admin-shell,
+    .login-container {
+        padding: 12px 12px 40px !important;
+        max-width: 100% !important;
+    }
+
+    /* ── Student Header & Profile ── */
+    .student-header {
+        padding: 18px 16px !important;
+        margin-bottom: 18px !important;
+    }
+
+    .header-content {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+    }
+
+    .profile-section {
+        gap: 12px !important;
+    }
+
+    .avatar {
+        width: 46px !important;
+        height: 46px !important;
+        min-width: 46px !important;
+        font-size: 1.1rem !important;
+    }
+
+    .student-name {
+        font-size: 1.15rem !important;
+    }
+
+    .student-dept {
+        font-size: 0.8rem !important;
+    }
+
+    .logout-btn {
+        padding: 7px 12px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Details Grid: 2x2 on tablets / small phones */
+    .details-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-top: 14px !important;
+    }
+
+    .detail-card {
+        padding: 10px 12px !important;
+    }
+
+    .detail-icon {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .detail-label {
+        font-size: 0.72rem !important;
+    }
+
+    .detail-value {
+        font-size: 0.85rem !important;
+    }
+
+    /* ── Scrollable Tab Bars (Student & Admin) ── */
+    .tabs-container,
+    .admin-tabs,
+    .sub-tabs-container {
+        display: flex !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important; /* Firefox */
+        white-space: nowrap !important;
+        padding-bottom: 6px !important;
+        gap: 6px !important;
+    }
+
+    .tabs-container::-webkit-scrollbar,
+    .admin-tabs::-webkit-scrollbar,
+    .sub-tabs-container::-webkit-scrollbar {
+        display: none !important; /* Chrome, Safari */
+    }
+
+    .tab-btn,
+    .admin-tab,
+    .sub-tab-btn {
+        flex-shrink: 0 !important;
+        padding: 8px 14px !important;
+        font-size: 0.82rem !important;
+    }
+
+    /* ── Forms: Stack Inputs on Mobile ── */
+    .form-grid,
+    .form-row,
+    .form-row-2col,
+    .form-row-3col,
+    .alter-days-fields {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .input-group,
+    .form-group {
+        width: 100% !important;
+        margin-bottom: 12px !important;
+    }
+
+    .input-wrapper input,
+    .input-wrapper select,
+    .input-wrapper textarea,
+    .input-group input,
+    .input-group select,
+    .input-group textarea,
+    .admin-form input,
+    .admin-form select {
+        font-size: 16px !important; /* Prevent iOS auto-zoom */
+        padding: 10px 12px !important;
+    }
+
+    /* Member Add Row in Group OD */
+    .member-add-row {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .add-member-btn {
+        width: 100% !important;
+        height: 44px !important;
+        justify-content: center !important;
+    }
+
+    /* Form Action Buttons */
+    .form-actions,
+    .form-actions-row,
+    .modal-box-actions {
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .submit-btn,
+    .reset-btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    #saveStudentBtn,
+    #saveStaffBtn,
+    #saveHodBtn,
+    #btnResetStudent,
+    #btnResetStaff,
+    #btnResetHod {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px !important;
+    }
+
+    /* ── Responsive Tables & Cards ── */
+    .table-container,
+    .students-table-card,
+    .admin-card.table-card,
+    .history-card {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 12px !important;
+        padding: 14px 12px !important;
+    }
+
+    .students-table,
+    .admin-table,
+    .history-table {
+        min-width: 580px !important; /* Allow clean horizontal swipe */
+    }
+
+    /* ── Status Cards & OD Detail View ── */
+    .od-status-card {
+        padding: 14px !important;
+    }
+
+    .od-status-card .card-top {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    .od-status-card .card-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .od-status-card .card-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* ── Floating Modals ── */
+    .modal-overlay {
+        padding: 12px !important;
+        align-items: center !important;
+    }
+
+    .od-detail-modal,
+    .modal-card,
+    .modal-box,
+    .modal-content {
+        width: 100% !important;
+        max-width: 95vw !important;
+        max-height: 88vh !important;
+        padding: 16px !important;
+        overflow-y: auto !important;
+        border-radius: 14px !important;
+    }
+
+    /* ── Theme Toggle Button (Mobile Positioning) ── */
+    #themeToggleWrap {
+        top: 12px !important;
+        right: 12px !important;
+    }
+
+    .theme-toggle-btn {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    /* ── Teacher & HOD Mobile Navigation ── */
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 270px !important;
+        max-width: 80vw !important;
+        z-index: 1050 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
+    }
+
+    .sidebar.open {
+        transform: translateX(0) !important;
+    }
+
+    .sidebar-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0,0,0,0.55) !important;
+        backdrop-filter: blur(4px) !important;
+        z-index: 1040 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.25s ease !important;
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1 !important;
+        pointer-events: all !important;
+    }
+
+    .menu-toggle {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        background: rgba(255,255,255,0.06) !important;
+        color: white !important;
+        cursor: pointer !important;
+        margin-right: 8px !important;
+    }
+
+    [data-theme="light"] .menu-toggle {
+        border-color: #cbd5e1 !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+    }
+
+    /* Content Header on Mobile */
+    .content-header {
+        padding: 14px 16px !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Ultra-compact phone screens */
+    .details-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .brand-title,
+    .content-header h2,
+    .admin-brand h1 {
+        font-size: 1.15rem !important;
+    }
+
+    .toast-container {
+        left: 10px !important;
+        right: 10px !important;
+        top: 10px !important;
+    }
+
+    .toast {
+        width: 100% !important;
+        font-size: 0.82rem !important;
+        padding: 10px 14px !important;
+    }
+}

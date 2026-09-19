@@ -398,3 +398,254 @@ body {
     background: rgba(239, 68, 68, 0.15);
     color: #f87171;
 }
+
+/* ── Form Buttons (Add/Save & Reset) ── */
+.btn-save,
+.btn-primary,
+button#saveStudentBtn,
+button#saveStaffBtn,
+button#saveHodBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    border: none;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    transition: all 0.2s ease;
+}
+
+.btn-save:hover,
+.btn-primary:hover,
+button#saveStudentBtn:hover,
+button#saveStaffBtn:hover,
+button#saveHodBtn:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+
+.btn-secondary,
+button#btnResetStudent,
+button#btnResetStaff,
+button#btnResetHod {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--surface-300);
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover,
+button#btnResetStudent:hover,
+button#btnResetStaff:hover,
+button#btnResetHod:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+/* ── Theme Toggle Button (Admin) ── */
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.08);
+    color: #a5b4fc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.theme-toggle-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #818cf8;
+    transform: rotate(20deg) scale(1.08);
+}
+
+/* ══════════════════════════════════════════════════
+   LIGHT THEME — Pure White & Black Text (admin.css)
+   ══════════════════════════════════════════════════ */
+[data-theme="light"] body {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+[data-theme="light"] .admin-header {
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .admin-brand h1 {
+    color: #000000 !important;
+}
+
+[data-theme="light"] .admin-brand p {
+    color: #334155 !important;
+}
+
+[data-theme="light"] .admin-tabs {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .admin-tab {
+    color: #334155 !important;
+}
+
+[data-theme="light"] .admin-tab:hover {
+    color: #000000 !important;
+}
+
+[data-theme="light"] .admin-tab.active {
+    color: #4338ca !important;
+    border-bottom-color: #6366f1 !important;
+}
+
+[data-theme="light"] .tab-count {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .admin-tab.active .tab-count {
+    background: #e0e7ff !important;
+    color: #3730a3 !important;
+}
+
+[data-theme="light"] .admin-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+    backdrop-filter: none !important;
+}
+
+[data-theme="light"] .admin-card h2,
+[data-theme="light"] .admin-card h3 {
+    color: #000000 !important;
+}
+
+[data-theme="light"] .admin-card p {
+    color: #334155 !important;
+}
+
+[data-theme="light"] .form-row label {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="light"] .admin-form input,
+[data-theme="light"] .admin-form select {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #000000 !important;
+}
+
+[data-theme="light"] .admin-form input::placeholder {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .admin-form input:focus,
+[data-theme="light"] .admin-form select:focus {
+    border-color: #6366f1 !important;
+    background: #fafbff !important;
+}
+
+[data-theme="light"] .btn-secondary,
+[data-theme="light"] button#btnResetStudent,
+[data-theme="light"] button#btnResetStaff,
+[data-theme="light"] button#btnResetHod {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .btn-secondary:hover,
+[data-theme="light"] button#btnResetStudent:hover,
+[data-theme="light"] button#btnResetStaff:hover,
+[data-theme="light"] button#btnResetHod:hover {
+    background: #e2e8f0 !important;
+    color: #000000 !important;
+}
+
+[data-theme="light"] .admin-table th {
+    color: #000000 !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+}
+
+[data-theme="light"] .admin-table td {
+    color: #000000 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .admin-table tbody tr:hover {
+    background: #f8fafc !important;
+}
+
+[data-theme="light"] .row-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .row-btn:hover {
+    background: #e2e8f0 !important;
+}
+
+[data-theme="light"] .requests-msg-cell {
+    color: #000000 !important;
+}
+
+[data-theme="light"] .sub-tabs-container {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .sub-tab-btn {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
+}
+[data-theme="light"] .sub-tab-btn:hover {
+    background: #e2e8f0 !important;
+    color: #000000 !important;
+}
+[data-theme="light"] .sub-tab-btn.active {
+    background: #eef2ff !important;
+    border-color: #6366f1 !important;
+    color: #4338ca !important;
+}
+[data-theme="light"] .od-count-total {
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+}
+[data-theme="light"] .od-count-approved {
+    background: #f0fdf4 !important;
+    color: #166534 !important;
+}
+[data-theme="light"] .od-count-rejected {
+    background: #fef2f2 !important;
+    color: #991b1b !important;
+}
+[data-theme="light"] .theme-toggle-btn {
+    background: #ffffff !important;
+    border: 1.5px solid #6366f1 !important;
+    color: #4338ca !important;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15) !important;
+}
+

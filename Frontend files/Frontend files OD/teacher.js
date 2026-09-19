@@ -933,7 +933,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${API_BASE}/api/OdApply/${alterDaysOdId}/AlterDays`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days })
+                body: JSON.stringify({ fromDate: from, toDate: to, startTime: start, endTime: end, numberOfDays: days, editedBy: 'Staff' })
             });
             if (!res.ok) {
                 const msg = await res.text();
@@ -1943,6 +1943,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         } finally {
             checkbox.disabled = false;
         }
+    });
+
+    // Mobile Sidebar Toggle
+    const menuToggleBtn = document.getElementById('menuToggle');
+    const sidebarEl = document.getElementById('sidebar');
+    const sidebarOverlayEl = document.getElementById('sidebarOverlay');
+
+    if (menuToggleBtn && sidebarEl) {
+        menuToggleBtn.addEventListener('click', () => {
+            sidebarEl.classList.toggle('open');
+            sidebarOverlayEl?.classList.toggle('active');
+        });
+    }
+
+    if (sidebarOverlayEl && sidebarEl) {
+        sidebarOverlayEl.addEventListener('click', () => {
+            sidebarEl.classList.remove('open');
+            sidebarOverlayEl.classList.remove('active');
+        });
+    }
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 900 && sidebarEl) {
+                sidebarEl.classList.remove('open');
+                sidebarOverlayEl?.classList.remove('active');
+            }
+        });
     });
 
     loadODs();

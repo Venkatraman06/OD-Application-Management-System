@@ -272,7 +272,7 @@ namespace OnlineOD.Controllers
             // Server recomputes days; client hint is a fallback
             int days = dto.NumberOfDays ?? 1;
 
-            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime);
+            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime, dto.EditedBy);
             if (result == null)
                 return BadRequest("OD not found or is no longer in Pending status — dates cannot be altered.");
 
@@ -283,7 +283,13 @@ namespace OnlineOD.Controllers
                 result.ToDate,
                 result.StartTime,
                 result.EndTime,
-                result.NumberOfDays
+                result.NumberOfDays,
+                result.IsDateEdited,
+                result.DateEditedBy,
+                result.OriginalFromDate,
+                result.OriginalToDate,
+                result.OriginalStartTime,
+                result.OriginalEndTime
             });
         }
 

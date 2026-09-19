@@ -1150,7 +1150,7 @@ textarea:focus-visible {
 }
 
 /* ── Status wrapper ── */
-.status-wrapper { background: var(--card-bg, #1e2340); border-radius: 16px; padding: 24px; }
+.status-wrapper { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; }
 
 /* ── OD Status Cards ── */
 .od-status-card {
@@ -1222,12 +1222,19 @@ textarea:focus-visible {
     overflow-y: auto;
     position: relative;
     animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 
-@keyframes modalPop {
-    from { opacity: 0; transform: scale(0.92) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+.modal-card {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 24px;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    color: #f8fafc;
 }
 
 .modal-close {
@@ -1557,6 +1564,64 @@ textarea:focus-visible {
 }
 [data-theme="light"] .edit-group-od-btn:hover { background: #e0e7ff !important; }
 
+/* ── Date & Time Edited by Staff/HOD Banner ── */
+.date-edited-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    color: #fbbf24;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.date-edited-alert-banner .alert-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #f59e0b;
+}
+
+.date-edited-alert-banner .alert-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.date-edited-alert-banner .alert-text strong {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fef08a;
+}
+
+.date-edited-alert-banner .alert-text span {
+    color: #fde68a;
+    font-size: 0.78rem;
+}
+
+[data-theme="light"] .date-edited-alert-banner {
+    background: #fffbeb !important;
+    border: 1px solid #fde68a !important;
+    color: #92400e !important;
+}
+
+[data-theme="light"] .date-edited-alert-banner .alert-icon {
+    color: #d97706 !important;
+}
+
+[data-theme="light"] .date-edited-alert-banner .alert-text strong {
+    color: #78350f !important;
+}
+
+[data-theme="light"] .date-edited-alert-banner .alert-text span {
+    color: #92400e !important;
+}
+
 /* ============================================
    Certificate Verified — locked badge (replaces
    the upload button once staff has verified it)
@@ -1777,11 +1842,11 @@ select.cert-text-input {
 
 
 /* ══════════════════════════════════════════════════
-   LIGHT THEME — Fully White
+   LIGHT THEME — Pure White & 100% Black Text
    ══════════════════════════════════════════════════ */
 
 /* ── Page background & floating shapes ── */
-[data-theme="light"] body { background: #ffffff; color: #1e293b; }
+[data-theme="light"] body { background: #ffffff !important; color: #000000 !important; }
 [data-theme="light"] .bg-animation { background: #ffffff !important; }
 [data-theme="light"] .floating-shape { display: none !important; }
 
@@ -1791,37 +1856,37 @@ select.cert-text-input {
 /* ── Student header card ── */
 [data-theme="light"] .student-header {
     background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important;
     backdrop-filter: none !important;
 }
-[data-theme="light"] .student-name { color: #0f172a !important; }
-[data-theme="light"] .student-dept { color: #64748b !important; }
+[data-theme="light"] .student-name { color: #000000 !important; }
+[data-theme="light"] .student-dept { color: #334155 !important; }
 [data-theme="light"] .avatar { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
 
-/* ── Info cards (roll, dob, year) ── */
+/* ── Info cards (roll, dob, year, email) ── */
 [data-theme="light"] .detail-card {
     background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
 }
 [data-theme="light"] .detail-card:hover {
     background: #f1f5f9 !important;
-    border-color: #c7d2fe !important;
+    border-color: #6366f1 !important;
 }
-[data-theme="light"] .detail-label { color: #94a3b8 !important; }
-[data-theme="light"] .detail-value { color: #0f172a !important; }
+[data-theme="light"] .detail-label { color: #475569 !important; font-weight: 600 !important; }
+[data-theme="light"] .detail-value { color: #000000 !important; font-weight: 700 !important; }
 [data-theme="light"] .detail-icon { color: #6366f1 !important; }
 [data-theme="light"] .detail-icon svg { stroke: #6366f1 !important; }
 
 /* ── Tab bar ── */
 [data-theme="light"] .tabs-container {
     background: #f1f5f9 !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
     backdrop-filter: none !important;
 }
-[data-theme="light"] .tab-btn { color: #64748b !important; background: transparent !important; }
+[data-theme="light"] .tab-btn { color: #334155 !important; font-weight: 600 !important; background: transparent !important; }
 [data-theme="light"] .tab-btn.active { color: #ffffff !important; }
 [data-theme="light"] .tab-indicator { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; }
 
@@ -1830,25 +1895,27 @@ select.cert-text-input {
 [data-theme="light"] .status-card,
 [data-theme="light"] .status-wrapper {
     background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
     backdrop-filter: none !important;
 }
 [data-theme="light"] .form-card-header {
     border-bottom: 1px solid #e2e8f0 !important;
 }
-[data-theme="light"] .form-card-header h2 { color: #0f172a !important; }
-[data-theme="light"] .form-card-header p  { color: #64748b !important; }
+[data-theme="light"] .form-card-header h2,
+[data-theme="light"] .status-card h2,
+[data-theme="light"] .status-card h3 { color: #000000 !important; }
+[data-theme="light"] .form-card-header p,
+[data-theme="light"] .status-card p { color: #334155 !important; }
 
 /* ── Form labels ── */
-[data-theme="light"] .input-group label { color: #374151 !important; }
+[data-theme="light"] .input-group label { color: #000000 !important; font-weight: 600 !important; }
 [data-theme="light"] .required { color: #ef4444 !important; }
-[data-theme="light"] .optional-badge { color: #64748b !important; }
+[data-theme="light"] .optional-badge { color: #475569 !important; }
 
 /* ── Inputs, textareas, selects ── */
 [data-theme="light"] .input-wrapper input[type="time"] { color-scheme: light !important; }
 
-/* ── Inputs, textareas, selects ── */
 [data-theme="light"] .input-wrapper input,
 [data-theme="light"] .input-wrapper textarea,
 [data-theme="light"] .input-wrapper select,
@@ -1857,16 +1924,16 @@ select.cert-text-input {
 [data-theme="light"] .input-group textarea {
     background: #ffffff !important;
     border: 1.5px solid #cbd5e1 !important;
-    color: #0f172a !important;
+    color: #000000 !important;
     box-shadow: none !important;
 }
 [data-theme="light"] .input-wrapper input::placeholder,
 [data-theme="light"] .input-wrapper textarea::placeholder,
 [data-theme="light"] .input-group input::placeholder,
-[data-theme="light"] .input-group textarea::placeholder { color: #94a3b8 !important; }
+[data-theme="light"] .input-group textarea::placeholder { color: #64748b !important; }
 [data-theme="light"] .input-wrapper input:hover,
 [data-theme="light"] .input-wrapper textarea:hover {
-    border-color: #a5b4fc !important;
+    border-color: #6366f1 !important;
     background: #fafbff !important;
 }
 [data-theme="light"] .input-wrapper input:focus,
@@ -1877,7 +1944,7 @@ select.cert-text-input {
 [data-theme="light"] .input-group textarea:focus {
     border-color: #6366f1 !important;
     background: #fafbff !important;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.10) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
 }
 [data-theme="light"] .input-icon { color: #6366f1 !important; }
 [data-theme="light"] .input-icon svg { stroke: #6366f1 !important; }
@@ -1889,7 +1956,8 @@ select.cert-text-input {
 /* ── Buttons ── */
 [data-theme="light"] .btn-primary,
 [data-theme="light"] button[type="submit"],
-[data-theme="light"] .submit-btn {
+[data-theme="light"] .submit-btn,
+[data-theme="light"] .add-member-btn {
     background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
     color: #ffffff !important;
     border: none !important;
@@ -1897,12 +1965,13 @@ select.cert-text-input {
 [data-theme="light"] .btn-secondary,
 [data-theme="light"] .reset-btn {
     background: #f1f5f9 !important;
-    color: #374151 !important;
-    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
 }
 [data-theme="light"] .btn-secondary:hover,
 [data-theme="light"] .reset-btn:hover {
     background: #e2e8f0 !important;
+    color: #000000 !important;
 }
 [data-theme="light"] .logout-btn {
     background: #fff1f2 !important;
@@ -1911,15 +1980,28 @@ select.cert-text-input {
 }
 [data-theme="light"] .logout-btn:hover { background: #ffe4e6 !important; }
 [data-theme="light"] .view-details-btn {
-    background: #f1f5f9 !important;
-    color: #4f46e5 !important;
+    background: #eef2ff !important;
+    color: #4338ca !important;
     border: 1px solid #c7d2fe !important;
 }
-[data-theme="light"] .view-details-btn:hover { background: #ede9fe !important; }
+[data-theme="light"] .view-details-btn:hover { background: #e0e7ff !important; }
+[data-theme="light"] .btn-edit-od,
+[data-theme="light"] .btn-edit-dates {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+    border: 1.5px solid #a5b4fc !important;
+    font-weight: 700 !important;
+}
+[data-theme="light"] .btn-edit-od:hover,
+[data-theme="light"] .btn-edit-dates:hover {
+    background: #e0e7ff !important;
+    border-color: #6366f1 !important;
+    color: #312e81 !important;
+}
 [data-theme="light"] .print-report-btn {
     background: #f8fafc !important;
-    color: #374151 !important;
-    border: 1px solid #e2e8f0 !important;
+    color: #000000 !important;
+    border: 1px solid #cbd5e1 !important;
 }
 [data-theme="light"] .upload-cert-btn {
     background: #f0fdf4 !important;
@@ -1944,8 +2026,8 @@ select.cert-text-input {
 /* ── Filter buttons ── */
 [data-theme="light"] .filter-btn {
     background: #f1f5f9 !important;
-    border: 1px solid #e2e8f0 !important;
-    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
 }
 [data-theme="light"] .filter-btn.active {
     background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
@@ -1953,22 +2035,22 @@ select.cert-text-input {
     border-color: transparent !important;
 }
 
-/* ── OD Status cards ── */
+/* ── OD Status & Pending cards ── */
 [data-theme="light"] .od-status-card {
     background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.05) !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
 }
 [data-theme="light"] .od-status-card:hover {
-    border-color: #a5b4fc !important;
-    box-shadow: 0 4px 18px rgba(99,102,241,0.12) !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 6px 20px rgba(99,102,241,0.14) !important;
     transform: translateY(-2px);
 }
-[data-theme="light"] .od-status-card .card-top h4 { color: #0f172a !important; }
-[data-theme="light"] .od-status-card .card-top p  { color: #64748b !important; }
-[data-theme="light"] .od-status-card .card-meta   { color: #64748b !important; }
-[data-theme="light"] .od-status-card .card-meta span strong { color: #374151 !important; }
-[data-theme="light"] .od-status-card .status-item strong { color: #374151 !important; }
+[data-theme="light"] .od-status-card .card-top h4 { color: #000000 !important; font-weight: 700 !important; }
+[data-theme="light"] .od-status-card .card-top p  { color: #334155 !important; }
+[data-theme="light"] .od-status-card .card-meta   { color: #000000 !important; }
+[data-theme="light"] .od-status-card .card-meta span strong { color: #000000 !important; }
+[data-theme="light"] .od-status-card .status-item strong { color: #000000 !important; }
 
 /* ── OD Detail Modal & Overlay ── */
 [data-theme="light"] .modal-overlay {
@@ -1983,8 +2065,8 @@ select.cert-text-input {
 [data-theme="light"] .modal {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.12) !important;
-    color: #0f172a !important;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15) !important;
+    color: #000000 !important;
 }
 [data-theme="light"] .modal-header,
 [data-theme="light"] .od-detail-header {
@@ -2135,6 +2217,124 @@ select.cert-text-input {
     color: #4f46e5 !important;
 }
 
+/* ── Tab nav container ── */
+[data-theme="light"] .tab-nav {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .tab-btn { color: #334155 !important; }
+[data-theme="light"] .tab-btn:hover { color: #0f172a !important; }
+[data-theme="light"] .tab-btn.active { color: #ffffff !important; }
+
+/* ── Status wrapper in light ── */
+[data-theme="light"] .status-wrapper {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+    backdrop-filter: none !important;
+}
+
+/* ── OD Status card ── */
+[data-theme="light"] .od-status-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .od-status-card:hover {
+    border-color: #6366f1 !important;
+    box-shadow: 0 6px 20px rgba(99,102,241,0.12) !important;
+}
+[data-theme="light"] .od-status-card .card-top h4 { color: #0f172a !important; }
+[data-theme="light"] .od-status-card .card-top p  { color: #64748b !important; }
+[data-theme="light"] .od-status-card .card-meta   { color: #334155 !important; }
+[data-theme="light"] .od-status-card .card-meta span strong { color: #0f172a !important; }
+[data-theme="light"] .od-status-card .status-row { border-top-color: #e2e8f0 !important; }
+[data-theme="light"] .od-status-card .status-item { color: #475569 !important; }
+[data-theme="light"] .od-status-card .status-item strong { color: #0f172a !important; }
+[data-theme="light"] .od-status-card .card-actions { border-top-color: #e2e8f0 !important; }
+
+/* ── View/Print/Upload buttons in light (on card) ── */
+[data-theme="light"] .od-status-card .view-details-btn {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .od-status-card .print-report-btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #fff !important;
+}
+[data-theme="light"] .od-status-card .upload-cert-btn {
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #166534 !important;
+}
+[data-theme="light"] .od-status-card .cancel-od-btn {
+    background: #fff1f2 !important;
+    border-color: #fecdd3 !important;
+    color: #dc2626 !important;
+}
+[data-theme="light"] .od-status-card .edit-group-od-btn {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    color: #4f46e5 !important;
+}
+
+/* ── Badges in light ── */
+[data-theme="light"] .badge-pending  { background: #fffbeb !important; color: #92400e !important; border-color: #fde68a !important; }
+[data-theme="light"] .badge-approved { background: #f0fdf4 !important; color: #166534 !important; border-color: #bbf7d0 !important; }
+[data-theme="light"] .badge-rejected { background: #fff1f2 !important; color: #be123c !important; border-color: #fecdd3 !important; }
+
+/* ── Modal box ── */
+[data-theme="light"] .modal-box {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15) !important;
+}
+
+/* ── Modal card (Saturday/confirm dialogs) ── */
+[data-theme="light"] .modal-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15) !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .modal-card h3 { color: #0f172a !important; }
+[data-theme="light"] .modal-card p  { color: #475569 !important; }
+
+/* ── Saturday confirm modal specific ── */
+[data-theme="light"] #saturdayConfirmModal .modal-card {
+    border-color: #fde68a !important;
+}
+[data-theme="light"] #saturdayConfirmModal h3 { color: #92400e !important; }
+[data-theme="light"] #saturdayConfirmModal p  { color: #78350f !important; }
+
+/* ── Modal close, header, row ── */
+[data-theme="light"] .modal-close {
+    background: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #374151 !important;
+}
+[data-theme="light"] .modal-close:hover { background: #fee2e2 !important; color: #dc2626 !important; }
+[data-theme="light"] .modal-header { border-bottom-color: #e2e8f0 !important; background: #f8fafc !important; }
+[data-theme="light"] .modal-header h3 { color: #0f172a !important; }
+[data-theme="light"] .modal-label { color: #64748b !important; }
+[data-theme="light"] .modal-value { color: #0f172a !important; }
+
+/* ── Cert locked badge ── */
+[data-theme="light"] .cert-locked-badge {
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #166534 !important;
+}
+
+/* ── Refresh button ── */
+[data-theme="light"] .refresh-btn {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    color: #4f46e5 !important;
+}
 
 /* ══════════════════════════════════════════════════
    GROUP MEMBER DYNAMIC INPUT
@@ -2463,3 +2663,14 @@ select.cert-text-input {
     border-radius: 8px;
     cursor: pointer;
 }
+
+/* ── Saturday / Non-working day confirm modal message ── */
+.saturday-modal-msg {
+    color: #94a3b8;
+}
+[data-theme="light"] .saturday-modal-msg {
+    color: #78350f !important;
+}
+[data-theme="light"] #saturdayModalTitle {
+    color: #92400e !important;
+}

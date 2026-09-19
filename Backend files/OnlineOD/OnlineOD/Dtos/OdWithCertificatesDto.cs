@@ -48,6 +48,14 @@ namespace OnlineOD.Dtos
         // needs a decision) without duplicating the date-range check itself.
         public bool IsOngoing { get; set; }
 
+        // Feature 4 — Staff/HOD Date & Time Edit Tracking
+        public bool IsDateEdited { get; set; }
+        public string? DateEditedBy { get; set; }
+        public string? OriginalFromDate { get; set; }
+        public string? OriginalToDate { get; set; }
+        public string? OriginalStartTime { get; set; }
+        public string? OriginalEndTime { get; set; }
+
         public List<OdCertificate> Certificates { get; set; } = new();
     }
 }

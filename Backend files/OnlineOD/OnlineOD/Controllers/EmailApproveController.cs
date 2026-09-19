@@ -182,8 +182,21 @@ namespace OnlineOD.Controllers
     .icon {{ font-size:56px;margin-bottom:16px; }}
     h2 {{ font-size:22px;color:#111827;margin-bottom:12px; }}
     p  {{ color:#6b7280;font-size:15px;line-height:1.6; }}
+    .portal-btn {{
+      display:inline-block;
+      margin-top:24px;
+      padding:12px 28px;
+      background:#6366f1;
+      color:#ffffff;
+      text-decoration:none;
+      border-radius:8px;
+      font-weight:700;
+      font-size:14px;
+      transition:opacity 0.2s;
+    }}
+    .portal-btn:hover {{ opacity:0.9; }}
     .brand {{
-      margin-top:32px;font-size:12px;color:#9ca3af;
+      margin-top:24px;font-size:12px;color:#9ca3af;
       border-top:1px solid #f3f4f6;padding-top:16px;
     }}
   </style>
@@ -193,6 +206,7 @@ namespace OnlineOD.Controllers
     <div class='icon'>{(success ? "✅" : "❌")}</div>
     <h2>{heading}</h2>
     <p>{body}</p>
+    <a href='/index.html' class='portal-btn'>🔗 Visit Portal / Login</a>
     <div class='brand'>OD Application — Nandha Arts &amp; Science College</div>
   </div>
 </body>

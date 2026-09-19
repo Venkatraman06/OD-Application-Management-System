@@ -77,6 +77,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();          // ← needed for /uploads/ certificate files
+
+var frontendPath = Path.Combine(app.Environment.ContentRootPath, "..", "..", "Frontend files", "Frontend files OD");
+if (Directory.Exists(frontendPath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.GetFullPath(frontendPath)),
+        RequestPath = ""
+    });
+}
+
 app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
