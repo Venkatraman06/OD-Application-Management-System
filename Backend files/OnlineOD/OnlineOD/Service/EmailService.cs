@@ -60,25 +60,32 @@ namespace OnlineOD.Services
             var staffIdParam = role == "faculty" ? $"&staffId={staffId}" : "";
             var approveUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
             var rejectUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
+            var portalUrl = $"{baseUrl}/index.html";
 
             return $@"
             <div style='text-align:center;margin:24px 0'>
                 <a href='{approveUrl}'
-                   style='display:inline-block;padding:12px 32px;background:#10b981;color:white;
+                   style='display:inline-block;padding:12px 28px;background:#10b981;color:white;
                           border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;
-                          margin-right:12px;letter-spacing:0.5px'>
+                          margin-right:10px;margin-bottom:8px;letter-spacing:0.5px'>
                     ✓ Approve
                 </a>
                 <a href='{rejectUrl}'
-                   style='display:inline-block;padding:12px 32px;background:#ef4444;color:white;
+                   style='display:inline-block;padding:12px 28px;background:#ef4444;color:white;
                           border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;
-                          letter-spacing:0.5px'>
+                          margin-right:10px;margin-bottom:8px;letter-spacing:0.5px'>
                     ✕ Reject
+                </a>
+                <a href='{portalUrl}'
+                   style='display:inline-block;padding:12px 28px;background:#6366f1;color:white;
+                          border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;
+                          margin-bottom:8px;letter-spacing:0.5px'>
+                    🔗 Visit Portal
                 </a>
             </div>
             <p style='color:#9ca3af;font-size:12px;text-align:center'>
-                Clicking a button updates the status instantly — no login required.<br>
-                Each link works only once.
+                Clicking Approve or Reject updates the status instantly — no login required.<br>
+                Click <b>Visit Portal</b> to log in to the OD Application System.
             </p>";
         }
 

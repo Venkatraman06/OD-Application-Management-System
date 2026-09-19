@@ -8,5 +8,6 @@ namespace OnlineOD.Dtos
         public string? EndTime { get; set; }
         // NumberOfDays is recomputed server-side; client may also send it as a hint
         public int? NumberOfDays { get; set; }
+        public string? EditedBy { get; set; } // "Staff" or "HOD"
     }
 }

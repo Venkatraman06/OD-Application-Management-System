@@ -94,42 +94,152 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    /** true if the given YYYY-MM-DD date string is NOT a published college working day */
-    function isWeekend(dateStr) {
-        if (!dateStr) return false;
-        if (!workingDaysCalendar) return false; // fail open if calendar failed to load
-        return !workingDaysCalendar.isWorkingDay(dateStr);
+    // Set of user-confirmed non-working/Saturday dates (by input id + date)
+    window.confirmedNonWorkingDates = window.confirmedNonWorkingDates || new Set();
+
+    function showSaturdayConfirmModal(dateStr, dayName, onConfirm, onCancel) {
+        const modal = document.getElementById('saturdayConfirmModal');
+        const title = document.getElementById('saturdayModalTitle');
+        const msg = document.getElementById('saturdayModalMsg');
+        const confirmBtn = document.getElementById('saturdayModalConfirmBtn');
+        const skipBtn = document.getElementById('saturdayModalSkipBtn');
+
+        if (!modal) {
+            if (confirm(`The selected date (${dateStr} - ${dayName}) is normally a non-working day.\n\nDo you want to include ${dayName} in your OD request?`)) {
+                if (onConfirm) onConfirm();
+            } else {
+                if (onCancel) onCancel();
+            }
+            return;
+        }
+
+        if (title) title.textContent = `${dayName} Selected`;
+        if (msg) msg.textContent = `The selected date (${dateStr} - ${dayName}) falls on a non-working day. Do you want to include ${dayName} in your OD application?`;
+
+        modal.style.display = 'flex';
+
+        const cleanUp = () => {
+            modal.style.display = 'none';
+            if (confirmBtn) confirmBtn.onclick = null;
+            if (skipBtn) skipBtn.onclick = null;
+        };
+
+        if (confirmBtn) {
+            confirmBtn.onclick = () => {
+                cleanUp();
+                if (onConfirm) onConfirm();
+            };
+        }
+
+        if (skipBtn) {
+            skipBtn.onclick = () => {
+                cleanUp();
+                if (onCancel) onCancel();
+            };
+        }
     }
 
-    /** counts only published working days (inclusive) between two YYYY-MM-DD strings */
+    /** true if the given YYYY-MM-DD date string is Saturday, Sunday, or a college non-working day */
+    function isWeekend(dateStr) {
+        if (!dateStr) return false;
+        try {
+            const d = new Date(dateStr + 'T00:00:00');
+            const day = d.getDay();
+            // 6 = Saturday, 0 = Sunday
+            if (day === 6 || day === 0) return true;
+            if (workingDaysCalendar && typeof workingDaysCalendar.isWorkingDay === 'function') {
+                return !workingDaysCalendar.isWorkingDay(dateStr);
+            }
+        } catch (e) {
+            console.warn('isWeekend check error:', e);
+        }
+        return false;
+    }
+
+    /** counts working days (inclusive) between two YYYY-MM-DD strings, including confirmed weekend overrides */
     function countWorkingDays(fromStr, toStr) {
-        if (!workingDaysCalendar) return 0;
-        return workingDaysCalendar.countWorkingDays(fromStr, toStr);
+        if (!fromStr || !toStr || fromStr > toStr) return 0;
+        let count = 0;
+        try {
+            const start = new Date(fromStr + 'T00:00:00');
+            const end = new Date(toStr + 'T00:00:00');
+            const cur = new Date(start);
+            while (cur <= end) {
+                const day = cur.getDay(); // 0 = Sunday, 6 = Saturday
+                const curStr = cur.toISOString().split('T')[0];
+                const isConfirmed = Array.from(window.confirmedNonWorkingDates || []).some(k => k.endsWith(`_${curStr}`));
+
+                if (day !== 0 && day !== 6) {
+                    // Monday to Friday: working day unless specifically marked as holiday in calendar AND not confirmed
+                    if (!workingDaysCalendar || workingDaysCalendar.isWorkingDay(curStr) || isConfirmed) {
+                        count++;
+                    }
+                } else if (day === 6) {
+                    // Saturday: if user included/confirmed Saturday, add +1 to working days
+                    if (isConfirmed || (workingDaysCalendar && workingDaysCalendar.isWorkingDay(curStr))) {
+                        count++;
+                    }
+                } else if (day === 0) {
+                    // Sunday: only if user explicitly confirmed it
+                    if (isConfirmed) {
+                        count++;
+                    }
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+        } catch (e) {
+            console.warn('countWorkingDays error:', e);
+        }
+
+        return Math.max(1, count > 0 ? count : 1);
     }
 
     /**
      * Guards a date input against non-working-day selection.
-     * If the picked date is a holiday, weekend, or outside the published
-     * semester calendar, clears the field, shows an inline error, and a toast.
-     * Returns true if the value was valid (or empty), false if it was cleared.
+     * If the picked date is a holiday or Saturday/weekend, shows an interactive
+     * alert modal asking if the user wants to include it.
      */
-    function guardWeekendInput(inputEl, errorElId, label) {
+    function guardWeekendInput(inputEl, errorElId, label, onDone) {
         if (!inputEl) return true;
         const val = inputEl.value;
-        if (!val) { clearFieldError(inputEl, errorElId); return true; }
-        if (workingDaysCalendar && workingDaysCalendar.isOutsideCalendar(val)) {
-            inputEl.value = '';
-            showFieldError(inputEl, errorElId, `${label} is outside the published college working-days calendar (${workingDaysCalendar.minDate} to ${workingDaysCalendar.maxDate}).`);
-            showToast('error', `${label} is outside the current college calendar.`);
+        if (!val) {
+            clearFieldError(inputEl, errorElId);
+            if (onDone) onDone();
+            return true;
+        }
+
+        const dateKey = `${inputEl.id}_${val}`;
+        const d = new Date(val + 'T00:00:00');
+        const day = isNaN(d.getDay()) ? -1 : d.getDay();
+        const isSat = day === 6;
+        const isSun = day === 0;
+        const isNonWorking = isWeekend(val);
+
+        if ((isSat || isSun || isNonWorking) && !window.confirmedNonWorkingDates.has(dateKey)) {
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = isSat ? 'Saturday' : (isSun ? 'Sunday' : (day >= 0 ? dayNames[day] : 'Non-working Day'));
+
+            showSaturdayConfirmModal(val, dayName,
+                () => {
+                    // User confirmed — include this date
+                    window.confirmedNonWorkingDates.add(dateKey);
+                    clearFieldError(inputEl, errorElId);
+                    showToast('success', `Included ${dayName} (${val}) in OD request.`);
+                    if (onDone) onDone();
+                },
+                () => {
+                    // User chose to skip — clear the field
+                    inputEl.value = '';
+                    clearFieldError(inputEl, errorElId);
+                    showToast('info', `Skipped ${dayName} (${val}).`);
+                    if (onDone) onDone();
+                }
+            );
             return false;
         }
-        if (isWeekend(val)) {
-            inputEl.value = '';
-            showFieldError(inputEl, errorElId, `${label} is not a college working day (holiday/weekend) — OD is only for working days.`);
-            showToast('error', `${label} must be a college working day.`);
-            return false;
-        }
+
         clearFieldError(inputEl, errorElId);
+        if (onDone) onDone();
         return true;
     }
 
@@ -147,7 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (errEl) errEl.textContent = '';
     }
 
-    // ── Auto-calculate days (solo OD) — working days only ──
+    // ── Auto-calculate days (solo OD) ──
     const fromEl = document.getElementById('fromDate');
     const toEl   = document.getElementById('toDate');
     const daysEl = document.getElementById('numberOfDays');
@@ -171,7 +281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function buildDaysText(days, startTime, endTime) {
-        if (!days || days <= 0) return '0 working days (range covers no published working days)';
+        if (!days || days <= 0) return '1 working day';
         const label = days === 1 ? 'working day' : 'working days';
         const sMin = timeToMinutes(startTime);
         const eMin = timeToMinutes(endTime);
@@ -193,8 +303,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (daysEl) daysEl.value = '';
         }
     }
-    if (fromEl)      fromEl.addEventListener('change',      () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date'); calcDays(); });
-    if (toEl)        toEl.addEventListener('change',        () => { guardWeekendInput(toEl,   'toDate-error',   'To Date');   calcDays(); });
+    if (fromEl) {
+        fromEl.addEventListener('change', () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays); });
+        fromEl.addEventListener('input',  () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays); });
+    }
+    if (toEl) {
+        toEl.addEventListener('change', () => { guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays); });
+        toEl.addEventListener('input',  () => { guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays); });
+    }
     if (startTimeEl) startTimeEl.addEventListener('change', () => { calcDays(); validateTimes(); });
     if (endTimeEl)   endTimeEl.addEventListener('change',   () => { calcDays(); validateTimes(); });
 
@@ -213,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return true;
     }
 
-    // ── Auto-calculate days (group OD) — working days only ──
+    // ── Auto-calculate days (group OD) ──
     const groupFromEl  = document.getElementById('groupFromDate');
     const groupToEl    = document.getElementById('groupToDate');
     const groupDaysEl  = document.getElementById('groupNumberOfDays');
@@ -230,8 +346,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (groupDaysEl) groupDaysEl.value = '';
         }
     }
-    if (groupFromEl)  groupFromEl.addEventListener('change',  () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date'); calcGroupDays(); });
-    if (groupToEl)    groupToEl.addEventListener('change',    () => { guardWeekendInput(groupToEl,   'groupToDate-error',   'To Date');   calcGroupDays(); });
+    if (groupFromEl) {
+        groupFromEl.addEventListener('change', () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays); });
+        groupFromEl.addEventListener('input',  () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays); });
+    }
+    if (groupToEl) {
+        groupToEl.addEventListener('change', () => { guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays); });
+        groupToEl.addEventListener('input',  () => { guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays); });
+    }
     if (grpStartTimeEl) grpStartTimeEl.addEventListener('change', () => { calcGroupDays(); validateGroupTimes(); });
     if (grpEndTimeEl)   grpEndTimeEl.addEventListener('change',   () => { calcGroupDays(); validateGroupTimes(); });
 
@@ -326,14 +448,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fromDate > toDate) {
             showToast('error', 'To date must be after from date'); return;
         }
-        // Final guard — re-check weekends at submit time in case of manual typing/paste
-        if (isWeekend(fromDate)) {
-            showFieldError(fromEl, 'fromDate-error', 'From Date cannot be a weekend — OD is only for working days.');
-            showToast('error', 'From Date must be a working day (Mon–Fri).'); return;
+        // Final guard — check weekends at submit time
+        if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`fromDate_${fromDate}`)) {
+            guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays);
+            return;
         }
-        if (isWeekend(toDate)) {
-            showFieldError(toEl, 'toDate-error', 'To Date cannot be a weekend — OD is only for working days.');
-            showToast('error', 'To Date must be a working day (Mon–Fri).'); return;
+        if (isWeekend(toDate) && !window.confirmedNonWorkingDates.has(`toDate_${toDate}`)) {
+            guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays);
+            return;
         }
         if (reason.length < 5) {
             showToast('error', 'Reason too short'); return;
@@ -428,14 +550,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fromDate > toDate) {
             showToast('error', 'To date must be after from date'); return;
         }
-        // Final guard — re-check weekends at submit time in case of manual typing/paste
-        if (isWeekend(fromDate)) {
-            showFieldError(groupFromEl, 'groupFromDate-error', 'From Date cannot be a weekend — OD is only for working days.');
-            showToast('error', 'From Date must be a working day (Mon–Fri).'); return;
+        // Final guard — check weekends at submit time
+        if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`groupFromDate_${fromDate}`)) {
+            guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays);
+            return;
         }
-        if (isWeekend(toDate)) {
-            showFieldError(groupToEl, 'groupToDate-error', 'To Date cannot be a weekend — OD is only for working days.');
-            showToast('error', 'To Date must be a working day (Mon–Fri).'); return;
+        if (isWeekend(toDate) && !window.confirmedNonWorkingDates.has(`groupToDate_${toDate}`)) {
+            guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays);
+            return;
         }
         if (reason.length < 5) {
             showToast('error', 'Reason too short'); return;
@@ -629,7 +751,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEl('modalStartTime', odStartTime ? formatTime12h(odStartTime) : '-');
         setEl('modalEndTime',   odEndTime   ? formatTime12h(odEndTime)   : '-');
         setEl('modalDays', numDays ? `${numDays}${odDateCountdownLabel(fromDate, toDate) ? ' (' + odDateCountdownLabel(fromDate, toDate) + ')' : ''}` : '-');
-        setEl('modalReason', reason || 'No reason provided');
+        // Date & Time Edited by Staff/HOD
+        const isDateEdited = !!(od.IsDateEdited ?? od.isDateEdited);
+        const dateEditedBy = od.DateEditedBy ?? od.dateEditedBy ?? 'Faculty/HOD';
+        const modalDateEditedRow = document.getElementById('modalDateEditedRow');
+        const modalDateEditedTitle = document.getElementById('modalDateEditedTitle');
+        const modalDateEditedDetail = document.getElementById('modalDateEditedDetail');
+
+        if (modalDateEditedRow) {
+            if (isDateEdited) {
+                if (modalDateEditedTitle) modalDateEditedTitle.textContent = `Date & Time was modified by ${dateEditedBy}`;
+                const timeSpan = odStartTime ? `${formatTime12h(odStartTime)}${odEndTime ? ' – ' + formatTime12h(odEndTime) : ''}` : 'Full Day';
+                if (modalDateEditedDetail) modalDateEditedDetail.textContent = `Updated: ${fmtDate(fromDate)} to ${fmtDate(toDate)} | Time: ${timeSpan}`;
+                modalDateEditedRow.style.display = 'block';
+            } else {
+                modalDateEditedRow.style.display = 'none';
+            }
+        }
 
         // overallKey/overallLabel take MY OWN faculty status, not the raw
         // shared one — so overall correctly still shows "Awaiting HOD"/
@@ -960,6 +1098,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return d.toISOString().split('T')[0];
     }
 
+    document.getElementById('editGroupFromDate')?.addEventListener('change', (e) => {
+        guardWeekendInput(e.target, 'editGroupFromDate-error', 'From Date');
+    });
+    document.getElementById('editGroupToDate')?.addEventListener('change', (e) => {
+        guardWeekendInput(e.target, 'editGroupToDate-error', 'To Date');
+    });
+
     document.getElementById('editGroupOdCloseBtn')?.addEventListener('click', () => {
         if (editGroupOdModal) editGroupOdModal.style.display = 'none';
     });
@@ -1005,11 +1150,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (fromDate > toDate) {
             showEditError('To date must be after from date.'); return;
         }
-        if (isWeekend(fromDate)) {
-            showEditError('From Date must be a college working day (Mon–Fri).'); return;
+        if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`editGroupFromDate_${fromDate}`)) {
+            guardWeekendInput(document.getElementById('editGroupFromDate'), 'editGroupFromDate-error', 'From Date');
+            return;
         }
-        if (isWeekend(toDate)) {
-            showEditError('To Date must be a college working day (Mon–Fri).'); return;
+        if (isWeekend(toDate) && !window.confirmedNonWorkingDates.has(`editGroupToDate_${toDate}`)) {
+            guardWeekendInput(document.getElementById('editGroupToDate'), 'editGroupToDate-error', 'To Date');
+            return;
         }
         if (reason.length < 5) {
             showEditError('Reason is too short — please provide more detail.'); return;
@@ -1423,11 +1570,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </button>`
                     : '';
 
-                const isRejectedOrEditable = myFacultyStatus === 'Rejected' || hodStatus === 'Rejected' || od.isEditable === true || od.status === 'Returned';
-                const canEdit = isRejectedOrEditable && !iAmApproved;
+                const isDateEdited = !!(od.IsDateEdited ?? od.isDateEdited);
+                const dateEditedBy = od.DateEditedBy ?? od.dateEditedBy ?? 'Faculty/HOD';
+                const startTimeStr = od.StartTime ?? od.startTime ?? null;
+                const endTimeStr   = od.EndTime   ?? od.endTime   ?? null;
+                const timeSpanText = startTimeStr ? `${formatTime12h(startTimeStr)}${endTimeStr ? ' – ' + formatTime12h(endTimeStr) : ''}` : '';
+
+                const dateEditedBannerHtml = isDateEdited ? `
+                    <div class="date-edited-alert-banner">
+                        <div class="alert-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                        </div>
+                        <div class="alert-text">
+                            <strong>Date &amp; Time was modified by ${escapeHtml(dateEditedBy)}</strong>
+                            <span>Updated: ${fmtDate(fromDate)} to ${fmtDate(toDate)}${timeSpanText ? ' | Time: ' + timeSpanText : ''}</span>
+                        </div>
+                    </div>` : '';
+
+                const isFullyApproved = (myFacultyStatus === 'Approved' && hodStatus === 'Approved');
+                const canEdit = !isFullyApproved;
 
                 return `
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
+                    ${dateEditedBannerHtml}
                     <div class="card-top">
                         <div>
                             <h4>${eventName} ${groupTag} ${myStatusTag}</h4>

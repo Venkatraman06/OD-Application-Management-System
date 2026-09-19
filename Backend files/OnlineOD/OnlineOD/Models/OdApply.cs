@@ -43,5 +43,13 @@ namespace OnlineOD.Models
         public string? WinningStatus { get; set; }
         public string? CertificatePhotoUrl { get; set; }
         public bool CertificateVerified { get; set; } = false; // staff has verified the uploaded certificate — locks it from further student edits
+
+        // Feature 4 — Staff/HOD Date & Time Edit Tracking
+        public bool IsDateEdited { get; set; } = false;
+        public string? DateEditedBy { get; set; } // "Staff" or "HOD"
+        public string? OriginalFromDate { get; set; }
+        public string? OriginalToDate { get; set; }
+        public string? OriginalStartTime { get; set; }
+        public string? OriginalEndTime { get; set; }
     }
 }

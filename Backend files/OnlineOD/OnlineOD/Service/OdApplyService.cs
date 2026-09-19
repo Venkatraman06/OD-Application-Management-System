@@ -516,6 +516,12 @@ namespace OnlineOD.Service
                 CertificatePhotoUrl = od.CertificatePhotoUrl,
                 CertificateVerified = od.CertificateVerified,
                 IsOngoing = IsOdOngoing(od.FromDate, od.ToDate),
+                IsDateEdited = od.IsDateEdited,
+                DateEditedBy = od.DateEditedBy,
+                OriginalFromDate = od.OriginalFromDate,
+                OriginalToDate = od.OriginalToDate,
+                OriginalStartTime = od.OriginalStartTime,
+                OriginalEndTime = od.OriginalEndTime,
                 Certificates = certsByOd.TryGetValue(od.OdId, out var list) ? list : new List<OdCertificate>()
             }).ToList();
         }
@@ -620,13 +626,13 @@ namespace OnlineOD.Service
         }
 
 
-        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null)
+        public async Task<OdApply?> AlterDaysAsync(int odId, string fromDate, string toDate, int numberOfDays, string? startTime = null, string? endTime = null, string? editedBy = null)
         {
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return null;
 
-            // Only allow altering while the OD is still Pending with faculty
-            if (!string.Equals(od.FacultyStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+            // Allow altering while not yet fully approved by HOD
+            if (string.Equals(od.HodStatus, "Approved", StringComparison.OrdinalIgnoreCase))
                 return null;
 
             // Recompute days server-side to stay consistent — count only
@@ -634,6 +640,18 @@ namespace OnlineOD.Service
             int computedDays = WorkingDaysCalendar.CountWorkingDays(fromDate, toDate);
             if (computedDays <= 0)
                 computedDays = numberOfDays;
+
+            // Save original date & time on first alteration
+            if (!od.IsDateEdited)
+            {
+                od.OriginalFromDate = od.FromDate;
+                od.OriginalToDate = od.ToDate;
+                od.OriginalStartTime = od.StartTime;
+                od.OriginalEndTime = od.EndTime;
+            }
+
+            od.IsDateEdited = true;
+            od.DateEditedBy = !string.IsNullOrWhiteSpace(editedBy) ? editedBy : (string.Equals(od.FacultyStatus, "Approved", StringComparison.OrdinalIgnoreCase) ? "HOD" : "Staff");
 
             od.FromDate = fromDate;
             od.ToDate = toDate;

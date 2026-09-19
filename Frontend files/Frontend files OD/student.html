@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="student.css">
+    <link rel="stylesheet" href="responsive.css">
     <script>
         // Apply saved theme before first paint to avoid flash
         (function(){ var t=localStorage.getItem('od-theme'); if(t) document.documentElement.setAttribute('data-theme',t); })();
@@ -615,6 +616,21 @@
                 <span class="badge-pending" id="modalOverallBadge">Pending</span>
             </div>
             <div class="modal-body">
+                <div class="modal-row full date-edited-modal-alert" id="modalDateEditedRow" style="display:none">
+                    <div class="date-edited-alert-banner" style="margin: 0; width: 100%;">
+                        <div class="alert-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                        </div>
+                        <div class="alert-text">
+                            <strong id="modalDateEditedTitle">Date &amp; Time Modified by Faculty/HOD</strong>
+                            <span id="modalDateEditedDetail">Updated dates &amp; times are shown below</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="modal-row">
                     <span class="modal-label">Competition Type</span>
                     <span class="modal-value" id="modalCompetitionType">-</span>
@@ -820,6 +836,31 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Weekend / Saturday Confirmation Dialog Modal -->
+    <div class="modal-overlay" id="saturdayConfirmModal" style="display:none; z-index: 10050;">
+        <div class="modal-card" style="max-width: 420px; text-align: center; padding: 24px;">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: #f59e0b; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <h3 id="saturdayModalTitle" style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">Weekend / Saturday Selected</h3>
+            <p id="saturdayModalMsg" class="saturday-modal-msg" style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px;">
+                The selected date falls on a Saturday or non-working day. Do you want to include Saturday in your OD request?
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button type="button" id="saturdayModalSkipBtn" class="btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Skip / Clear
+                </button>
+                <button type="button" id="saturdayModalConfirmBtn" class="btn-primary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Yes, Include Saturday
+                </button>
+            </div>
         </div>
     </div>
 
