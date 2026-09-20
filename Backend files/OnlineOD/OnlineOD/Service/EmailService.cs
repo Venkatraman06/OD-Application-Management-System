@@ -1,3 +1,9 @@
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
+using Google.Apis.Gmail.v1;
+using Google.Apis.Gmail.v1.Data;
+using Google.Apis.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
@@ -35,30 +41,94 @@ namespace OnlineOD.Services
         // ── Shared send helper ────────────────────────────────────────────────
         private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
         {
-            var resendApiKey = Environment.GetEnvironmentVariable("EmailSettings__ResendApiKey")
-                            ?? Environment.GetEnvironmentVariable("RESEND_API_KEY")
-                            ?? _config["EmailSettings:ResendApiKey"];
-
-            var senderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
-                           ?? _config["EmailSettings:SenderEmail"]
-                           ?? "onboarding@resend.dev";
+            var gmailClientId = Environment.GetEnvironmentVariable("Gmail__ClientId")
+                             ?? _config["Gmail:ClientId"];
+            var gmailClientSecret = Environment.GetEnvironmentVariable("Gmail__ClientSecret")
+                                 ?? _config["Gmail:ClientSecret"];
+            var gmailRefreshToken = Environment.GetEnvironmentVariable("Gmail__RefreshToken")
+                                 ?? _config["Gmail:RefreshToken"];
+            var senderEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                           ?? _config["Gmail:SenderEmail"];
 
             var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
                           ?? _config["EmailSettings:SenderName"]
                           ?? "OD Application";
 
-            bool hasResendKey = !string.IsNullOrWhiteSpace(resendApiKey);
-            Console.WriteLine($"[EmailService] Resend API key configured: {hasResendKey}");
+            var missingConfigs = new List<string>();
+            if (string.IsNullOrWhiteSpace(gmailClientId)) missingConfigs.Add("Gmail__ClientId");
+            if (string.IsNullOrWhiteSpace(gmailClientSecret)) missingConfigs.Add("Gmail__ClientSecret");
+            if (string.IsNullOrWhiteSpace(gmailRefreshToken)) missingConfigs.Add("Gmail__RefreshToken");
+            if (string.IsNullOrWhiteSpace(senderEmail)) missingConfigs.Add("Gmail__SenderEmail");
 
-            if (hasResendKey)
+            if (missingConfigs.Count > 0)
             {
-                await SendViaResendAsync(resendApiKey!.Trim(), senderName, senderEmail, toEmail, subject, htmlBody);
+                var errorMsg = $"[EmailService] Gmail API is the required email provider, but the following configuration is missing: {string.Join(", ", missingConfigs)}";
+                Console.WriteLine(errorMsg);
+                throw new InvalidOperationException(errorMsg);
             }
-            else
+
+            await SendViaGmailApiAsync(gmailClientId!.Trim(), gmailClientSecret!.Trim(), gmailRefreshToken!.Trim(),
+                                       senderName, senderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+        }
+
+        private async Task SendViaGmailApiAsync(
+            string clientId, string clientSecret, string refreshToken,
+            string senderName, string senderEmail,
+            string toEmail, string toName,
+            string subject, string htmlBody)
+        {
+            Console.WriteLine($"[EmailService] [Gmail API Step 1/3] Preparing MIME message for {toEmail}...");
+
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(senderName, senderEmail));
+            message.To.Add(new MailboxAddress(toName, toEmail));
+            message.Subject = subject;
+            message.Body = new TextPart("html") { Text = htmlBody };
+
+            byte[] rawBytes;
+            using (var memoryStream = new MemoryStream())
             {
-                Console.WriteLine("[EmailService] Falling back to SMTP because no Resend API key was found in configuration.");
-                await SendViaSmtpAsync(senderName, senderEmail, toEmail, toName, subject, htmlBody);
+                await message.WriteToAsync(memoryStream);
+                rawBytes = memoryStream.ToArray();
             }
+
+            // URL-safe base64 encoding (standard for Gmail API raw messages)
+            var rawBase64 = Convert.ToBase64String(rawBytes)
+                .Replace('+', '-')
+                .Replace('/', '_')
+                .Replace("=", "");
+
+            Console.WriteLine($"[EmailService] [Gmail API Step 2/3] Initializing Google OAuth2 credential & GmailService...");
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets
+                {
+                    ClientId = clientId,
+                    ClientSecret = clientSecret
+                },
+                Scopes = new[] { GmailService.Scope.GmailSend }
+            });
+
+            var credential = new UserCredential(flow, "user", new TokenResponse
+            {
+                RefreshToken = refreshToken
+            });
+
+            using var gmailService = new GmailService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = "OD Application Management System"
+            });
+
+            var gmailMessage = new Message
+            {
+                Raw = rawBase64
+            };
+
+            Console.WriteLine($"[EmailService] [Gmail API Step 3/3] Sending email via Gmail API HTTPS endpoint to {toEmail}...");
+            var sentMessage = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
+            Console.WriteLine($"[EmailService] [Gmail API] Email sent successfully to {toEmail}. Gmail Message ID: {sentMessage.Id}");
         }
 
         private async Task SendViaResendAsync(string apiKey, string senderName, string senderEmail, string toEmail, string subject, string htmlBody)
