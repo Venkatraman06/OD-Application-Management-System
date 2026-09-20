@@ -7,6 +7,13 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Support dynamic port binding for cloud platforms (e.g. Render, Railway)
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -19,12 +26,36 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? new[]
+            {
+                "https://od-application-management-system-q7.vercel.app",
+                "http://localhost:5500",
+                "http://127.0.0.1:5500",
+                "http://localhost:3000",
+                "http://localhost:5088",
+                "http://localhost:5183"
+            };
+
+        policy.WithOrigins(configuredOrigins)
+              .SetIsOriginAllowed(origin =>
+              {
+                  if (string.IsNullOrEmpty(origin)) return false;
+                  try
+                  {
+                      var uri = new Uri(origin);
+                      return uri.Host == "localhost"
+                          || uri.Host == "127.0.0.1"
+                          || uri.Host.StartsWith("192.168.")
+                          || origin.Equals("https://od-application-management-system-q7.vercel.app", StringComparison.OrdinalIgnoreCase);
+                  }
+                  catch
+                  {
+                      return false;
+                  }
+              })
               .AllowAnyMethod()
               .AllowAnyHeader()
-              // Without this, the browser silently drops these custom
-              // headers even though the server sent them — response.headers
-              // .get('X-Email-Status') would always return null cross-origin.
               .WithExposedHeaders("X-Email-Status", "X-Email-Detail");
     });
 });
