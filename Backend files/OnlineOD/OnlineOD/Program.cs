@@ -14,13 +14,63 @@ if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null)));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = builder.Configuration["DATABASE_URL"]
+                    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+                    ?? "";
+}
+connectionString = connectionString.Trim().Trim('\"', '\'');
+
+var databaseProvider = builder.Configuration["DatabaseProvider"]
+                    ?? Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
+                    ?? "";
+
+bool isPostgreSql;
+if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+{
+    isPostgreSql = true;
+}
+else if (databaseProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+{
+    isPostgreSql = false;
+}
+else
+{
+    // Automatic fallback detection based on connection string
+    bool isSqlServer = connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
+                    || connectionString.Contains("sqlexpress", StringComparison.OrdinalIgnoreCase)
+                    || connectionString.Contains("Trusted_Connection", StringComparison.OrdinalIgnoreCase);
+
+    isPostgreSql = connectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase)
+                || connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+                || connectionString.Contains("neon.tech", StringComparison.OrdinalIgnoreCase)
+                || connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
+                || (!isSqlServer && !string.IsNullOrWhiteSpace(connectionString));
+}
+
+if (isPostgreSql)
+{
+    AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+    builder.Services.AddDbContext<ApplicationDbContext, PostgreSqlDbContext>(options =>
+        options.UseNpgsql(
+            connectionString,
+            npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null)));
+}
+else
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(
+            connectionString,
+            sqlOptions => sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null)));
+}
 
 builder.Services.AddCors(options =>
 {
