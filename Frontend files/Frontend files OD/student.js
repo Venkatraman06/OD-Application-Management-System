@@ -1225,9 +1225,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Print Report: opens od_report.html and fills it with this OD's data ──
     function printOdReport(od) {
-        const reportWindow = window.open('od_report.html', '_blank');
-        if (!reportWindow) {
-            showToast('error', 'Please allow pop-ups to print the OD report');
+        if (!od) {
+            showToast('error', 'No OD data available to print');
             return;
         }
         // The OD's own Section field reflects whichever student CREATED it —
@@ -1236,20 +1235,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         // still see THEIR OWN class staff's name on their report, not the
         // creator's. Override with the currently logged-in viewer's own
         // section before handing the data to the report page.
-        const odForReport = { ...od, Section: localStorage.getItem('userSection') || od.Section || od.section || '' };
+        const odId = od.OdId ?? od.odId ?? '';
+        const actualSection = od.Section || od.section || localStorage.getItem('userSection') || '';
+        const odForReport = { ...od, Section: actualSection, section: actualSection };
+
+        // Save to storage so od_report.html can self-load reliably regardless of cross-window restrictions
+        try {
+            sessionStorage.setItem('currentOdReport', JSON.stringify(odForReport));
+            localStorage.setItem('currentOdReport', JSON.stringify(odForReport));
+        } catch (e) {
+            console.warn('Could not save OD report to storage:', e);
+        }
+
+        const reportUrl = odId ? `od_report.html?odId=${encodeURIComponent(odId)}` : 'od_report.html';
+        const reportWindow = window.open(reportUrl, '_blank');
+        if (!reportWindow) {
+            showToast('error', 'Please allow pop-ups to print the OD report');
+            return;
+        }
         const tryFill = () => {
-            if (typeof reportWindow.fillOdReport === 'function') {
-                reportWindow.fillOdReport(odForReport);
-            } else {
-                // Report page may still be parsing scripts — retry briefly
-                setTimeout(tryFill, 100);
+            try {
+                if (typeof reportWindow.fillOdReport === 'function') {
+                    reportWindow.fillOdReport(odForReport);
+                } else {
+                    setTimeout(tryFill, 100);
+                }
+            } catch (err) {
+                // Cross-window access blocked; od_report.html self-loads from storage/URL
             }
         };
         reportWindow.addEventListener('load', tryFill);
-        // Also try immediately: when od_report.html is cached by the browser the
-        // 'load' event fires before this addEventListener() call runs, so the
-        // listener is never triggered and the report stays blank on every
-        // subsequent click. tryFill() safely retries if scripts aren't ready yet.
         tryFill();
     }
 

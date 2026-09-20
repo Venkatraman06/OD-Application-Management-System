@@ -577,7 +577,7 @@
             const studentName   = od.StudentName ?? od.studentName ?? '';
             const registerNumber= od.registerNumber ?? od.RegisterNumber ?? '';
             const department    = od.department ?? od.Department ?? '';
-            const section       = od.Section ?? od.section ?? '';
+            const section       = od.Section || od.section || localStorage.getItem('userSection') || '';
             const fromDate      = od.FromDate ?? od.fromDate ?? '';
             const toDate        = od.ToDate ?? od.toDate ?? '';
             const numberOfDays  = od.NumberOfDays ?? od.numberOfDays ?? '';
@@ -662,33 +662,49 @@
             }
         }
 
-        // Optional: auto-load if opened as od_report.html?odId=12
-        // Uncomment if you want this page to self-fetch (API_BASE already
-        // declared above in fetchClassStaffName).
-        /*
-        async function autoLoadFromQueryString() {
+        // Auto-load OD report data from storage (passed from student.js) or backend API (?odId=...)
+        async function autoLoadReport() {
             const params = new URLSearchParams(window.location.search);
             const odId = params.get('odId');
-            if (!odId) return;
+
+            // 1. Check sessionStorage / localStorage first (fastest, preserves client-side section overrides)
             try {
-                const res = await fetch(`${API_BASE}/api/OdApply/${odId}`);
-                if (res.ok) {
-                    const od = await res.json();
-                    fillOdReport(od);
+                const storedRaw = sessionStorage.getItem('currentOdReport') || localStorage.getItem('currentOdReport');
+                if (storedRaw) {
+                    const storedOd = JSON.parse(storedRaw);
+                    const storedId = String(storedOd.OdId ?? storedOd.odId ?? '');
+                    if (!odId || storedId === String(odId)) {
+                        await fillOdReport(storedOd);
+                        return;
+                    }
                 }
             } catch (err) {
-                console.error('Failed to auto-load OD report:', err);
+                console.warn('Could not load OD report from storage:', err);
+            }
+
+            // 2. Fallback: fetch directly from backend API if odId is provided in URL
+            if (odId) {
+                try {
+                    const res = await fetch(`${API_BASE}/api/OdApply/${encodeURIComponent(odId)}`);
+                    if (res.ok) {
+                        const od = await res.json();
+                        await fillOdReport(od);
+                    } else {
+                        console.error('Failed to fetch OD report data from API, status:', res.status);
+                    }
+                } catch (err) {
+                    console.error('Failed to auto-load OD report from API:', err);
+                }
             }
         }
-        autoLoadFromQueryString();
-        */
 
         window.fillOdReport = fillOdReport;
 
-        // Show today's date immediately, even before fillOdReport() runs
+        // Show today's date immediately and auto-load OD report data
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
             setText('reportGeneratedDate', today.toLocaleDateString('en-GB'));
+            autoLoadReport();
         });
     </script>
 

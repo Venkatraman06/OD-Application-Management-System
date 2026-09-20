@@ -133,6 +133,7 @@ namespace OnlineOD.Controllers
                     emailDetail = involvedSections.Count == 0
                         ? "No Section was set on this OD, so no matching staff could be found."
                         : $"No staff found for department '{dto.department}' + section(s) '{string.Join(", ", involvedSections)}' with an Email set.";
+                    Console.WriteLine($"[EmailQueue] Staff notification skipped for OD #{result.OdId}: {emailDetail}");
                 }
                 else
                 {
@@ -158,6 +159,7 @@ namespace OnlineOD.Controllers
                             StartTime = dto.StartTime,
                             EndTime = dto.EndTime
                         });
+                        Console.WriteLine($"[EmailQueue] Submission email queued for OD #{result.OdId} -> {staff.Name} ({staff.Email})");
                     }
                     emailStatus = "queued";
                 }

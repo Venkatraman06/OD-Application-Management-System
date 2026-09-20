@@ -1,14 +1,18 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace OnlineOD.Services
 {
     public class EmailService
     {
         private readonly IConfiguration _config;
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
 
         public EmailService(IConfiguration config)
         {
@@ -31,9 +35,95 @@ namespace OnlineOD.Services
         // ── Shared send helper ────────────────────────────────────────────────
         private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
         {
-            var senderEmail = _config["EmailSettings:SenderEmail"];
+            var resendApiKey = Environment.GetEnvironmentVariable("EmailSettings__ResendApiKey")
+                            ?? Environment.GetEnvironmentVariable("RESEND_API_KEY")
+                            ?? _config["EmailSettings:ResendApiKey"];
+
+            var senderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
+                           ?? _config["EmailSettings:SenderEmail"]
+                           ?? "onboarding@resend.dev";
+
+            var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
+                          ?? _config["EmailSettings:SenderName"]
+                          ?? "OD Application";
+
+            bool hasResendKey = !string.IsNullOrWhiteSpace(resendApiKey);
+            Console.WriteLine($"[EmailService] Resend API key configured: {hasResendKey}");
+
+            if (hasResendKey)
+            {
+                await SendViaResendAsync(resendApiKey!.Trim(), senderName, senderEmail, toEmail, subject, htmlBody);
+            }
+            else
+            {
+                Console.WriteLine("[EmailService] Falling back to SMTP because no Resend API key was found in configuration.");
+                await SendViaSmtpAsync(senderName, senderEmail, toEmail, toName, subject, htmlBody);
+            }
+        }
+
+        private async Task SendViaResendAsync(string apiKey, string senderName, string senderEmail, string toEmail, string subject, string htmlBody)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var fromAddress = !string.IsNullOrWhiteSpace(senderName)
+                ? $"{senderName} <{senderEmail}>"
+                : senderEmail;
+
+            var payload = new
+            {
+                from = fromAddress,
+                to = new[] { toEmail },
+                subject = subject,
+                html = htmlBody
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[EmailService] Resend response: HTTP {(int)response.StatusCode} OK. Email sent successfully to {toEmail}.");
+            }
+            else
+            {
+                Console.WriteLine($"[EmailService] Resend response: HTTP {(int)response.StatusCode} ({response.ReasonPhrase})");
+                Console.WriteLine($"[EmailService] Resend error details: {responseBody}");
+                throw new InvalidOperationException($"[Resend API Error] HTTP {(int)response.StatusCode}: {responseBody}");
+            }
+        }
+
+        private async Task SendViaSmtpAsync(string senderName, string senderEmail, string toEmail, string toName, string subject, string htmlBody)
+        {
             var senderPassword = _config["EmailSettings:SenderPassword"];
-            var senderName = _config["EmailSettings:SenderName"];
+            var host = _config["EmailSettings:SmtpHost"] ?? "smtp.gmail.com";
+            var portStr = _config["EmailSettings:SmtpPort"];
+            int port = int.TryParse(portStr, out var parsedPort) ? parsedPort : 587;
+
+            var securityStr = _config["EmailSettings:SecureSocketOptions"] ?? _config["EmailSettings:SmtpSecurity"];
+            SecureSocketOptions security;
+            if (Enum.TryParse<SecureSocketOptions>(securityStr, true, out var parsedSecurity))
+            {
+                security = parsedSecurity;
+            }
+            else if (port == 465)
+            {
+                security = SecureSocketOptions.SslOnConnect;
+            }
+            else if (port == 587)
+            {
+                security = SecureSocketOptions.StartTls;
+            }
+            else
+            {
+                security = SecureSocketOptions.Auto;
+            }
+
+            var timeoutStr = _config["EmailSettings:TimeoutSeconds"];
+            int timeoutSeconds = int.TryParse(timeoutStr, out var parsedTimeout) ? parsedTimeout : 15;
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(senderName, senderEmail));
@@ -42,8 +132,14 @@ namespace OnlineOD.Services
             message.Body = new TextPart("html") { Text = htmlBody };
 
             using var smtp = new SmtpClient();
-            await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(senderEmail, senderPassword);
+            smtp.Timeout = timeoutSeconds * 1000;
+            smtp.CheckCertificateRevocation = false;
+
+            await smtp.ConnectAsync(host, port, security);
+            if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(senderPassword))
+            {
+                await smtp.AuthenticateAsync(senderEmail, senderPassword);
+            }
             await smtp.SendAsync(message);
             await smtp.DisconnectAsync(true);
         }
@@ -54,13 +150,20 @@ namespace OnlineOD.Services
         // only that staff's own section's members on a multi-section group OD.
         private string ActionButtons(int odId, string role, int staffId = 0)
         {
-            var baseUrl = _config["EmailSettings:AppBaseUrl"] ?? "http://localhost:5088";
+            var baseUrl = Environment.GetEnvironmentVariable("EmailSettings__AppBaseUrl")
+                       ?? _config["EmailSettings:AppBaseUrl"]
+                       ?? "https://od-application-backend.onrender.com";
+
+            var portalBaseUrl = Environment.GetEnvironmentVariable("EmailSettings__PortalBaseUrl")
+                             ?? _config["EmailSettings:PortalBaseUrl"]
+                             ?? "https://od-application-management-system-q7.vercel.app";
+
             var approveToken = GenerateToken(odId, "Approved");
             var rejectToken = GenerateToken(odId, "Rejected");
             var staffIdParam = role == "faculty" ? $"&staffId={staffId}" : "";
-            var approveUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
-            var rejectUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
-            var portalUrl = $"{baseUrl}/index.html";
+            var approveUrl = $"{baseUrl.TrimEnd('/')}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
+            var rejectUrl = $"{baseUrl.TrimEnd('/')}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
+            var portalUrl = portalBaseUrl.TrimEnd('/');
 
             return $@"
             <div style='text-align:center;margin:24px 0'>
