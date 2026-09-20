@@ -114,7 +114,6 @@ body {
    ============================================ */
 .app-layout {
     position: relative;
-    z-index: 1;
     display: flex;
     min-height: 100vh;
 }
@@ -1172,8 +1171,8 @@ body {
    Responsive
    ============================================ */
 @media (max-width: 900px) {
-    .sidebar { transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); }
+    .sidebar { transform: translateX(-100%); z-index: 1050; }
+    .sidebar.open { transform: translateX(0); z-index: 1050; }
     .main-content { margin-left: 0; padding: 20px 16px 32px; }
     .mobile-topbar { display: flex; }
 
@@ -2948,21 +2947,37 @@ body {
     background: #3b82f6;
     color: #ffffff !important;
 }
+.clock-center-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3b82f6;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    pointer-events: none;
+}
 .clock-hand {
     position: absolute;
-    top: 50%; left: 50%;
+    bottom: 50%;
+    left: calc(50% - 1px);
     width: 2px;
     height: 72px;
     background: #3b82f6;
-    transform-origin: top center;
+    transform-origin: bottom center;
     transform: rotate(0deg);
     pointer-events: none;
     transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
 }
 .clock-hand-pin {
     position: absolute;
-    bottom: -14px; left: -14px;
-    width: 30px; height: 30px;
+    top: -15px;
+    left: -14px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: rgba(59, 130, 246, 0.3);
     border: 2px solid #3b82f6;

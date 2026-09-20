@@ -200,10 +200,13 @@ document.addEventListener('DOMContentLoaded', async () => {
      * Guards a date input against non-working-day selection.
      * If the picked date is a holiday or Saturday/weekend, shows an interactive
      * alert modal asking if the user wants to include it.
+     * If the picked date is Sunday, it is strictly invalid and rejected immediately.
      */
     function guardWeekendInput(inputEl, errorElId, label, onDone) {
         if (!inputEl) return true;
         const val = inputEl.value;
+        const isFrom = inputEl.id.toLowerCase().includes('from');
+
         if (!val) {
             Array.from(window.confirmedNonWorkingDates || []).forEach(k => {
                 if (k.startsWith(`${inputEl.id}_`)) window.confirmedNonWorkingDates.delete(k);
@@ -224,11 +227,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const day = isNaN(d.getDay()) ? -1 : d.getDay();
         const isSat = day === 6;
         const isSun = day === 0;
+
+        if (isSun) {
+            const sundayMsg = isFrom ? 'Sunday cannot be chosen as from date' : 'Sunday cannot be chosen as to date';
+            showFieldError(inputEl, errorElId, sundayMsg);
+            if (onDone) onDone();
+            return false;
+        }
+
         const isNonWorking = isWeekend(val);
 
-        if ((isSat || isSun || isNonWorking) && !window.confirmedNonWorkingDates.has(dateKey)) {
+        if ((isSat || isNonWorking) && !window.confirmedNonWorkingDates.has(dateKey)) {
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = isSat ? 'Saturday' : (isSun ? 'Sunday' : (day >= 0 ? dayNames[day] : 'Non-working Day'));
+            const dayName = isSat ? 'Saturday' : (day >= 0 ? dayNames[day] : 'Non-working Day');
 
             showSaturdayConfirmModal(val, dayName,
                 () => {
@@ -306,8 +317,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function calcDays() {
-        if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value <= toEl.value) {
-            const d = countWorkingDays(fromEl.value, toEl.value);
+        if (!fromEl || !toEl) return;
+        const fromVal = fromEl.value;
+        const toVal = toEl.value;
+
+        // Check Sunday on both
+        if (fromVal) {
+            const dFrom = new Date(fromVal + 'T00:00:00');
+            if (dFrom.getDay() === 0) {
+                showFieldError(fromEl, 'fromDate-error', 'Sunday cannot be chosen as from date');
+                if (daysEl) daysEl.value = '';
+                return;
+            }
+        }
+        if (toVal) {
+            const dTo = new Date(toVal + 'T00:00:00');
+            if (dTo.getDay() === 0) {
+                showFieldError(toEl, 'toDate-error', 'Sunday cannot be chosen as to date');
+                if (daysEl) daysEl.value = '';
+                return;
+            }
+        }
+
+        if (fromVal && toVal) {
+            if (toVal < fromVal) {
+                showFieldError(toEl, 'toDate-error', 'To date cannot be before from date');
+                if (daysEl) daysEl.value = '';
+                return;
+            } else {
+                const toErr = document.getElementById('toDate-error');
+                if (toErr && toErr.textContent === 'To date cannot be before from date') {
+                    clearFieldError(toEl, 'toDate-error');
+                }
+            }
+
+            const d = countWorkingDays(fromVal, toVal);
             if (daysEl) {
                 daysEl.value = buildDaysText(d, startTimeEl?.value, endTimeEl?.value);
             }
@@ -349,8 +393,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     const grpEndTimeEl   = document.getElementById('groupEndTime');
 
     function calcGroupDays() {
-        if (groupFromEl && groupToEl && groupFromEl.value && groupToEl.value && groupFromEl.value <= groupToEl.value) {
-            const d = countWorkingDays(groupFromEl.value, groupToEl.value);
+        if (!groupFromEl || !groupToEl) return;
+        const fromVal = groupFromEl.value;
+        const toVal = groupToEl.value;
+
+        // Check Sunday on both
+        if (fromVal) {
+            const dFrom = new Date(fromVal + 'T00:00:00');
+            if (dFrom.getDay() === 0) {
+                showFieldError(groupFromEl, 'groupFromDate-error', 'Sunday cannot be chosen as from date');
+                if (groupDaysEl) groupDaysEl.value = '';
+                return;
+            }
+        }
+        if (toVal) {
+            const dTo = new Date(toVal + 'T00:00:00');
+            if (dTo.getDay() === 0) {
+                showFieldError(groupToEl, 'groupToDate-error', 'Sunday cannot be chosen as to date');
+                if (groupDaysEl) groupDaysEl.value = '';
+                return;
+            }
+        }
+
+        if (fromVal && toVal) {
+            if (toVal < fromVal) {
+                showFieldError(groupToEl, 'groupToDate-error', 'To date cannot be before from date');
+                if (groupDaysEl) groupDaysEl.value = '';
+                return;
+            } else {
+                const toErr = document.getElementById('groupToDate-error');
+                if (toErr && toErr.textContent === 'To date cannot be before from date') {
+                    clearFieldError(groupToEl, 'groupToDate-error');
+                }
+            }
+
+            const d = countWorkingDays(fromVal, toVal);
             if (groupDaysEl) {
                 groupDaysEl.value = buildDaysText(d, grpStartTimeEl?.value, grpEndTimeEl?.value);
             }
@@ -457,8 +534,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!fromDate || !toDate || !event || !college || !reason || !competitionType) {
             showToast('error', 'All fields required'); return;
         }
+        const dFrom = new Date(fromDate + 'T00:00:00');
+        const dTo = new Date(toDate + 'T00:00:00');
+        if (dFrom.getDay() === 0) {
+            showFieldError(fromEl, 'fromDate-error', 'Sunday cannot be chosen as from date');
+            showToast('error', 'Sunday cannot be chosen as from date');
+            return;
+        }
+        if (dTo.getDay() === 0) {
+            showFieldError(toEl, 'toDate-error', 'Sunday cannot be chosen as to date');
+            showToast('error', 'Sunday cannot be chosen as to date');
+            return;
+        }
         if (fromDate > toDate) {
-            showToast('error', 'To date must be after from date'); return;
+            showFieldError(toEl, 'toDate-error', 'To date cannot be before from date');
+            showToast('error', 'To date cannot be before from date');
+            return;
         }
         // Final guard — check weekends at submit time
         if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`fromDate_${fromDate}`)) {
@@ -559,8 +650,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!regNumbersRaw || window.groupMemberList.length < 2) {
             showToast('error', 'Add at least 2 group members'); return;
         }
+        const grpDFrom = new Date(fromDate + 'T00:00:00');
+        const grpDTo = new Date(toDate + 'T00:00:00');
+        if (grpDFrom.getDay() === 0) {
+            showFieldError(groupFromEl, 'groupFromDate-error', 'Sunday cannot be chosen as from date');
+            showToast('error', 'Sunday cannot be chosen as from date');
+            return;
+        }
+        if (grpDTo.getDay() === 0) {
+            showFieldError(groupToEl, 'groupToDate-error', 'Sunday cannot be chosen as to date');
+            showToast('error', 'Sunday cannot be chosen as to date');
+            return;
+        }
         if (fromDate > toDate) {
-            showToast('error', 'To date must be after from date'); return;
+            showFieldError(groupToEl, 'groupToDate-error', 'To date cannot be before from date');
+            showToast('error', 'To date cannot be before from date');
+            return;
         }
         // Final guard — check weekends at submit time
         if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`groupFromDate_${fromDate}`)) {
@@ -1849,7 +1954,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof AnalogClockPicker !== 'undefined') {
         AnalogClockPicker.attach(document.getElementById('startTime'));
         AnalogClockPicker.attach(document.getElementById('endTime'));
-        AnalogClockPicker.attach(document.getElementById('grpStartTime'));
-        AnalogClockPicker.attach(document.getElementById('grpEndTime'));
+        AnalogClockPicker.attach(document.getElementById('groupStartTime'));
+        AnalogClockPicker.attach(document.getElementById('groupEndTime'));
     }
 });

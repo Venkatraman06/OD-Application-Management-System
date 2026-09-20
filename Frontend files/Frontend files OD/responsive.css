@@ -490,3 +490,61 @@ html, body {
         font-size: 1rem !important;
     }
 }
+
+/* ── Universal Icon Alignment across all viewports ── */
+.input-icon,
+.nav-icon,
+.detail-icon,
+.btn-icon,
+.card-icon,
+.status-icon,
+.tab-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+}
+
+.input-wrapper .input-icon,
+.input-group .input-icon {
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    left: 14px !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.submit-btn,
+.reset-btn,
+.tab-btn,
+.admin-tab,
+.nav-item,
+.logout-btn,
+.filter-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    vertical-align: middle !important;
+}
+
+.btn-primary svg,
+.btn-secondary svg,
+.btn-danger svg,
+.submit-btn svg,
+.reset-btn svg,
+.tab-btn svg,
+.admin-tab svg,
+.nav-item svg,
+.logout-btn svg,
+.filter-btn svg {
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
