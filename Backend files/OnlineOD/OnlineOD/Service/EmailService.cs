@@ -98,12 +98,22 @@ namespace OnlineOD.Services
 
         private async Task SendViaSmtpAsync(string senderName, string senderEmail, string toEmail, string toName, string subject, string htmlBody)
         {
-            var senderPassword = _config["EmailSettings:SenderPassword"];
-            var host = _config["EmailSettings:SmtpHost"] ?? "smtp.gmail.com";
-            var portStr = _config["EmailSettings:SmtpPort"];
+            var senderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
+                              ?? _config["EmailSettings:SenderPassword"];
+
+            var host = Environment.GetEnvironmentVariable("EmailSettings__SmtpHost")
+                    ?? _config["EmailSettings:SmtpHost"]
+                    ?? "smtp.gmail.com";
+
+            var portStr = Environment.GetEnvironmentVariable("EmailSettings__SmtpPort")
+                       ?? _config["EmailSettings:SmtpPort"];
             int port = int.TryParse(portStr, out var parsedPort) ? parsedPort : 587;
 
-            var securityStr = _config["EmailSettings:SecureSocketOptions"] ?? _config["EmailSettings:SmtpSecurity"];
+            var securityStr = Environment.GetEnvironmentVariable("EmailSettings__SecureSocketOptions")
+                           ?? Environment.GetEnvironmentVariable("EmailSettings__SmtpSecurity")
+                           ?? _config["EmailSettings:SecureSocketOptions"]
+                           ?? _config["EmailSettings:SmtpSecurity"];
+
             SecureSocketOptions security;
             if (Enum.TryParse<SecureSocketOptions>(securityStr, true, out var parsedSecurity))
             {
@@ -122,8 +132,11 @@ namespace OnlineOD.Services
                 security = SecureSocketOptions.Auto;
             }
 
-            var timeoutStr = _config["EmailSettings:TimeoutSeconds"];
-            int timeoutSeconds = int.TryParse(timeoutStr, out var parsedTimeout) ? parsedTimeout : 15;
+            var timeoutStr = Environment.GetEnvironmentVariable("EmailSettings__TimeoutSeconds")
+                          ?? _config["EmailSettings:TimeoutSeconds"];
+            int timeoutSeconds = int.TryParse(timeoutStr, out var parsedTimeout) ? parsedTimeout : 30;
+
+            Console.WriteLine($"[EmailService] SMTP configuration selected -> Host: {host}, Port: {port}, Security: {security}, Timeout: {timeoutSeconds}s");
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(senderName, senderEmail));
@@ -135,13 +148,46 @@ namespace OnlineOD.Services
             smtp.Timeout = timeoutSeconds * 1000;
             smtp.CheckCertificateRevocation = false;
 
-            await smtp.ConnectAsync(host, port, security);
-            if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(senderPassword))
+            try
             {
-                await smtp.AuthenticateAsync(senderEmail, senderPassword);
+                Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connecting to {host}:{port} using {security} (timeout: {timeoutSeconds}s)...");
+                await smtp.ConnectAsync(host, port, security);
+                Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connected successfully to {host}:{port}.");
+
+                if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(senderPassword))
+                {
+                    Console.WriteLine($"[EmailService] [SMTP Step 2/3] Authenticating as {senderEmail}...");
+                    await smtp.AuthenticateAsync(senderEmail, senderPassword);
+                    Console.WriteLine($"[EmailService] [SMTP Step 2/3] Authenticated successfully as {senderEmail}.");
+                }
+                else
+                {
+                    Console.WriteLine("[EmailService] [SMTP Step 2/3] Authentication skipped (empty sender credentials).");
+                }
+
+                Console.WriteLine($"[EmailService] [SMTP Step 3/3] Sending email to {toEmail} (Subject: {subject})...");
+                await smtp.SendAsync(message);
+                Console.WriteLine($"[EmailService] [SMTP Step 3/3] Email sent successfully to {toEmail} via SMTP.");
             }
-            await smtp.SendAsync(message);
-            await smtp.DisconnectAsync(true);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EmailService] SMTP send failure -> Type: {ex.GetType().FullName}, Message: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (smtp.IsConnected)
+                {
+                    try
+                    {
+                        await smtp.DisconnectAsync(true);
+                    }
+                    catch (Exception discEx)
+                    {
+                        Console.WriteLine($"[EmailService] SMTP disconnect notice: {discEx.Message}");
+                    }
+                }
+            }
         }
 
         // ── Approve/Reject button block ───────────────────────────────────────
