@@ -141,12 +141,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function formatLocalDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
     /** true if the given YYYY-MM-DD date string is Saturday, Sunday, or a college non-working day */
     function isWeekend(dateStr) {
         if (!dateStr) return false;
         try {
-            const d = new Date(dateStr + 'T00:00:00');
-            const day = d.getDay();
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            const day = dateObj.getDay();
             // 6 = Saturday, 0 = Sunday
             if (day === 6 || day === 0) return true;
             if (workingDaysCalendar && typeof workingDaysCalendar.isWorkingDay === 'function') {
@@ -163,12 +171,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!fromStr || !toStr || fromStr > toStr) return 0;
         let count = 0;
         try {
-            const start = new Date(fromStr + 'T00:00:00');
-            const end = new Date(toStr + 'T00:00:00');
-            const cur = new Date(start);
+            const [fy, fm, fd] = fromStr.split('-').map(Number);
+            const [ty, tm, td] = toStr.split('-').map(Number);
+            const cur = new Date(fy, fm - 1, fd);
+            const end = new Date(ty, tm - 1, td);
+
             while (cur <= end) {
                 const day = cur.getDay(); // 0 = Sunday, 6 = Saturday
-                const curStr = cur.toISOString().split('T')[0];
+                const curStr = formatLocalDate(cur);
                 const isConfirmed = Array.from(window.confirmedNonWorkingDates || []).some(k => k.endsWith(`_${curStr}`));
 
                 if (day !== 0 && day !== 6) {

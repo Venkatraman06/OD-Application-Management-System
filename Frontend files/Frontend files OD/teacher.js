@@ -848,7 +848,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!raw) return '';
         const d = new Date(raw);
         if (isNaN(d)) return '';
-        return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
+        // Use local date components to avoid UTC-offset shift in IST (UTC+5:30)
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
     }
 
     function recomputeDaysAndTime() {
@@ -856,7 +860,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const s = alterStartInp?.value, e = alterEndInp?.value;
 
         if (f && t && t >= f) {
-            const diff = Math.round((new Date(t) - new Date(f)) / 86400000) + 1;
+            // Parse using local date components to avoid UTC-offset shift (e.g. IST = UTC+5:30)
+            const [fy, fm, fd] = f.split('-').map(Number);
+            const [ty, tm, td] = t.split('-').map(Number);
+            const dateFrom = new Date(fy, fm - 1, fd);
+            const dateTo   = new Date(ty, tm - 1, td);
+            const diff = Math.round((dateTo - dateFrom) / 86400000) + 1;
             if (alterDaysInp) alterDaysInp.value = diff;
         } else {
             if (alterDaysInp) alterDaysInp.value = '';

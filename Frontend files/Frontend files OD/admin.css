@@ -642,6 +642,39 @@ button#btnResetHod:hover {
     background: #fef2f2 !important;
     color: #991b1b !important;
 }
+[data-theme="light"] .gate-overlay {
+    background: radial-gradient(circle at 50% 20%, #f1f5f9 0%, #e2e8f0 100%) !important;
+}
+[data-theme="light"] .gate-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.1) !important;
+}
+[data-theme="light"] .gate-card h2 { color: #0f172a !important; }
+[data-theme="light"] .gate-card p { color: #475569 !important; }
+[data-theme="light"] .gate-card input {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .gate-back-link { color: #64748b !important; }
+[data-theme="light"] .gate-back-link:hover { color: #4338ca !important; }
+[data-theme="light"] .admin-search {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .admin-search::placeholder { color: #64748b !important; }
+[data-theme="light"] .modal-overlay {
+    background: rgba(15, 23, 42, 0.45) !important;
+}
+[data-theme="light"] .modal-box {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+[data-theme="light"] .modal-box h3 { color: #0f172a !important; }
+[data-theme="light"] .modal-box p { color: #475569 !important; }
 [data-theme="light"] .theme-toggle-btn {
     background: #ffffff !important;
     border: 1.5px solid #6366f1 !important;

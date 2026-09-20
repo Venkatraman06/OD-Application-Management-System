@@ -928,10 +928,10 @@ input:focus-visible {
     transform: rotate(20deg) scale(1.08);
 }
 
-/* ── Pure Light Theme Overrides ── */
+/* ── Pure Light Theme Overrides (styles.css) ── */
 [data-theme="light"] body {
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #0f172a !important;
 }
 [data-theme="light"] .bg-animation {
     background: #ffffff !important;
@@ -945,24 +945,49 @@ input:focus-visible {
     color: #4338ca !important;
     box-shadow: 0 2px 10px rgba(99, 102, 241, 0.15) !important;
 }
+[data-theme="light"] .branding-panel {
+    background: linear-gradient(160deg, #f8fafc 0%, #eef2ff 100%) !important;
+    border-right: 1px solid #cbd5e1 !important;
+}
+[data-theme="light"] .brand-title {
+    color: #0f172a !important;
+}
+[data-theme="light"] .brand-subtitle {
+    color: #334155 !important;
+}
+[data-theme="light"] .feature-item span {
+    color: #1e293b !important;
+    font-weight: 500 !important;
+}
+[data-theme="light"] .feature-icon {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .brand-footer p {
+    color: #64748b !important;
+}
 [data-theme="light"] .form-panel {
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .mobile-title {
+    color: #0f172a !important;
 }
 [data-theme="light"] .form-header h2 {
-    color: #000000 !important;
+    color: #0f172a !important;
 }
 [data-theme="light"] .form-header p {
     color: #334155 !important;
 }
 [data-theme="light"] .input-group label {
-    color: #000000 !important;
+    color: #0f172a !important;
     font-weight: 600 !important;
 }
 [data-theme="light"] .input-wrapper input {
     background: #ffffff !important;
     border: 1.5px solid #cbd5e1 !important;
-    color: #000000 !important;
+    color: #0f172a !important;
 }
 [data-theme="light"] .input-wrapper input::placeholder {
     color: #64748b !important;
@@ -970,9 +995,24 @@ input:focus-visible {
 [data-theme="light"] .input-wrapper input:focus {
     border-color: #6366f1 !important;
     background: #fafbff !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+[data-theme="light"] .input-icon {
+    color: #64748b !important;
+}
+[data-theme="light"] .toggle-password {
+    color: #64748b !important;
 }
 [data-theme="light"] .checkbox-label {
-    color: #000000 !important;
+    color: #334155 !important;
+}
+[data-theme="light"] .custom-checkbox {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+[data-theme="light"] .checkbox-wrapper input:checked + .custom-checkbox {
+    background: #6366f1 !important;
+    border-color: #6366f1 !important;
 }
 [data-theme="light"] .forgot-link {
     color: #4f46e5 !important;
@@ -983,8 +1023,69 @@ input:focus-visible {
 }
 [data-theme="light"] .divider span {
     background: #ffffff !important;
-    color: #475569 !important;
+    color: #64748b !important;
 }
 [data-theme="light"] .divider::before {
     background: #e2e8f0 !important;
+}
+[data-theme="light"] .signup-link p {
+    color: #334155 !important;
+}
+[data-theme="light"] .signup-link a {
+    color: #4f46e5 !important;
+}
+[data-theme="light"] .modal-overlay {
+    background: rgba(15, 23, 42, 0.55) !important;
+}
+[data-theme="light"] .modal-box {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .modal-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+}
+[data-theme="light"] .modal-header h3 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .modal-close {
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+}
+[data-theme="light"] .modal-close:hover {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+}
+[data-theme="light"] .modal-body label {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+}
+[data-theme="light"] .modal-body p {
+    color: #334155 !important;
+}
+[data-theme="light"] .modal-body input,
+[data-theme="light"] .modal-body select,
+[data-theme="light"] .modal-body textarea {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] .modal-body input::placeholder,
+[data-theme="light"] .modal-body textarea::placeholder {
+    color: #64748b !important;
+}
+[data-theme="light"] #forgotEmailDisplay,
+[data-theme="light"] #forgotStep4Success h3 {
+    color: #0f172a !important;
+}
+[data-theme="light"] #forgotBackToStep1Btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+[data-theme="light"] #forgotResendLink {
+    color: #4f46e5 !important;
 }
