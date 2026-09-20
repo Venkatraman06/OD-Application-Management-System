@@ -1665,7 +1665,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        const seenEntries = Object.keys(localStorage)
+            .filter(k => k.startsWith('od_rejection_') || k.startsWith('odReject') || k.startsWith('odHodReject'))
+            .map(k => [k, localStorage.getItem(k)]);
         localStorage.clear();
+        seenEntries.forEach(([k, v]) => localStorage.setItem(k, v));
         window.location.href = 'index.html';
     });
 
@@ -1695,7 +1699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
-            if (window.innerWidth <= 900 && sidebarEl) {
+            if (sidebarEl && sidebarEl.classList.contains('open')) {
                 sidebarEl.classList.remove('open');
                 sidebarOverlayEl?.classList.remove('active');
             }

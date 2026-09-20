@@ -1,9 +1,16 @@
 /* ==========================================================================
    OD Application - Universal Mobile & Responsive Stylesheet (responsive.css)
    Preserves 100% of Desktop/PC UI while providing fluid mobile experience
+   Compatible with all mobile sizes: 320px, 360px, 375px, 390px, 414px, 430px+
    ========================================================================== */
 
-/* ── Base Touch & Viewport Utilities ── */
+/* ── Global Viewport Safety ── */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* ── Tablet & Small Desktop (<= 992px) ── */
 @media (max-width: 992px) {
     /* Admin Grid: 2-column desktop collapses to single column */
     .admin-grid {
@@ -25,10 +32,106 @@
     .dashboard-grid {
         grid-template-columns: 1fr !important;
     }
+
+    /* ── Teacher & HOD Mobile Navigation Drawer ── */
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        width: 280px !important;
+        max-width: 84vw !important;
+        z-index: 1050 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s !important;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .sidebar.open {
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    .sidebar-nav {
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        min-height: 0 !important;
+    }
+
+    .nav-item {
+        width: 100% !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 10px 14px !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent !important;
+        touch-action: manipulation !important;
+    }
+
+    .sidebar-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        backdrop-filter: blur(4px) !important;
+        z-index: 1040 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.25s ease !important;
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    .mobile-topbar {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        margin-bottom: 16px !important;
+    }
+
+    .menu-toggle {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: white !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    [data-theme="light"] .menu-toggle {
+        border-color: #cbd5e1 !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+    }
+
+    /* Content Header on Mobile */
+    .content-header {
+        padding: 14px 16px !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
 }
 
+/* ── Mobile Devices (<= 768px) ── */
 @media (max-width: 768px) {
-    /* ── Global Containers ── */
     body {
         font-size: 14px;
     }
@@ -39,46 +142,63 @@
     .login-container {
         padding: 12px 12px 40px !important;
         max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     /* ── Student Header & Profile ── */
     .student-header {
-        padding: 18px 16px !important;
-        margin-bottom: 18px !important;
+        padding: 16px !important;
+        margin-bottom: 16px !important;
+        border-radius: 14px !important;
     }
 
     .header-content {
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: 12px !important;
+        gap: 10px !important;
+        flex-wrap: wrap !important;
     }
 
     .profile-section {
+        display: flex !important;
+        align-items: center !important;
         gap: 12px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
     }
 
     .avatar {
-        width: 46px !important;
-        height: 46px !important;
-        min-width: 46px !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
         font-size: 1.1rem !important;
     }
 
+    .profile-info {
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+
     .student-name {
-        font-size: 1.15rem !important;
+        font-size: 1.1rem !important;
+        word-break: break-word !important;
+        line-height: 1.25 !important;
     }
 
     .student-dept {
-        font-size: 0.8rem !important;
+        font-size: 0.78rem !important;
+        word-break: break-word !important;
     }
 
     .logout-btn {
-        padding: 7px 12px !important;
-        font-size: 0.8rem !important;
+        padding: 8px 14px !important;
+        font-size: 0.82rem !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
     }
 
-    /* Details Grid: 2x2 on tablets / small phones */
+    /* Details Grid: 2 columns on mobile */
     .details-grid {
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 10px !important;
@@ -87,19 +207,22 @@
 
     .detail-card {
         padding: 10px 12px !important;
+        min-width: 0 !important;
     }
 
     .detail-icon {
-        width: 32px !important;
-        height: 32px !important;
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
     }
 
     .detail-label {
-        font-size: 0.72rem !important;
+        font-size: 0.7rem !important;
     }
 
     .detail-value {
-        font-size: 0.85rem !important;
+        font-size: 0.84rem !important;
+        word-break: break-word !important;
     }
 
     /* ── Scrollable Tab Bars (Student & Admin) ── */
@@ -109,23 +232,24 @@
         display: flex !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
-        scrollbar-width: none !important; /* Firefox */
+        scrollbar-width: none !important;
         white-space: nowrap !important;
         padding-bottom: 6px !important;
         gap: 6px !important;
+        max-width: 100% !important;
     }
 
     .tabs-container::-webkit-scrollbar,
     .admin-tabs::-webkit-scrollbar,
     .sub-tabs-container::-webkit-scrollbar {
-        display: none !important; /* Chrome, Safari */
+        display: none !important;
     }
 
     .tab-btn,
     .admin-tab,
     .sub-tab-btn {
         flex-shrink: 0 !important;
-        padding: 8px 14px !important;
+        padding: 9px 14px !important;
         font-size: 0.82rem !important;
     }
 
@@ -138,12 +262,21 @@
         display: flex !important;
         flex-direction: column !important;
         gap: 12px !important;
+        width: 100% !important;
     }
 
     .input-group,
     .form-group {
         width: 100% !important;
+        max-width: 100% !important;
         margin-bottom: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    .input-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .input-wrapper input,
@@ -154,14 +287,18 @@
     .input-group textarea,
     .admin-form input,
     .admin-form select {
-        font-size: 16px !important; /* Prevent iOS auto-zoom */
+        font-size: 16px !important; /* Prevents auto-zoom on iOS */
         padding: 10px 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     /* Member Add Row in Group OD */
     .member-add-row {
         flex-direction: column !important;
         gap: 8px !important;
+        width: 100% !important;
     }
 
     .add-member-btn {
@@ -174,6 +311,7 @@
     .form-actions,
     .form-actions-row,
     .modal-box-actions {
+        display: flex !important;
         flex-direction: column !important;
         gap: 10px !important;
         width: 100% !important;
@@ -204,31 +342,40 @@
         -webkit-overflow-scrolling: touch !important;
         border-radius: 12px !important;
         padding: 14px 12px !important;
+        max-width: 100% !important;
     }
 
     .students-table,
     .admin-table,
     .history-table {
-        min-width: 580px !important; /* Allow clean horizontal swipe */
+        min-width: 540px !important;
     }
 
     /* ── Status Cards & OD Detail View ── */
-    .od-status-card {
+    .od-status-card,
+    .od-card {
         padding: 14px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    .od-status-card .card-top {
+    .od-status-card .card-top,
+    .od-card-header {
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 8px !important;
     }
 
-    .od-status-card .card-actions {
+    .od-status-card .card-actions,
+    .od-card .card-actions {
+        display: flex !important;
         flex-direction: column !important;
         width: 100% !important;
+        gap: 8px !important;
     }
 
-    .od-status-card .card-actions button {
+    .od-status-card .card-actions button,
+    .od-card .card-actions button {
         width: 100% !important;
         justify-content: center !important;
     }
@@ -237,6 +384,7 @@
     .modal-overlay {
         padding: 12px !important;
         align-items: center !important;
+        justify-content: center !important;
     }
 
     .od-detail-modal,
@@ -244,11 +392,12 @@
     .modal-box,
     .modal-content {
         width: 100% !important;
-        max-width: 95vw !important;
+        max-width: 94vw !important;
         max-height: 88vh !important;
         padding: 16px !important;
         overflow-y: auto !important;
         border-radius: 14px !important;
+        box-sizing: border-box !important;
     }
 
     /* ── Theme Toggle Button (Mobile Positioning) ── */
@@ -262,73 +411,38 @@
         height: 36px !important;
     }
 
-    /* ── Teacher & HOD Mobile Navigation ── */
-    .sidebar {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        bottom: 0 !important;
-        width: 270px !important;
-        max-width: 80vw !important;
-        z-index: 1050 !important;
-        transform: translateX(-100%) !important;
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
-    }
-
-    .sidebar.open {
-        transform: translateX(0) !important;
-    }
-
-    .sidebar-overlay {
-        position: fixed !important;
-        inset: 0 !important;
-        background: rgba(0,0,0,0.55) !important;
-        backdrop-filter: blur(4px) !important;
-        z-index: 1040 !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        transition: opacity 0.25s ease !important;
-    }
-
-    .sidebar-overlay.active {
-        opacity: 1 !important;
-        pointer-events: all !important;
-    }
-
-    .menu-toggle {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 38px !important;
-        height: 38px !important;
-        border-radius: 8px !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
-        background: rgba(255,255,255,0.06) !important;
-        color: white !important;
-        cursor: pointer !important;
-        margin-right: 8px !important;
-    }
-
-    [data-theme="light"] .menu-toggle {
-        border-color: #cbd5e1 !important;
-        background: #ffffff !important;
-        color: #0f172a !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
-    }
-
-    /* Content Header on Mobile */
-    .content-header {
-        padding: 14px 16px !important;
+    /* ── Login Page Responsiveness ── */
+    .form-options {
+        display: flex !important;
         flex-wrap: wrap !important;
-        gap: 10px !important;
+        gap: 8px !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+
+    /* ── Filter / Time Bar ── */
+    .time-filter-bar,
+    .filter-bar,
+    .search-box {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .time-btn,
+    .filter-btn {
+        flex: 1 1 auto !important;
+        text-align: center !important;
+        min-width: 70px !important;
+        padding: 8px 10px !important;
     }
 }
 
+/* ── Small Mobile Phones (<= 480px) ── */
 @media (max-width: 480px) {
-    /* Ultra-compact phone screens */
     .details-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
     }
 
     .brand-title,
@@ -347,5 +461,32 @@
         width: 100% !important;
         font-size: 0.82rem !important;
         padding: 10px 14px !important;
+    }
+}
+
+/* ── Ultra-compact Phones (<= 360px) ── */
+@media (max-width: 360px) {
+    .details-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .header-content {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .logout-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .avatar {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+    }
+
+    .student-name {
+        font-size: 1rem !important;
     }
 }

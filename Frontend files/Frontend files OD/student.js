@@ -115,6 +115,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (title) title.textContent = `${dayName} Selected`;
         if (msg) msg.textContent = `The selected date (${dateStr} - ${dayName}) falls on a non-working day. Do you want to include ${dayName} in your OD application?`;
+        if (confirmBtn) confirmBtn.textContent = `Yes, Include ${dayName}`;
+        if (skipBtn) skipBtn.textContent = `Skip / Clear`;
 
         modal.style.display = 'flex';
 
@@ -203,12 +205,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!inputEl) return true;
         const val = inputEl.value;
         if (!val) {
+            Array.from(window.confirmedNonWorkingDates || []).forEach(k => {
+                if (k.startsWith(`${inputEl.id}_`)) window.confirmedNonWorkingDates.delete(k);
+            });
             clearFieldError(inputEl, errorElId);
             if (onDone) onDone();
             return true;
         }
 
         const dateKey = `${inputEl.id}_${val}`;
+        Array.from(window.confirmedNonWorkingDates || []).forEach(k => {
+            if (k.startsWith(`${inputEl.id}_`) && k !== dateKey) {
+                window.confirmedNonWorkingDates.delete(k);
+            }
+        });
+
         const d = new Date(val + 'T00:00:00');
         const day = isNaN(d.getDay()) ? -1 : d.getDay();
         const isSat = day === 6;
@@ -221,15 +232,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             showSaturdayConfirmModal(val, dayName,
                 () => {
-                    // User confirmed — include this date
+                    // User confirmed — include this specific date only
                     window.confirmedNonWorkingDates.add(dateKey);
                     clearFieldError(inputEl, errorElId);
                     showToast('success', `Included ${dayName} (${val}) in OD request.`);
                     if (onDone) onDone();
                 },
                 () => {
-                    // User chose to skip — clear the field
+                    // User chose to skip — clear the field and remove any confirmed keys
                     inputEl.value = '';
+                    window.confirmedNonWorkingDates.delete(dateKey);
                     clearFieldError(inputEl, errorElId);
                     showToast('info', `Skipped ${dayName} (${val}).`);
                     if (onDone) onDone();
@@ -1534,14 +1546,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '';
 
                 // One-time top-right toast notification for this student's rejection on this OD.
-                // Guarded with localStorage using unique odId + regNo so it fires exactly once per rejection event.
+                // Guarded with persistent storage so it fires exactly once per rejection event.
                 if (iAmRejected) {
+                    const persistentKey = `od_rejection_notified_${odId}_${myRegUpper}`;
                     const alertKey = `odRejectNotice_${odId}_${myRegUpper}`;
                     const fallbackKey = `odRejectNotice_${odId}`;
                     const legacyKey = `odRejectSeen_${odId}_${myRegUpper}`;
                     const legacyFallback = `odRejectSeen_${odId}`;
-                    if (!localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
+                    if (!localStorage.getItem(persistentKey) &&
+                        !localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
                         !localStorage.getItem(legacyKey) && !localStorage.getItem(legacyFallback)) {
+                        localStorage.setItem(persistentKey, '1');
                         localStorage.setItem(alertKey, '1');
                         localStorage.setItem(fallbackKey, '1');
                         localStorage.setItem(legacyKey, '1');
@@ -1550,12 +1565,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } else if (hodStatus === 'Rejected') {
                     // Whole OD (solo or group) rejected at the HOD stage.
+                    const persistentKey = `od_hod_rejection_notified_${odId}_${myRegUpper}`;
                     const alertKey = `odHodRejectNotice_${odId}_${myRegUpper}`;
                     const fallbackKey = `odHodRejectNotice_${odId}`;
                     const legacyKey = `odHodRejectSeen_${odId}_${myRegUpper}`;
                     const legacyFallback = `odHodRejectSeen_${odId}`;
-                    if (!localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
+                    if (!localStorage.getItem(persistentKey) &&
+                        !localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
                         !localStorage.getItem(legacyKey) && !localStorage.getItem(legacyFallback)) {
+                        localStorage.setItem(persistentKey, '1');
                         localStorage.setItem(alertKey, '1');
                         localStorage.setItem(fallbackKey, '1');
                         localStorage.setItem(legacyKey, '1');
@@ -1817,7 +1835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // otherwise clearing localStorage wipes them out and the rejection
         // popup incorrectly fires again the next time this student logs in.
         const seenEntries = Object.keys(localStorage)
-            .filter(k => k.startsWith('odReject') || k.startsWith('odHodReject'))
+            .filter(k => k.startsWith('od_rejection_') || k.startsWith('od_hod_rejection_') || k.startsWith('odReject') || k.startsWith('odHodReject'))
             .map(k => [k, localStorage.getItem(k)]);
 
         localStorage.clear();
