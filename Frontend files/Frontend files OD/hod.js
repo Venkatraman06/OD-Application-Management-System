@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5088';
+const API_BASE = 'https://od-application-backend.onrender.com';
 document.addEventListener('DOMContentLoaded', async () => {
     const hodId = localStorage.getItem('hodId');
     const dept  = localStorage.getItem('userDept');

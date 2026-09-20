@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5088';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 // Register number → student name lookup, used to show real names next to
 // register numbers in the Group Members list (group OD data only ever
