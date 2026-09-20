@@ -10,6 +10,11 @@ namespace OnlineOD.Data
         {
         }
 
+        protected ApplicationDbContext(DbContextOptions options)
+            : base(options)
+        {
+        }
+
         public DbSet<Student> Students { get; set; }
         public DbSet<Staff> Staffs { get; set; }
         public DbSet<Hod> Hods { get; set; }
