@@ -14,17 +14,16 @@ if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    connectionString = builder.Configuration["DATABASE_URL"]
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                    ?? builder.Configuration.GetConnectionString("DefaultConnection")
                     ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+                    ?? builder.Configuration["DATABASE_URL"]
                     ?? "";
-}
 connectionString = connectionString.Trim().Trim('\"', '\'');
 
-var databaseProvider = builder.Configuration["DatabaseProvider"]
+var databaseProvider = Environment.GetEnvironmentVariable("DatabaseProvider")
                     ?? Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
+                    ?? builder.Configuration["DatabaseProvider"]
                     ?? "";
 
 bool isPostgreSql;
@@ -38,17 +37,19 @@ else if (databaseProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase
 }
 else
 {
-    // Automatic fallback detection based on connection string
-    bool isSqlServer = connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
-                    || connectionString.Contains("sqlexpress", StringComparison.OrdinalIgnoreCase)
-                    || connectionString.Contains("Trusted_Connection", StringComparison.OrdinalIgnoreCase);
+    // Automatic fallback: local SQL Server only when LocalDB/SQLExpress/Trusted_Connection is detected
+    bool isLocalDb = connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
+                  || connectionString.Contains("sqlexpress", StringComparison.OrdinalIgnoreCase)
+                  || connectionString.Contains("Trusted_Connection", StringComparison.OrdinalIgnoreCase);
 
     isPostgreSql = connectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase)
                 || connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
                 || connectionString.Contains("neon.tech", StringComparison.OrdinalIgnoreCase)
                 || connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
-                || (!isSqlServer && !string.IsNullOrWhiteSpace(connectionString));
+                || (!isLocalDb && !string.IsNullOrWhiteSpace(connectionString));
 }
+
+Console.WriteLine($"[Startup] Database provider selected: {(isPostgreSql ? "PostgreSQL" : "SQL Server")}");
 
 if (isPostgreSql)
 {
