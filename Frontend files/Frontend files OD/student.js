@@ -1246,6 +1246,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
         reportWindow.addEventListener('load', tryFill);
+        // Also try immediately: when od_report.html is cached by the browser the
+        // 'load' event fires before this addEventListener() call runs, so the
+        // listener is never triggered and the report stays blank on every
+        // subsequent click. tryFill() safely retries if scripts aren't ready yet.
+        tryFill();
     }
 
     // ── Certificate Upload Modal ──
