@@ -81,7 +81,7 @@ namespace OnlineOD.Controllers
                 (s.Department ?? "").Trim().ToLower() == dept &&
                 (string.IsNullOrEmpty(sec)
                     ? string.IsNullOrEmpty(s.Section)
-                    : (s.Section ?? "").Trim().ToLower() == sec));
+                    : NormalizeSection(s.Section) == NormalizeSection(sec)));
 
             // Fall back to any staff in the department if no exact section match
             match ??= allStaff.FirstOrDefault(s => (s.Department ?? "").Trim().ToLower() == dept);
@@ -251,6 +251,17 @@ namespace OnlineOD.Controllers
                 return false;
             var today = DateTime.Today;
             return today >= from.Date;
+        }
+
+        // Helper to normalize section strings ("Section A", "Class A", "Sec A", "A" -> "a")
+        private static string NormalizeSection(string? sec)
+        {
+            if (string.IsNullOrWhiteSpace(sec)) return "";
+            var s = sec.Trim().ToLower();
+            if (s.StartsWith("section ")) s = s.Substring(8).Trim();
+            else if (s.StartsWith("class ")) s = s.Substring(6).Trim();
+            else if (s.StartsWith("sec ")) s = s.Substring(4).Trim();
+            return s;
         }
     }
 }

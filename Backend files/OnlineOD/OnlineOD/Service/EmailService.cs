@@ -83,7 +83,16 @@ namespace OnlineOD.Services
             message.From.Add(new MailboxAddress(senderName, senderEmail));
             message.To.Add(new MailboxAddress(toName, toEmail));
             message.Subject = subject;
-            message.Body = new TextPart("html") { Text = htmlBody };
+            message.Date = DateTimeOffset.UtcNow;
+            message.MessageId = MimeKit.Utils.MimeUtils.GenerateMessageId();
+            message.Headers.Add(HeaderId.XMailer, "OD-Application-Management-System");
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = htmlBody,
+                TextBody = System.Text.RegularExpressions.Regex.Replace(htmlBody, "<[^>]*>", " ").Trim()
+            };
+            message.Body = builder.ToMessageBody();
 
             byte[] rawBytes;
             using (var memoryStream = new MemoryStream())
@@ -272,7 +281,7 @@ namespace OnlineOD.Services
 
             var portalBaseUrl = Environment.GetEnvironmentVariable("EmailSettings__PortalBaseUrl")
                              ?? _config["EmailSettings:PortalBaseUrl"]
-                             ?? "https://od-application-management-system-q7.vercel.app";
+                             ?? "https://od-application-management-system.vercel.app";
 
             var approveToken = GenerateToken(odId, "Approved");
             var rejectToken = GenerateToken(odId, "Rejected");

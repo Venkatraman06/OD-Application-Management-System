@@ -88,26 +88,51 @@ namespace OnlineOD.Service
 
         public async Task<List<string>> GetInvolvedSectionsAsync(OdApply od)
         {
-            if (!od.IsGroupOd)
+            var sections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 1. If OD entity has Section explicitly set
+            if (!string.IsNullOrWhiteSpace(od.Section))
             {
-                return string.IsNullOrWhiteSpace(od.Section)
-                    ? new List<string>()
-                    : new List<string> { od.Section.Trim() };
+                sections.Add(od.Section.Trim());
             }
 
-            var regs = ParseList(od.RegisterNumbers).Select(r => r.ToLower()).ToHashSet();
-            if (regs.Count == 0) return new List<string>();
+            // 2. Also lookup applicant student's section from database
+            if (od.StudentId > 0)
+            {
+                var applicant = await _context.Students.FindAsync(od.StudentId);
+                if (applicant != null && !string.IsNullOrWhiteSpace(applicant.Section))
+                {
+                    sections.Add(applicant.Section.Trim());
+                }
+            }
 
-            var sections = await _context.Students
-                .Where(s => regs.Contains(s.RegisterNumber.ToLower()))
-                .Select(s => s.Section)
-                .ToListAsync();
+            // 3. For group ODs, include applicant's register number and all member register numbers
+            if (od.IsGroupOd)
+            {
+                var regs = ParseList(od.RegisterNumbers).Select(r => r.ToLower()).ToHashSet();
+                if (!string.IsNullOrWhiteSpace(od.registerNumber))
+                {
+                    regs.Add(od.registerNumber.Trim().ToLower());
+                }
 
-            return sections
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s!.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+                if (regs.Count > 0)
+                {
+                    var memberSections = await _context.Students
+                        .Where(s => regs.Contains(s.RegisterNumber.ToLower()))
+                        .Select(s => s.Section)
+                        .ToListAsync();
+
+                    foreach (var sec in memberSections)
+                    {
+                        if (!string.IsNullOrWhiteSpace(sec))
+                        {
+                            sections.Add(sec.Trim());
+                        }
+                    }
+                }
+            }
+
+            return sections.ToList();
         }
 
         // Analytics report — every uploaded certificate in this department,
@@ -281,10 +306,10 @@ namespace OnlineOD.Service
             var od = new OdApply
             {
                 StudentId = dto.StudentId,
-                StudentName = dto.StudentName,
-                registerNumber = dto.registerNumber,
-                department = dto.department,
-                Section = dto.Section,
+                StudentName = !string.IsNullOrWhiteSpace(applicant?.Name) ? applicant.Name : dto.StudentName,
+                registerNumber = !string.IsNullOrWhiteSpace(applicant?.RegisterNumber) ? applicant.RegisterNumber : dto.registerNumber,
+                department = !string.IsNullOrWhiteSpace(applicant?.Department) ? applicant.Department : dto.department,
+                Section = !string.IsNullOrWhiteSpace(applicant?.Section) ? applicant.Section : dto.Section,
                 FromDate = dto.FromDate,
                 ToDate = dto.ToDate,
                 StartTime = dto.StartTime,

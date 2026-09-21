@@ -34,8 +34,9 @@ namespace OnlineOD.Controllers
         {
             // Resolve the frontend portal URL once — read from Render env var
             // EmailSettings__PortalBaseUrl; falls back to the production Vercel URL.
-            var portalUrl = _config["EmailSettings:PortalBaseUrl"]
-                         ?? "https://od-application-management-system-q7.vercel.app";
+            var portalUrl = Environment.GetEnvironmentVariable("EmailSettings__PortalBaseUrl")
+                         ?? _config["EmailSettings:PortalBaseUrl"]
+                         ?? "https://od-application-management-system.vercel.app";
 
             // ── Validate token ─────────────────────────────────────────────
             if (!_emailService.ValidateToken(odId, action, token))
