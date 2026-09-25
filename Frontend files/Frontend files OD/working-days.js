@@ -130,6 +130,7 @@ const AnalogClockPicker = (() => {
                 </div>
                 <div class="clock-face-container">
                     <div class="clock-face" id="clockFace">
+                        <div class="clock-center-dot"></div>
                         <div class="clock-hand" id="clockHand">
                             <div class="clock-hand-pin"></div>
                         </div>
@@ -149,6 +150,7 @@ const AnalogClockPicker = (() => {
             if (activeInput) {
                 activeInput.value = '';
                 activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+                activeInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
             close();
         });
@@ -164,9 +166,17 @@ const AnalogClockPicker = (() => {
 
         const face = document.getElementById('clockFace');
         if (face) {
-            face.addEventListener('pointerdown', handleFaceInteraction);
+            face.addEventListener('pointerdown', (e) => {
+                try { face.setPointerCapture(e.pointerId); } catch (_) {}
+                handleFaceInteraction(e);
+            });
             face.addEventListener('pointermove', (e) => {
-                if (e.buttons === 1) handleFaceInteraction(e);
+                if (e.buttons === 1 || e.pointerType === 'touch') {
+                    handleFaceInteraction(e);
+                }
+            });
+            face.addEventListener('pointerup', (e) => {
+                try { face.releasePointerCapture(e.pointerId); } catch (_) {}
             });
         }
     }

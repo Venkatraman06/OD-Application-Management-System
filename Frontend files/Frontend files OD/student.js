@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5088';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 // Register number → student name lookup, used to show real names next to
 // register numbers in the Group Members list (group OD data only ever
@@ -198,6 +198,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (title) title.textContent = `${dayName} Selected`;
         if (msg) msg.textContent = `The selected date (${dateStr} - ${dayName}) falls on a non-working day. Do you want to include ${dayName} in your OD application?`;
+        if (confirmBtn) confirmBtn.textContent = `Yes, Include ${dayName}`;
+        if (skipBtn) skipBtn.textContent = `Skip / Clear`;
 
         modal.style.display = 'flex';
 
@@ -222,12 +224,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function formatLocalDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
     /** true if the given YYYY-MM-DD date string is Saturday, Sunday, or a college non-working day */
     function isWeekend(dateStr) {
         if (!dateStr) return false;
         try {
-            const d = new Date(dateStr + 'T00:00:00');
-            const day = d.getDay();
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            const day = dateObj.getDay();
             // 6 = Saturday, 0 = Sunday
             if (day === 6 || day === 0) return true;
             if (workingDaysCalendar && typeof workingDaysCalendar.isWorkingDay === 'function') {
@@ -244,12 +254,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!fromStr || !toStr || fromStr > toStr) return 0;
         let count = 0;
         try {
-            const start = new Date(fromStr + 'T00:00:00');
-            const end = new Date(toStr + 'T00:00:00');
-            const cur = new Date(start);
+            const [fy, fm, fd] = fromStr.split('-').map(Number);
+            const [ty, tm, td] = toStr.split('-').map(Number);
+            const cur = new Date(fy, fm - 1, fd);
+            const end = new Date(ty, tm - 1, td);
+
             while (cur <= end) {
                 const day = cur.getDay(); // 0 = Sunday, 6 = Saturday
-                const curStr = cur.toISOString().split('T')[0];
+                const curStr = formatLocalDate(cur);
                 const isConfirmed = Array.from(window.confirmedNonWorkingDates || []).some(k => k.endsWith(`_${curStr}`));
 
                 if (day !== 0 && day !== 6) {
@@ -281,38 +293,59 @@ document.addEventListener('DOMContentLoaded', async () => {
      * Guards a date input against non-working-day selection.
      * If the picked date is a holiday or Saturday/weekend, shows an interactive
      * alert modal asking if the user wants to include it.
+     * If the picked date is Sunday, it is strictly invalid and rejected immediately.
      */
     function guardWeekendInput(inputEl, errorElId, label, onDone) {
         if (!inputEl) return true;
         const val = inputEl.value;
+        const isFrom = inputEl.id.toLowerCase().includes('from');
+
         if (!val) {
+            Array.from(window.confirmedNonWorkingDates || []).forEach(k => {
+                if (k.startsWith(`${inputEl.id}_`)) window.confirmedNonWorkingDates.delete(k);
+            });
             clearFieldError(inputEl, errorElId);
             if (onDone) onDone();
             return true;
         }
 
         const dateKey = `${inputEl.id}_${val}`;
+        Array.from(window.confirmedNonWorkingDates || []).forEach(k => {
+            if (k.startsWith(`${inputEl.id}_`) && k !== dateKey) {
+                window.confirmedNonWorkingDates.delete(k);
+            }
+        });
+
         const d = new Date(val + 'T00:00:00');
         const day = isNaN(d.getDay()) ? -1 : d.getDay();
         const isSat = day === 6;
         const isSun = day === 0;
+
+        if (isSun) {
+            const sundayMsg = isFrom ? 'Sunday cannot be chosen as from date' : 'Sunday cannot be chosen as to date';
+            showFieldError(inputEl, errorElId, sundayMsg);
+            if (onDone) onDone();
+            return false;
+        }
+
         const isNonWorking = isWeekend(val);
 
-        if ((isSat || isSun || isNonWorking) && !window.confirmedNonWorkingDates.has(dateKey)) {
+        if ((isSat || isNonWorking) && !window.confirmedNonWorkingDates.has(dateKey)) {
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = isSat ? 'Saturday' : (isSun ? 'Sunday' : (day >= 0 ? dayNames[day] : 'Non-working Day'));
+            const dayName = isSat ? 'Saturday' : (day >= 0 ? dayNames[day] : 'Non-working Day');
 
             showSaturdayConfirmModal(val, dayName,
                 () => {
-                    // User confirmed — include this date
+                    // User confirmed — include this specific date only
                     window.confirmedNonWorkingDates.add(dateKey);
                     clearFieldError(inputEl, errorElId);
                     showToast('success', `Included ${dayName} (${val}) in OD request.`);
                     if (onDone) onDone();
                 },
                 () => {
-                    // User chose to skip — clear the field
+                    // User chose to skip — clear the field and remove any confirmed keys
                     inputEl.value = '';
+                    window.confirmedNonWorkingDates.delete(dateKey);
                     clearFieldError(inputEl, errorElId);
                     showToast('info', `Skipped ${dayName} (${val}).`);
                     if (onDone) onDone();
@@ -377,8 +410,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function calcDays() {
-        if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value <= toEl.value) {
-            const d = countWorkingDays(fromEl.value, toEl.value);
+        if (!fromEl || !toEl) return;
+        const fromVal = fromEl.value;
+        const toVal = toEl.value;
+
+        // Check Sunday on both
+        if (fromVal) {
+            const dFrom = new Date(fromVal + 'T00:00:00');
+            if (dFrom.getDay() === 0) {
+                showFieldError(fromEl, 'fromDate-error', 'Sunday cannot be chosen as from date');
+                if (daysEl) daysEl.value = '';
+                return;
+            }
+        }
+        if (toVal) {
+            const dTo = new Date(toVal + 'T00:00:00');
+            if (dTo.getDay() === 0) {
+                showFieldError(toEl, 'toDate-error', 'Sunday cannot be chosen as to date');
+                if (daysEl) daysEl.value = '';
+                return;
+            }
+        }
+
+        if (fromVal && toVal) {
+            if (toVal < fromVal) {
+                showFieldError(toEl, 'toDate-error', 'To date cannot be before from date');
+                if (daysEl) daysEl.value = '';
+                return;
+            } else {
+                const toErr = document.getElementById('toDate-error');
+                if (toErr && toErr.textContent === 'To date cannot be before from date') {
+                    clearFieldError(toEl, 'toDate-error');
+                }
+            }
+
+            const d = countWorkingDays(fromVal, toVal);
             if (daysEl) {
                 daysEl.value = buildDaysText(d, startTimeEl?.value, endTimeEl?.value);
             }
@@ -420,8 +486,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     const grpEndTimeEl   = document.getElementById('groupEndTime');
 
     function calcGroupDays() {
-        if (groupFromEl && groupToEl && groupFromEl.value && groupToEl.value && groupFromEl.value <= groupToEl.value) {
-            const d = countWorkingDays(groupFromEl.value, groupToEl.value);
+        if (!groupFromEl || !groupToEl) return;
+        const fromVal = groupFromEl.value;
+        const toVal = groupToEl.value;
+
+        // Check Sunday on both
+        if (fromVal) {
+            const dFrom = new Date(fromVal + 'T00:00:00');
+            if (dFrom.getDay() === 0) {
+                showFieldError(groupFromEl, 'groupFromDate-error', 'Sunday cannot be chosen as from date');
+                if (groupDaysEl) groupDaysEl.value = '';
+                return;
+            }
+        }
+        if (toVal) {
+            const dTo = new Date(toVal + 'T00:00:00');
+            if (dTo.getDay() === 0) {
+                showFieldError(groupToEl, 'groupToDate-error', 'Sunday cannot be chosen as to date');
+                if (groupDaysEl) groupDaysEl.value = '';
+                return;
+            }
+        }
+
+        if (fromVal && toVal) {
+            if (toVal < fromVal) {
+                showFieldError(groupToEl, 'groupToDate-error', 'To date cannot be before from date');
+                if (groupDaysEl) groupDaysEl.value = '';
+                return;
+            } else {
+                const toErr = document.getElementById('groupToDate-error');
+                if (toErr && toErr.textContent === 'To date cannot be before from date') {
+                    clearFieldError(groupToEl, 'groupToDate-error');
+                }
+            }
+
+            const d = countWorkingDays(fromVal, toVal);
             if (groupDaysEl) {
                 groupDaysEl.value = buildDaysText(d, grpStartTimeEl?.value, grpEndTimeEl?.value);
             }
@@ -577,8 +676,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!fromDate || !toDate || !event || !college || !reason || !competitionType) {
             showToast('error', 'All fields required'); return;
         }
+        const dFrom = new Date(fromDate + 'T00:00:00');
+        const dTo = new Date(toDate + 'T00:00:00');
+        if (dFrom.getDay() === 0) {
+            showFieldError(fromEl, 'fromDate-error', 'Sunday cannot be chosen as from date');
+            showToast('error', 'Sunday cannot be chosen as from date');
+            return;
+        }
+        if (dTo.getDay() === 0) {
+            showFieldError(toEl, 'toDate-error', 'Sunday cannot be chosen as to date');
+            showToast('error', 'Sunday cannot be chosen as to date');
+            return;
+        }
         if (fromDate > toDate) {
-            showToast('error', 'To date must be after from date'); return;
+            showFieldError(toEl, 'toDate-error', 'To date cannot be before from date');
+            showToast('error', 'To date cannot be before from date');
+            return;
         }
         // Final guard — check weekends at submit time
         if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`fromDate_${fromDate}`)) {
@@ -688,8 +801,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!regNumbersRaw || window.groupMemberList.length < 2) {
             showToast('error', 'Add at least 2 group members'); return;
         }
+        const grpDFrom = new Date(fromDate + 'T00:00:00');
+        const grpDTo = new Date(toDate + 'T00:00:00');
+        if (grpDFrom.getDay() === 0) {
+            showFieldError(groupFromEl, 'groupFromDate-error', 'Sunday cannot be chosen as from date');
+            showToast('error', 'Sunday cannot be chosen as from date');
+            return;
+        }
+        if (grpDTo.getDay() === 0) {
+            showFieldError(groupToEl, 'groupToDate-error', 'Sunday cannot be chosen as to date');
+            showToast('error', 'Sunday cannot be chosen as to date');
+            return;
+        }
         if (fromDate > toDate) {
-            showToast('error', 'To date must be after from date'); return;
+            showFieldError(groupToEl, 'groupToDate-error', 'To date cannot be before from date');
+            showToast('error', 'To date cannot be before from date');
+            return;
         }
         // Final guard — check weekends at submit time
         if (isWeekend(fromDate) && !window.confirmedNonWorkingDates.has(`groupFromDate_${fromDate}`)) {
@@ -1376,9 +1503,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Print Report: opens od_report.html and fills it with this OD's data ──
     function printOdReport(od) {
-        const reportWindow = window.open('od_report.html', '_blank');
-        if (!reportWindow) {
-            showToast('error', 'Please allow pop-ups to print the OD report');
+        if (!od) {
+            showToast('error', 'No OD data available to print');
             return;
         }
         // The OD's own Section field reflects whichever student CREATED it —
@@ -1387,16 +1513,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         // still see THEIR OWN class staff's name on their report, not the
         // creator's. Override with the currently logged-in viewer's own
         // section before handing the data to the report page.
-        const odForReport = { ...od, Section: localStorage.getItem('userSection') || od.Section || od.section || '' };
+        const odId = od.OdId ?? od.odId ?? '';
+        const actualSection = od.Section || od.section || localStorage.getItem('userSection') || '';
+        const odForReport = { ...od, Section: actualSection, section: actualSection };
+
+        // Save to storage so od_report.html can self-load reliably regardless of cross-window restrictions
+        try {
+            sessionStorage.setItem('currentOdReport', JSON.stringify(odForReport));
+            localStorage.setItem('currentOdReport', JSON.stringify(odForReport));
+        } catch (e) {
+            console.warn('Could not save OD report to storage:', e);
+        }
+
+        const reportUrl = odId ? `od_report.html?odId=${encodeURIComponent(odId)}` : 'od_report.html';
+        const reportWindow = window.open(reportUrl, '_blank');
+        if (!reportWindow) {
+            showToast('error', 'Please allow pop-ups to print the OD report');
+            return;
+        }
         const tryFill = () => {
-            if (typeof reportWindow.fillOdReport === 'function') {
-                reportWindow.fillOdReport(odForReport);
-            } else {
-                // Report page may still be parsing scripts — retry briefly
-                setTimeout(tryFill, 100);
+            try {
+                if (typeof reportWindow.fillOdReport === 'function') {
+                    reportWindow.fillOdReport(odForReport);
+                } else {
+                    setTimeout(tryFill, 100);
+                }
+            } catch (err) {
+                // Cross-window access blocked; od_report.html self-loads from storage/URL
             }
         };
         reportWindow.addEventListener('load', tryFill);
+        tryFill();
     }
 
     // ── Certificate Upload Modal ──
@@ -1665,14 +1812,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '';
 
                 // One-time top-right toast notification for this student's rejection on this OD.
-                // Guarded with localStorage using unique odId + regNo so it fires exactly once per rejection event.
+                // Guarded with persistent storage so it fires exactly once per rejection event.
                 if (iAmRejected) {
+                    const persistentKey = `od_rejection_notified_${odId}_${myRegUpper}`;
                     const alertKey = `odRejectNotice_${odId}_${myRegUpper}`;
                     const fallbackKey = `odRejectNotice_${odId}`;
                     const legacyKey = `odRejectSeen_${odId}_${myRegUpper}`;
                     const legacyFallback = `odRejectSeen_${odId}`;
-                    if (!localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
+                    if (!localStorage.getItem(persistentKey) &&
+                        !localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
                         !localStorage.getItem(legacyKey) && !localStorage.getItem(legacyFallback)) {
+                        localStorage.setItem(persistentKey, '1');
                         localStorage.setItem(alertKey, '1');
                         localStorage.setItem(fallbackKey, '1');
                         localStorage.setItem(legacyKey, '1');
@@ -1681,12 +1831,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } else if (hodStatus === 'Rejected') {
                     // Whole OD (solo or group) rejected at the HOD stage.
+                    const persistentKey = `od_hod_rejection_notified_${odId}_${myRegUpper}`;
                     const alertKey = `odHodRejectNotice_${odId}_${myRegUpper}`;
                     const fallbackKey = `odHodRejectNotice_${odId}`;
                     const legacyKey = `odHodRejectSeen_${odId}_${myRegUpper}`;
                     const legacyFallback = `odHodRejectSeen_${odId}`;
-                    if (!localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
+                    if (!localStorage.getItem(persistentKey) &&
+                        !localStorage.getItem(alertKey) && !localStorage.getItem(fallbackKey) &&
                         !localStorage.getItem(legacyKey) && !localStorage.getItem(legacyFallback)) {
+                        localStorage.setItem(persistentKey, '1');
                         localStorage.setItem(alertKey, '1');
                         localStorage.setItem(fallbackKey, '1');
                         localStorage.setItem(legacyKey, '1');
@@ -1949,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // otherwise clearing localStorage wipes them out and the rejection
         // popup incorrectly fires again the next time this student logs in.
         const seenEntries = Object.keys(localStorage)
-            .filter(k => k.startsWith('odReject') || k.startsWith('odHodReject'))
+            .filter(k => k.startsWith('od_rejection_') || k.startsWith('od_hod_rejection_') || k.startsWith('odReject') || k.startsWith('odHodReject'))
             .map(k => [k, localStorage.getItem(k)]);
 
         localStorage.clear();
@@ -1963,7 +2116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof AnalogClockPicker !== 'undefined') {
         AnalogClockPicker.attach(document.getElementById('startTime'));
         AnalogClockPicker.attach(document.getElementById('endTime'));
-        AnalogClockPicker.attach(document.getElementById('grpStartTime'));
-        AnalogClockPicker.attach(document.getElementById('grpEndTime'));
+        AnalogClockPicker.attach(document.getElementById('groupStartTime'));
+        AnalogClockPicker.attach(document.getElementById('groupEndTime'));
     }
 });

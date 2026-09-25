@@ -1,14 +1,24 @@
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
+using Google.Apis.Gmail.v1;
+using Google.Apis.Gmail.v1.Data;
+using Google.Apis.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace OnlineOD.Services
 {
     public class EmailService
     {
         private readonly IConfiguration _config;
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
 
         public EmailService(IConfiguration config)
         {
@@ -31,9 +41,181 @@ namespace OnlineOD.Services
         // ── Shared send helper ────────────────────────────────────────────────
         private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
         {
-            var senderEmail = _config["EmailSettings:SenderEmail"];
-            var senderPassword = _config["EmailSettings:SenderPassword"];
-            var senderName = _config["EmailSettings:SenderName"];
+            var gmailClientId = Environment.GetEnvironmentVariable("Gmail__ClientId")
+                             ?? _config["Gmail:ClientId"];
+            var gmailClientSecret = Environment.GetEnvironmentVariable("Gmail__ClientSecret")
+                                 ?? _config["Gmail:ClientSecret"];
+            var gmailRefreshToken = Environment.GetEnvironmentVariable("Gmail__RefreshToken")
+                                 ?? _config["Gmail:RefreshToken"];
+            var senderEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                           ?? _config["Gmail:SenderEmail"];
+
+            var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
+                          ?? _config["EmailSettings:SenderName"]
+                          ?? "OD Application";
+
+            var missingConfigs = new List<string>();
+            if (string.IsNullOrWhiteSpace(gmailClientId)) missingConfigs.Add("Gmail__ClientId");
+            if (string.IsNullOrWhiteSpace(gmailClientSecret)) missingConfigs.Add("Gmail__ClientSecret");
+            if (string.IsNullOrWhiteSpace(gmailRefreshToken)) missingConfigs.Add("Gmail__RefreshToken");
+            if (string.IsNullOrWhiteSpace(senderEmail)) missingConfigs.Add("Gmail__SenderEmail");
+
+            if (missingConfigs.Count > 0)
+            {
+                var errorMsg = $"[EmailService] Gmail API is the required email provider, but the following configuration is missing: {string.Join(", ", missingConfigs)}";
+                Console.WriteLine(errorMsg);
+                throw new InvalidOperationException(errorMsg);
+            }
+
+            await SendViaGmailApiAsync(gmailClientId!.Trim(), gmailClientSecret!.Trim(), gmailRefreshToken!.Trim(),
+                                       senderName, senderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+        }
+
+        private async Task SendViaGmailApiAsync(
+            string clientId, string clientSecret, string refreshToken,
+            string senderName, string senderEmail,
+            string toEmail, string toName,
+            string subject, string htmlBody)
+        {
+            Console.WriteLine($"[EmailService] [Gmail API Step 1/3] Preparing MIME message for {toEmail}...");
+
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(senderName, senderEmail));
+            message.To.Add(new MailboxAddress(toName, toEmail));
+            message.Subject = subject;
+            message.Date = DateTimeOffset.UtcNow;
+            message.MessageId = MimeKit.Utils.MimeUtils.GenerateMessageId();
+            message.Headers.Add(HeaderId.XMailer, "OD-Application-Management-System");
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = htmlBody,
+                TextBody = System.Text.RegularExpressions.Regex.Replace(htmlBody, "<[^>]*>", " ").Trim()
+            };
+            message.Body = builder.ToMessageBody();
+
+            byte[] rawBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                await message.WriteToAsync(memoryStream);
+                rawBytes = memoryStream.ToArray();
+            }
+
+            // URL-safe base64 encoding (standard for Gmail API raw messages)
+            var rawBase64 = Convert.ToBase64String(rawBytes)
+                .Replace('+', '-')
+                .Replace('/', '_')
+                .Replace("=", "");
+
+            Console.WriteLine($"[EmailService] [Gmail API Step 2/3] Initializing Google OAuth2 credential & GmailService...");
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets
+                {
+                    ClientId = clientId,
+                    ClientSecret = clientSecret
+                },
+                Scopes = new[] { GmailService.Scope.GmailSend }
+            });
+
+            var credential = new UserCredential(flow, "user", new TokenResponse
+            {
+                RefreshToken = refreshToken
+            });
+
+            using var gmailService = new GmailService(new BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = "OD Application Management System"
+            });
+
+            var gmailMessage = new Message
+            {
+                Raw = rawBase64
+            };
+
+            Console.WriteLine($"[EmailService] [Gmail API Step 3/3] Sending email via Gmail API HTTPS endpoint to {toEmail}...");
+            var sentMessage = await gmailService.Users.Messages.Send(gmailMessage, "me").ExecuteAsync();
+            Console.WriteLine($"[EmailService] [Gmail API] Email sent successfully to {toEmail}. Gmail Message ID: {sentMessage.Id}");
+        }
+
+        private async Task SendViaResendAsync(string apiKey, string senderName, string senderEmail, string toEmail, string subject, string htmlBody)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var fromAddress = !string.IsNullOrWhiteSpace(senderName)
+                ? $"{senderName} <{senderEmail}>"
+                : senderEmail;
+
+            var payload = new
+            {
+                from = fromAddress,
+                to = new[] { toEmail },
+                subject = subject,
+                html = htmlBody
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[EmailService] Resend response: HTTP {(int)response.StatusCode} OK. Email sent successfully to {toEmail}.");
+            }
+            else
+            {
+                Console.WriteLine($"[EmailService] Resend response: HTTP {(int)response.StatusCode} ({response.ReasonPhrase})");
+                Console.WriteLine($"[EmailService] Resend error details: {responseBody}");
+                throw new InvalidOperationException($"[Resend API Error] HTTP {(int)response.StatusCode}: {responseBody}");
+            }
+        }
+
+        private async Task SendViaSmtpAsync(string senderName, string senderEmail, string toEmail, string toName, string subject, string htmlBody)
+        {
+            var senderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
+                              ?? _config["EmailSettings:SenderPassword"];
+
+            var host = Environment.GetEnvironmentVariable("EmailSettings__SmtpHost")
+                    ?? _config["EmailSettings:SmtpHost"]
+                    ?? "smtp.gmail.com";
+
+            var portStr = Environment.GetEnvironmentVariable("EmailSettings__SmtpPort")
+                       ?? _config["EmailSettings:SmtpPort"];
+            int port = int.TryParse(portStr, out var parsedPort) ? parsedPort : 587;
+
+            var securityStr = Environment.GetEnvironmentVariable("EmailSettings__SecureSocketOptions")
+                           ?? Environment.GetEnvironmentVariable("EmailSettings__SmtpSecurity")
+                           ?? _config["EmailSettings:SecureSocketOptions"]
+                           ?? _config["EmailSettings:SmtpSecurity"];
+
+            SecureSocketOptions security;
+            if (Enum.TryParse<SecureSocketOptions>(securityStr, true, out var parsedSecurity))
+            {
+                security = parsedSecurity;
+            }
+            else if (port == 465)
+            {
+                security = SecureSocketOptions.SslOnConnect;
+            }
+            else if (port == 587)
+            {
+                security = SecureSocketOptions.StartTls;
+            }
+            else
+            {
+                security = SecureSocketOptions.Auto;
+            }
+
+            var timeoutStr = Environment.GetEnvironmentVariable("EmailSettings__TimeoutSeconds")
+                          ?? _config["EmailSettings:TimeoutSeconds"];
+            int timeoutSeconds = int.TryParse(timeoutStr, out var parsedTimeout) ? parsedTimeout : 30;
+
+            Console.WriteLine($"[EmailService] SMTP configuration selected -> Host: {host}, Port: {port}, Security: {security}, Timeout: {timeoutSeconds}s");
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(senderName, senderEmail));
@@ -42,10 +224,49 @@ namespace OnlineOD.Services
             message.Body = new TextPart("html") { Text = htmlBody };
 
             using var smtp = new SmtpClient();
-            await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(senderEmail, senderPassword);
-            await smtp.SendAsync(message);
-            await smtp.DisconnectAsync(true);
+            smtp.Timeout = timeoutSeconds * 1000;
+            smtp.CheckCertificateRevocation = false;
+
+            try
+            {
+                Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connecting to {host}:{port} using {security} (timeout: {timeoutSeconds}s)...");
+                await smtp.ConnectAsync(host, port, security);
+                Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connected successfully to {host}:{port}.");
+
+                if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(senderPassword))
+                {
+                    Console.WriteLine($"[EmailService] [SMTP Step 2/3] Authenticating as {senderEmail}...");
+                    await smtp.AuthenticateAsync(senderEmail, senderPassword);
+                    Console.WriteLine($"[EmailService] [SMTP Step 2/3] Authenticated successfully as {senderEmail}.");
+                }
+                else
+                {
+                    Console.WriteLine("[EmailService] [SMTP Step 2/3] Authentication skipped (empty sender credentials).");
+                }
+
+                Console.WriteLine($"[EmailService] [SMTP Step 3/3] Sending email to {toEmail} (Subject: {subject})...");
+                await smtp.SendAsync(message);
+                Console.WriteLine($"[EmailService] [SMTP Step 3/3] Email sent successfully to {toEmail} via SMTP.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EmailService] SMTP send failure -> Type: {ex.GetType().FullName}, Message: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (smtp.IsConnected)
+                {
+                    try
+                    {
+                        await smtp.DisconnectAsync(true);
+                    }
+                    catch (Exception discEx)
+                    {
+                        Console.WriteLine($"[EmailService] SMTP disconnect notice: {discEx.Message}");
+                    }
+                }
+            }
         }
 
         // ── Approve/Reject button block ───────────────────────────────────────
@@ -54,13 +275,20 @@ namespace OnlineOD.Services
         // only that staff's own section's members on a multi-section group OD.
         private string ActionButtons(int odId, string role, int staffId = 0)
         {
-            var baseUrl = _config["EmailSettings:AppBaseUrl"] ?? "http://localhost:5088";
+            var baseUrl = Environment.GetEnvironmentVariable("EmailSettings__AppBaseUrl")
+                       ?? _config["EmailSettings:AppBaseUrl"]
+                       ?? "https://od-application-backend.onrender.com";
+
+            var portalBaseUrl = Environment.GetEnvironmentVariable("EmailSettings__PortalBaseUrl")
+                             ?? _config["EmailSettings:PortalBaseUrl"]
+                             ?? "https://od-application-management-system.vercel.app";
+
             var approveToken = GenerateToken(odId, "Approved");
             var rejectToken = GenerateToken(odId, "Rejected");
             var staffIdParam = role == "faculty" ? $"&staffId={staffId}" : "";
-            var approveUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
-            var rejectUrl = $"{baseUrl}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
-            var portalUrl = $"{baseUrl}/index.html";
+            var approveUrl = $"{baseUrl.TrimEnd('/')}/api/EmailApprove?odId={odId}&action=Approved&role={role}{staffIdParam}&token={approveToken}";
+            var rejectUrl = $"{baseUrl.TrimEnd('/')}/api/EmailApprove?odId={odId}&action=Rejected&role={role}{staffIdParam}&token={rejectToken}";
+            var portalUrl = portalBaseUrl.TrimEnd('/');
 
             return $@"
             <div style='text-align:center;margin:24px 0'>

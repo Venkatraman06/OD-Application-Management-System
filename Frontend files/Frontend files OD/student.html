@@ -195,7 +195,7 @@
                                             <polyline points="12 6 12 12 15 15"/>
                                         </svg>
                                     </div>
-                                    <input type="time" id="startTime" name="startTime">
+                                    <input type="text" id="startTime" name="startTime" placeholder="Select start time" readonly style="cursor:pointer">
                                 </div>
                                 <span class="error-message" id="startTime-error"></span>
                             </div>
@@ -208,7 +208,7 @@
                                             <polyline points="12 6 12 12 15 15"/>
                                         </svg>
                                     </div>
-                                    <input type="time" id="endTime" name="endTime">
+                                    <input type="text" id="endTime" name="endTime" placeholder="Select end time" readonly style="cursor:pointer">
                                 </div>
                                 <span class="error-message" id="endTime-error"></span>
                             </div>
@@ -383,7 +383,7 @@
                                             <polyline points="12 6 12 12 15 15"/>
                                         </svg>
                                     </div>
-                                    <input type="time" id="groupStartTime" name="groupStartTime">
+                                    <input type="text" id="groupStartTime" name="groupStartTime" placeholder="Select start time" readonly style="cursor:pointer">
                                 </div>
                                 <span class="error-message" id="groupStartTime-error"></span>
                             </div>
@@ -396,7 +396,7 @@
                                             <polyline points="12 6 12 12 15 15"/>
                                         </svg>
                                     </div>
-                                    <input type="time" id="groupEndTime" name="groupEndTime">
+                                    <input type="text" id="groupEndTime" name="groupEndTime" placeholder="Select end time" readonly style="cursor:pointer">
                                 </div>
                                 <span class="error-message" id="groupEndTime-error"></span>
                             </div>
@@ -847,7 +847,7 @@
         </div>
     </div>
 
-    <!-- Weekend / Saturday Confirmation Dialog Modal -->
+    <!-- Weekend / Non-working Day Confirmation Dialog Modal -->
     <div class="modal-overlay" id="saturdayConfirmModal" style="display:none; z-index: 10050;">
         <div class="modal-card" style="max-width: 420px; text-align: center; padding: 24px;">
             <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); color: #f59e0b; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
@@ -857,16 +857,16 @@
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
             </div>
-            <h3 id="saturdayModalTitle" style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">Weekend / Saturday Selected</h3>
+            <h3 id="saturdayModalTitle" style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">Weekend Selected</h3>
             <p id="saturdayModalMsg" class="saturday-modal-msg" style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px;">
-                The selected date falls on a Saturday or non-working day. Do you want to include Saturday in your OD request?
+                The selected date falls on a non-working day. Do you want to include it in your OD application?
             </p>
             <div style="display: flex; gap: 10px; justify-content: center;">
                 <button type="button" id="saturdayModalSkipBtn" class="btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     Skip / Clear
                 </button>
                 <button type="button" id="saturdayModalConfirmBtn" class="btn-primary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    Yes, Include Saturday
+                    Yes, Include Date
                 </button>
             </div>
         </div>

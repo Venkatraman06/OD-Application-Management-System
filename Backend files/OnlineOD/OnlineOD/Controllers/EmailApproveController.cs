@@ -13,12 +13,14 @@ namespace OnlineOD.Controllers
         private readonly IOdApplyService _odService;
         private readonly EmailService _emailService;
         private readonly IHodService _hodService;
+        private readonly IConfiguration _config;
 
-        public EmailApproveController(IOdApplyService odService, EmailService emailService, IHodService hodService)
+        public EmailApproveController(IOdApplyService odService, EmailService emailService, IHodService hodService, IConfiguration config)
         {
             _odService = odService;
             _emailService = emailService;
             _hodService = hodService;
+            _config = config;
         }
 
         // GET /api/EmailApprove?odId=5&action=Approved&role=faculty&staffId=3&token=xyz
@@ -30,13 +32,19 @@ namespace OnlineOD.Controllers
             [FromQuery] string role = "faculty",
             [FromQuery] int staffId = 0)
         {
+            // Resolve the frontend portal URL once — read from Render env var
+            // EmailSettings__PortalBaseUrl; falls back to the production Vercel URL.
+            var portalUrl = Environment.GetEnvironmentVariable("EmailSettings__PortalBaseUrl")
+                         ?? _config["EmailSettings:PortalBaseUrl"]
+                         ?? "https://od-application-management-system.vercel.app";
+
             // ── Validate token ─────────────────────────────────────────────
             if (!_emailService.ValidateToken(odId, action, token))
                 return Content(Page("❌ Invalid or expired link.",
-                    "This link is not valid or has already been used.", false), "text/html");
+                    "This link is not valid or has already been used.", false, portalUrl), "text/html");
 
             if (action != "Approved" && action != "Rejected")
-                return Content(Page("❌ Unknown action.", "", false), "text/html");
+                return Content(Page("❌ Unknown action.", "", false, portalUrl), "text/html");
 
             // ── Lock: once faculty/HOD has already made a decision, the same
             // (or the other) email link can no longer change it. This stops
@@ -44,7 +52,7 @@ namespace OnlineOD.Controllers
             // same link being used twice.
             var existingOd = await _odService.GetOdApplyByIdAsync(odId);
             if (existingOd == null)
-                return Content(Page("❌ Not found.", "This OD request no longer exists.", false), "text/html");
+                return Content(Page("❌ Not found.", "This OD request no longer exists.", false, portalUrl), "text/html");
 
             var currentStatus = role == "hod" ? existingOd.HodStatus : existingOd.FacultyStatus;
             if (!string.IsNullOrEmpty(currentStatus) && currentStatus != "Pending")
@@ -52,7 +60,7 @@ namespace OnlineOD.Controllers
                 var roleLabelLocked = role == "hod" ? "HOD" : "Faculty";
                 return Content(Page("⚠️ Already decided.",
                     $"OD #{odId} has already been <b>{currentStatus}</b> by {roleLabelLocked}. " +
-                    "This decision cannot be changed.", false), "text/html");
+                    "This decision cannot be changed.", false, portalUrl), "text/html");
             }
 
             // ── Lock: once the OD is already ongoing or in the past (today is
@@ -63,7 +71,7 @@ namespace OnlineOD.Controllers
             {
                 return Content(Page("⚠️ OD decision window closed.",
                     $"OD #{odId} is already in progress or has passed (its decision window has closed). " +
-                    "It can no longer be approved or rejected.", false), "text/html");
+                    "It can no longer be approved or rejected.", false, portalUrl), "text/html");
             }
 
             // ── Apply the status update ────────────────────────────────────
@@ -78,7 +86,7 @@ namespace OnlineOD.Controllers
                     return Content(Page("❌ Outdated link.",
                         "This approval link is missing staff information and can't be used. " +
                         "Please ask the student to resubmit the OD, or use the staff dashboard instead.",
-                        false), "text/html");
+                        false, portalUrl), "text/html");
                 }
 
                 OdApply? od;
@@ -88,7 +96,7 @@ namespace OnlineOD.Controllers
                 }
                 catch (InvalidOperationException ex)
                 {
-                    return Content(Page("❌ Not your section.", ex.Message, false), "text/html");
+                    return Content(Page("❌ Not your section.", ex.Message, false, portalUrl), "text/html");
                 }
 
                 // When the OD's OVERALL FacultyStatus becomes "Approved" (for a
@@ -143,7 +151,7 @@ namespace OnlineOD.Controllers
                 $"<span style='color:{color}'>{action}</span>",
                 $"OD #{odId} has been <b style='color:{color}'>{actionLabel}</b> by {roleLabel}.<br>" +
                 $"The student's status page will reflect this immediately.",
-                true), "text/html");
+                true, portalUrl), "text/html");
         }
 
         // True once today is on/after the OD's own FromDate — covers an OD
@@ -159,7 +167,9 @@ namespace OnlineOD.Controllers
         }
 
         // ── Simple confirmation HTML page ──────────────────────────────────
-        private static string Page(string heading, string body, bool success) => $@"
+        // portalUrl is the Vercel frontend URL read from EmailSettings:PortalBaseUrl,
+        // so the Visit Portal button links to the actual login page, not the Render backend.
+        private static string Page(string heading, string body, bool success, string portalUrl) => $@"
 <!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -206,7 +216,7 @@ namespace OnlineOD.Controllers
     <div class='icon'>{(success ? "✅" : "❌")}</div>
     <h2>{heading}</h2>
     <p>{body}</p>
-    <a href='/index.html' class='portal-btn'>🔗 Visit Portal / Login</a>
+    <a href='{portalUrl}' class='portal-btn'>🔗 Visit Portal / Login</a>
     <div class='brand'>OD Application — Nandha Arts &amp; Science College</div>
   </div>
 </body>

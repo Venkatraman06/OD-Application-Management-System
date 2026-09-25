@@ -113,17 +113,20 @@ namespace OnlineOD.Controllers
             try
             {
                 var involvedSections = await _service.GetInvolvedSectionsAsync(result);
-                if (involvedSections.Count == 0 && !string.IsNullOrWhiteSpace(dto.Section))
+                if (involvedSections.Count == 0 && !string.IsNullOrWhiteSpace(result.Section))
+                    involvedSections.Add(result.Section.Trim());
+                else if (involvedSections.Count == 0 && !string.IsNullOrWhiteSpace(dto.Section))
                     involvedSections.Add(dto.Section.Trim());
 
-                var involvedSectionsLower = involvedSections.Select(s => s.ToLower()).ToHashSet();
+                var targetDept = (result.department ?? dto.department ?? "").Trim().ToLower();
+                var normalizedInvolved = involvedSections.Select(NormalizeSection).Where(s => !string.IsNullOrEmpty(s)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 var staffList = await _staffService.GetAllStaffAsync();
                 var deptStaff = staffList.Where(s =>
                     s.Department != null &&
-                    s.Department.Trim().ToLower() == (dto.department ?? "").Trim().ToLower() &&
+                    s.Department.Trim().ToLower() == targetDept &&
                     s.Section != null &&
-                    involvedSectionsLower.Contains(s.Section.Trim().ToLower()) &&
+                    normalizedInvolved.Contains(NormalizeSection(s.Section)) &&
                     !string.IsNullOrEmpty(s.Email)
                 ).ToList();
 
@@ -132,7 +135,8 @@ namespace OnlineOD.Controllers
                     emailStatus = "failed";
                     emailDetail = involvedSections.Count == 0
                         ? "No Section was set on this OD, so no matching staff could be found."
-                        : $"No staff found for department '{dto.department}' + section(s) '{string.Join(", ", involvedSections)}' with an Email set.";
+                        : $"No staff found for department '{result.department ?? dto.department}' + section(s) '{string.Join(", ", involvedSections)}' with an Email set.";
+                    Console.WriteLine($"[EmailQueue] Staff notification skipped for OD #{result.OdId}: {emailDetail}");
                 }
                 else
                 {
@@ -143,21 +147,22 @@ namespace OnlineOD.Controllers
                             Type = "Submission",
                             ToEmail = staff.Email,
                             StaffName = staff.Name,
-                            StudentName = dto.StudentName ?? "",
-                            RegisterNumber = dto.registerNumber ?? "",
-                            EventName = dto.Event ?? "",
-                            Department = dto.department ?? "",
-                            FromDate = dto.FromDate ?? "",
-                            ToDate = dto.ToDate ?? "",
+                            StudentName = result.StudentName ?? dto.StudentName ?? "",
+                            RegisterNumber = result.registerNumber ?? dto.registerNumber ?? "",
+                            EventName = result.Event ?? dto.Event ?? "",
+                            Department = result.department ?? dto.department ?? "",
+                            FromDate = result.FromDate ?? dto.FromDate ?? "",
+                            ToDate = result.ToDate ?? dto.ToDate ?? "",
                             OdId = result.OdId,
                             StaffId = staff.StaffId,
-                            IsGroup = dto.IsGroupOd,
-                            GroupName = dto.GroupName ?? "",
-                            RegisterNumbers = dto.RegisterNumbers ?? "",
-                            CollegeIndustry = dto.CollegeIndustry ?? "",
-                            StartTime = dto.StartTime,
-                            EndTime = dto.EndTime
+                            IsGroup = result.IsGroupOd,
+                            GroupName = result.GroupName ?? dto.GroupName ?? "",
+                            RegisterNumbers = result.RegisterNumbers ?? dto.RegisterNumbers ?? "",
+                            CollegeIndustry = result.CollegeIndustry ?? dto.CollegeIndustry ?? "",
+                            StartTime = result.StartTime ?? dto.StartTime,
+                            EndTime = result.EndTime ?? dto.EndTime
                         });
+                        Console.WriteLine($"[EmailQueue] Submission email queued for OD #{result.OdId} -> {staff.Name} ({staff.Email}) [Section: {staff.Section}]");
                     }
                     emailStatus = "queued";
                 }
@@ -457,6 +462,17 @@ namespace OnlineOD.Controllers
             if (cert == null) return NotFound("Certificate not found for this student on this OD");
 
             return Ok(cert);
+        }
+
+        // Helper to normalize section strings ("Section A", "Class A", "Sec A", "A" -> "a")
+        private static string NormalizeSection(string? sec)
+        {
+            if (string.IsNullOrWhiteSpace(sec)) return "";
+            var s = sec.Trim().ToLower();
+            if (s.StartsWith("section ")) s = s.Substring(8).Trim();
+            else if (s.StartsWith("class ")) s = s.Substring(6).Trim();
+            else if (s.StartsWith("sec ")) s = s.Substring(4).Trim();
+            return s;
         }
     }
 }

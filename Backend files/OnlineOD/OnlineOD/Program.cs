@@ -80,6 +80,7 @@ builder.Services.AddCors(options =>
         var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
             ?? new[]
             {
+                "https://od-application-management-system.vercel.app",
                 "https://od-application-management-system-q7.vercel.app",
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
@@ -98,6 +99,7 @@ builder.Services.AddCors(options =>
                       return uri.Host == "localhost"
                           || uri.Host == "127.0.0.1"
                           || uri.Host.StartsWith("192.168.")
+                          || origin.Equals("https://od-application-management-system.vercel.app", StringComparison.OrdinalIgnoreCase)
                           || origin.Equals("https://od-application-management-system-q7.vercel.app", StringComparison.OrdinalIgnoreCase);
                   }
                   catch
