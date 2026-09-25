@@ -288,30 +288,20 @@ html, body {
     .input-group select,
     .input-group textarea,
     .admin-form input,
-    .admin-form select {
+    .admin-form select,
+    .competition-select {
         font-size: 16px !important; /* Prevents auto-zoom on iOS */
-        padding: 10px 12px !important;
+        padding: 12px 14px 12px 46px !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
     }
 
-    /* Keep proper padding for inputs with icons so text does not overlap icons */
-    .input-wrapper input {
+    .input-wrapper textarea {
+        padding-top: 14px !important;
+        padding-bottom: 14px !important;
         padding-left: 46px !important;
-        padding-right: 46px !important;
-    }
-
-    /* Datalist inputs (event name, college name) — ensure icon padding is set */
-    .input-wrapper input[list] {
-        padding-left: 46px !important;
-        padding-right: 14px !important;
-    }
-
-    .input-wrapper input#rollNumber,
-    .input-wrapper #rollNumber {
-        padding-left: 46px !important;
-        padding-right: 14px !important;
+        min-height: 100px !important;
     }
 
     .input-wrapper input#password,
@@ -367,7 +357,13 @@ html, body {
     .input-wrapper .toggle-password svg {
         width: 18px !important;
         height: 18px !important;
-        display: block !important;
+    }
+
+    .toggle-password .eye-closed[style*="display: none"],
+    .toggle-password .eye-closed[style*="display:none"],
+    .toggle-password .eye-open[style*="display: none"],
+    .toggle-password .eye-open[style*="display:none"] {
+        display: none !important;
     }
 
     /* Member Add Row in Group OD */
@@ -585,15 +581,34 @@ html, body {
         -webkit-overflow-scrolling: touch !important;
     }
 
+    /* Admin grid must be flex column with min-width 0 so child cards and tables can scroll */
+    .admin-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        gap: 16px !important;
+    }
+
+    .admin-grid > * {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
     /* Admin card containers must not clip table overflow */
     .admin-card,
     .admin-card.list-card,
     .admin-card.form-card,
     .list-card,
     .requests-full {
-        overflow: visible !important;
+        overflow: hidden !important;
         width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         box-sizing: border-box !important;
+        padding: 16px 12px !important;
     }
 
     /* The table-wrap inside admin cards must scroll horizontally */
@@ -604,6 +619,7 @@ html, body {
         touch-action: pan-x pan-y !important;
         max-height: none !important;
         width: 100% !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
     }
 
@@ -685,6 +701,13 @@ html, body {
     left: 14px !important;
     pointer-events: none !important;
     z-index: 2 !important;
+}
+
+.input-wrapper .textarea-icon,
+.input-wrapper.textarea-wrapper .input-icon {
+    top: 16px !important;
+    transform: none !important;
+    align-self: flex-start !important;
 }
 
 .btn-primary,
