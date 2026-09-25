@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function doPrintReport() {
+    async function doPrintReport() {
         const studentName = document.getElementById('rptStudentName')?.value.trim() || '';
         const registerNumber = document.getElementById('rptRegisterNumber')?.value.trim() || '';
         const classYearSection = document.getElementById('rptClassYearSection')?.value.trim() || '';

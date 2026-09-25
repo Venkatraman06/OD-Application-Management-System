@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    OD Application - Login Page Styles
    ============================================ */
 
@@ -434,7 +434,7 @@ body {
     height: 18px;
 }
 
-/* Suppress native browser reveal button so only single custom eye is visible */
+/* Suppress native browser password reveal button (all browsers/mobile) */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
     display: none !important;
@@ -444,13 +444,22 @@ input[type="password"]::-ms-clear {
 }
 
 input[type="password"]::-webkit-contacts-auto-fill-button,
-input[type="password"]::-webkit-credentials-auto-fill-button {
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-strong-password-auto-fill-button,
+input[type="password"]::-webkit-textfield-decoration-container {
     visibility: hidden !important;
     display: none !important;
     pointer-events: none !important;
     height: 0 !important;
     width: 0 !important;
     margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Chrome/Edge mobile: hide the native eye icon on password fields */
+input[type="password"] {
+    -webkit-appearance: none !important;
+    appearance: none !important;
 }
 
 .input-focus-line {

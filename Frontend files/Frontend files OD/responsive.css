@@ -302,6 +302,12 @@ html, body {
         padding-right: 46px !important;
     }
 
+    /* Datalist inputs (event name, college name) — ensure icon padding is set */
+    .input-wrapper input[list] {
+        padding-left: 46px !important;
+        padding-right: 14px !important;
+    }
+
     .input-wrapper input#rollNumber,
     .input-wrapper #rollNumber {
         padding-left: 46px !important;
@@ -553,7 +559,8 @@ html, body {
         padding: 0 0 40px !important;
         width: 100% !important;
         min-height: 100vh !important;
-        overflow-y: visible !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
     }
 
     .admin-header {
@@ -563,16 +570,47 @@ html, body {
     }
 
     .admin-main {
-        padding: 14px 12px 60px !important;
-        overflow-x: visible !important;
+        padding: 14px 8px 60px !important;
+        overflow-x: hidden !important;
         overflow-y: visible !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
 
     .admin-tabs {
-        padding: 10px 12px 0 !important;
+        padding: 10px 8px 0 !important;
         gap: 4px !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Admin card containers must not clip table overflow */
+    .admin-card,
+    .admin-card.list-card,
+    .admin-card.form-card,
+    .list-card,
+    .requests-full {
+        overflow: visible !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* The table-wrap inside admin cards must scroll horizontally */
+    .table-wrap {
+        overflow-x: auto !important;
+        overflow-y: visible !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-x pan-y !important;
+        max-height: none !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Admin table itself must be wide enough to show all columns */
+    .admin-table {
+        min-width: 600px !important;
+        width: max-content !important;
     }
 }
 

@@ -238,12 +238,8 @@
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                                         </svg>
                                     </div>
-                                    <select id="eventName" name="eventName" required class="competition-select">
-                                        <option value="" disabled selected hidden>Select event name...</option>
-                                    </select>
-                                </div>
-                                <div class="custom-input-wrap" id="customEventWrap" style="display:none;margin-top:8px;">
-                                    <input type="text" id="customEventInput" placeholder="Enter custom event name..." autocomplete="off">
+                                    <input type="text" id="eventName" name="eventName" list="eventNameList" placeholder="Type or select event name..." required autocomplete="off">
+                                    <datalist id="eventNameList"></datalist>
                                 </div>
                                 <span class="error-message" id="eventName-error"></span>
                             </div>
@@ -256,12 +252,8 @@
                                             <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
                                         </svg>
                                     </div>
-                                    <select id="collegeName" name="collegeName" required class="competition-select">
-                                        <option value="" disabled selected hidden>Select college / industry name...</option>
-                                    </select>
-                                </div>
-                                <div class="custom-input-wrap" id="customCollegeWrap" style="display:none;margin-top:8px;">
-                                    <input type="text" id="customCollegeInput" placeholder="Enter custom college / industry name..." autocomplete="off">
+                                    <input type="text" id="collegeName" name="collegeName" list="collegeNameList" placeholder="Type or select college / industry name..." required autocomplete="off">
+                                    <datalist id="collegeNameList"></datalist>
                                 </div>
                                 <span class="error-message" id="collegeName-error"></span>
                             </div>
@@ -434,12 +426,8 @@
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                                         </svg>
                                     </div>
-                                    <select id="groupEventName" name="groupEventName" required class="competition-select">
-                                        <option value="" disabled selected hidden>Select event name...</option>
-                                    </select>
-                                </div>
-                                <div class="custom-input-wrap" id="groupCustomEventWrap" style="display:none;margin-top:8px;">
-                                    <input type="text" id="groupCustomEventInput" placeholder="Enter custom event name..." autocomplete="off">
+                                    <input type="text" id="groupEventName" name="groupEventName" list="groupEventNameList" placeholder="Type or select event name..." required autocomplete="off">
+                                    <datalist id="groupEventNameList"></datalist>
                                 </div>
                                 <span class="error-message" id="groupEventName-error"></span>
                             </div>
@@ -452,12 +440,8 @@
                                             <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
                                         </svg>
                                     </div>
-                                    <select id="groupCollegeName" name="groupCollegeName" required class="competition-select">
-                                        <option value="" disabled selected hidden>Select college / industry name...</option>
-                                    </select>
-                                </div>
-                                <div class="custom-input-wrap" id="groupCustomCollegeWrap" style="display:none;margin-top:8px;">
-                                    <input type="text" id="groupCustomCollegeInput" placeholder="Enter custom college / industry name..." autocomplete="off">
+                                    <input type="text" id="groupCollegeName" name="groupCollegeName" list="groupCollegeNameList" placeholder="Type or select college / industry name..." required autocomplete="off">
+                                    <datalist id="groupCollegeNameList"></datalist>
                                 </div>
                                 <span class="error-message" id="groupCollegeName-error"></span>
                             </div>

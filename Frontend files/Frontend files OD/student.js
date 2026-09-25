@@ -26,12 +26,12 @@ function escapeHtml(str) {
     }[c]));
 }
 
-function populateCollegesForEvent(eventName, selectId, customWrapId, customInputId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
+function populateCollegesForEvent(eventName, datalistId) {
+    const datalist = document.getElementById(datalistId);
+    if (!datalist) return;
 
     let colleges = [];
-    if (eventName && eventName !== '__other__') {
+    if (eventName && eventName.trim()) {
         const matching = activeEventsList.filter(ev =>
             (ev.eventName || ev.EventName || '').trim().toLowerCase() === eventName.trim().toLowerCase()
         );
@@ -52,21 +52,7 @@ function populateCollegesForEvent(eventName, selectId, customWrapId, customInput
         });
     }
 
-    let html = `<option value="" disabled selected hidden>Select college / industry name...</option>`;
-    colleges.forEach(c => {
-        html += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
-    });
-    html += `<option value="__other__">Other / Enter manually...</option>`;
-    select.innerHTML = html;
-
-    // Auto-select if only 1 matching college for the chosen active event
-    if (eventName && eventName !== '__other__' && colleges.length === 1) {
-        select.value = colleges[0];
-        if (customWrapId) {
-            const wrap = document.getElementById(customWrapId);
-            if (wrap) wrap.style.display = 'none';
-        }
-    }
+    datalist.innerHTML = colleges.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
 }
 
 async function loadActiveEvents() {
@@ -87,19 +73,15 @@ async function loadActiveEvents() {
             }
         });
 
-        let optionsHtml = `<option value="" disabled selected hidden>Select event name...</option>`;
-        uniqueEventNames.forEach(name => {
-            optionsHtml += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
-        });
-        optionsHtml += `<option value="__other__">Other / Enter manually...</option>`;
+        const optionsHtml = uniqueEventNames.map(name => `<option value="${escapeHtml(name)}"></option>`).join('');
 
-        const soloEventSelect = document.getElementById('eventName');
-        const grpEventSelect = document.getElementById('groupEventName');
-        if (soloEventSelect) soloEventSelect.innerHTML = optionsHtml;
-        if (grpEventSelect) grpEventSelect.innerHTML = optionsHtml;
+        const soloEventDatalist = document.getElementById('eventNameList');
+        const grpEventDatalist = document.getElementById('groupEventNameList');
+        if (soloEventDatalist) soloEventDatalist.innerHTML = optionsHtml;
+        if (grpEventDatalist) grpEventDatalist.innerHTML = optionsHtml;
 
-        populateCollegesForEvent(soloEventSelect?.value || '', 'collegeName', 'customCollegeWrap', 'customCollegeInput');
-        populateCollegesForEvent(grpEventSelect?.value || '', 'groupCollegeName', 'groupCustomCollegeWrap', 'groupCustomCollegeInput');
+        populateCollegesForEvent('', 'collegeNameList');
+        populateCollegesForEvent('', 'groupCollegeNameList');
     } catch (err) {
         console.error('Failed to load active events:', err);
     }
@@ -616,90 +598,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('refreshBtn')?.addEventListener('click', loadODStatus);
 
-    // ── Event selection & custom input toggle handlers ──
-    const soloEventSelect = document.getElementById('eventName');
-    const soloCollegeSelect = document.getElementById('collegeName');
-    const customEventWrap = document.getElementById('customEventWrap');
-    const customCollegeWrap = document.getElementById('customCollegeWrap');
-    const customEventInput = document.getElementById('customEventInput');
-    const customCollegeInput = document.getElementById('customCollegeInput');
 
-    if (soloEventSelect) {
-        soloEventSelect.addEventListener('change', () => {
-            const val = soloEventSelect.value;
-            if (val === '__other__') {
-                if (customEventWrap) customEventWrap.style.display = 'block';
-                if (customEventInput) customEventInput.focus();
-            } else {
-                if (customEventWrap) customEventWrap.style.display = 'none';
-            }
-            populateCollegesForEvent(val, 'collegeName', 'customCollegeWrap', 'customCollegeInput');
+    // ── Event input: update college datalist when event name is typed/selected ──
+    const soloEventInput = document.getElementById('eventName');
+    const soloCollegeInput = document.getElementById('collegeName');
+
+    if (soloEventInput) {
+        soloEventInput.addEventListener('input', () => {
+            populateCollegesForEvent(soloEventInput.value, 'collegeNameList');
+        });
+        soloEventInput.addEventListener('change', () => {
+            populateCollegesForEvent(soloEventInput.value, 'collegeNameList');
         });
     }
 
-    if (soloCollegeSelect) {
-        soloCollegeSelect.addEventListener('change', () => {
-            const val = soloCollegeSelect.value;
-            if (val === '__other__') {
-                if (customCollegeWrap) customCollegeWrap.style.display = 'block';
-                if (customCollegeInput) customCollegeInput.focus();
-            } else {
-                if (customCollegeWrap) customCollegeWrap.style.display = 'none';
-            }
+    const grpEventInput = document.getElementById('groupEventName');
+    const grpCollegeInput = document.getElementById('groupCollegeName');
+
+    if (grpEventInput) {
+        grpEventInput.addEventListener('input', () => {
+            populateCollegesForEvent(grpEventInput.value, 'groupCollegeNameList');
         });
-    }
-
-    const grpEventSelect = document.getElementById('groupEventName');
-    const grpCollegeSelect = document.getElementById('groupCollegeName');
-    const grpCustomEventWrap = document.getElementById('groupCustomEventWrap');
-    const grpCustomCollegeWrap = document.getElementById('groupCustomCollegeWrap');
-    const grpCustomEventInput = document.getElementById('groupCustomEventInput');
-    const grpCustomCollegeInput = document.getElementById('groupCustomCollegeInput');
-
-    if (grpEventSelect) {
-        grpEventSelect.addEventListener('change', () => {
-            const val = grpEventSelect.value;
-            if (val === '__other__') {
-                if (grpCustomEventWrap) grpCustomEventWrap.style.display = 'block';
-                if (grpCustomEventInput) grpCustomEventInput.focus();
-            } else {
-                if (grpCustomEventWrap) grpCustomEventWrap.style.display = 'none';
-            }
-            populateCollegesForEvent(val, 'groupCollegeName', 'groupCustomCollegeWrap', 'groupCustomCollegeInput');
-        });
-    }
-
-    if (grpCollegeSelect) {
-        grpCollegeSelect.addEventListener('change', () => {
-            const val = grpCollegeSelect.value;
-            if (val === '__other__') {
-                if (grpCustomCollegeWrap) grpCustomCollegeWrap.style.display = 'block';
-                if (grpCustomCollegeInput) grpCustomCollegeInput.focus();
-            } else {
-                if (grpCustomCollegeWrap) grpCustomCollegeWrap.style.display = 'none';
-            }
+        grpEventInput.addEventListener('change', () => {
+            populateCollegesForEvent(grpEventInput.value, 'groupCollegeNameList');
         });
     }
 
     document.getElementById('resetBtn')?.addEventListener('click', () => {
-        if (soloEventSelect) soloEventSelect.value = '';
-        if (soloCollegeSelect) soloCollegeSelect.value = '';
-        if (customEventWrap) customEventWrap.style.display = 'none';
-        if (customCollegeWrap) customCollegeWrap.style.display = 'none';
-        if (customEventInput) customEventInput.value = '';
-        if (customCollegeInput) customCollegeInput.value = '';
-        populateCollegesForEvent('', 'collegeName', 'customCollegeWrap', 'customCollegeInput');
+        if (soloEventInput) soloEventInput.value = '';
+        if (soloCollegeInput) soloCollegeInput.value = '';
+        populateCollegesForEvent('', 'collegeNameList');
         if (daysEl) daysEl.value = '';
     });
 
     document.getElementById('groupResetBtn')?.addEventListener('click', () => {
-        if (grpEventSelect) grpEventSelect.value = '';
-        if (grpCollegeSelect) grpCollegeSelect.value = '';
-        if (grpCustomEventWrap) grpCustomEventWrap.style.display = 'none';
-        if (grpCustomCollegeWrap) grpCustomCollegeWrap.style.display = 'none';
-        if (grpCustomEventInput) grpCustomEventInput.value = '';
-        if (grpCustomCollegeInput) grpCustomCollegeInput.value = '';
-        populateCollegesForEvent('', 'groupCollegeName', 'groupCustomCollegeWrap', 'groupCustomCollegeInput');
+        if (grpEventInput) grpEventInput.value = '';
+        if (grpCollegeInput) grpCollegeInput.value = '';
+        populateCollegesForEvent('', 'groupCollegeNameList');
         if (groupDaysEl) groupDaysEl.value = '';
         window.groupMemberList = [];
         renderMemberList();
@@ -711,14 +646,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const fromDate = fromEl ? fromEl.value : '';
         const toDate   = toEl   ? toEl.value   : '';
-        let event      = soloEventSelect?.value?.trim() || '';
-        if (event === '__other__') {
-            event = customEventInput?.value?.trim() || '';
-        }
-        let college    = soloCollegeSelect?.value?.trim() || '';
-        if (college === '__other__') {
-            college = customCollegeInput?.value?.trim() || '';
-        }
+        const event    = soloEventInput?.value?.trim() || '';
+        const college  = soloCollegeInput?.value?.trim() || '';
         const reason   = document.getElementById('reason')?.value.trim()      || '';
         const competitionType = document.getElementById('competitionType')?.value || '';
         const startTime = startTimeEl?.value || null;
@@ -808,13 +737,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('odForm').reset();
                 if (daysEl) daysEl.value = '';
-                if (soloEventSelect) soloEventSelect.value = '';
-                if (soloCollegeSelect) soloCollegeSelect.value = '';
-                if (customEventWrap) customEventWrap.style.display = 'none';
-                if (customCollegeWrap) customCollegeWrap.style.display = 'none';
-                if (customEventInput) customEventInput.value = '';
-                if (customCollegeInput) customCollegeInput.value = '';
-                populateCollegesForEvent('', 'collegeName', 'customCollegeWrap', 'customCollegeInput');
+                if (soloEventInput) soloEventInput.value = '';
+                if (soloCollegeInput) soloCollegeInput.value = '';
+                populateCollegesForEvent('', 'collegeNameList');
                 switchTab('apply-status');
             } else {
                 const errText = await res.text();
@@ -843,14 +768,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const fromDate = groupFromEl ? groupFromEl.value : '';
         const toDate   = groupToEl   ? groupToEl.value   : '';
-        let event      = grpEventSelect?.value?.trim() || '';
-        if (event === '__other__') {
-            event = grpCustomEventInput?.value?.trim() || '';
-        }
-        let college    = grpCollegeSelect?.value?.trim() || '';
-        if (college === '__other__') {
-            college = grpCustomCollegeInput?.value?.trim() || '';
-        }
+        const event    = grpEventInput?.value?.trim() || '';
+        const college  = grpCollegeInput?.value?.trim() || '';
         const reason   = document.getElementById('groupReason')?.value.trim()      || '';
         const groupName = document.getElementById('groupName')?.value.trim()       || '';
         const regNumbersRaw = document.getElementById('registerNumbers')?.value.trim() || '';
@@ -951,13 +870,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('groupOdForm').reset();
                 if (groupDaysEl) groupDaysEl.value = '';
-                if (grpEventSelect) grpEventSelect.value = '';
-                if (grpCollegeSelect) grpCollegeSelect.value = '';
-                if (grpCustomEventWrap) grpCustomEventWrap.style.display = 'none';
-                if (grpCustomCollegeWrap) grpCustomCollegeWrap.style.display = 'none';
-                if (grpCustomEventInput) grpCustomEventInput.value = '';
-                if (grpCustomCollegeInput) grpCustomCollegeInput.value = '';
-                populateCollegesForEvent('', 'groupCollegeName', 'groupCustomCollegeWrap', 'groupCustomCollegeInput');
+                if (grpEventInput) grpEventInput.value = '';
+                if (grpCollegeInput) grpCollegeInput.value = '';
+                populateCollegesForEvent('', 'groupCollegeNameList');
                 // Reset dynamic member list
                 window.groupMemberList = [];
                 renderMemberList();
@@ -984,6 +899,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (btn) btn.disabled = false;
         }
     });
+
 
     // ── OD Detail Modal ──
     const odModal = document.getElementById('odDetailModal');
