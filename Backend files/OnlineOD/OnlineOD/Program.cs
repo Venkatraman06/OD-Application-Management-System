@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using OnlineOD.Data;
 using OnlineOD.Service;
 using OnlineOD.Services;
@@ -14,12 +15,11 @@ if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-                    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-                    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
-                    ?? builder.Configuration["DATABASE_URL"]
-                    ?? "";
-connectionString = connectionString.Trim().Trim('\"', '\'');
+var rawConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                       ?? builder.Configuration.GetConnectionString("DefaultConnection")
+                       ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+                       ?? builder.Configuration["DATABASE_URL"]
+                       ?? "";
 
 var databaseProvider = Environment.GetEnvironmentVariable("DatabaseProvider")
                     ?? Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
@@ -38,16 +38,20 @@ else if (databaseProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase
 else
 {
     // Automatic fallback: local SQL Server only when LocalDB/SQLExpress/Trusted_Connection is detected
-    bool isLocalDb = connectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
-                  || connectionString.Contains("sqlexpress", StringComparison.OrdinalIgnoreCase)
-                  || connectionString.Contains("Trusted_Connection", StringComparison.OrdinalIgnoreCase);
+    bool isLocalDb = rawConnectionString.Contains("(localdb)", StringComparison.OrdinalIgnoreCase)
+                  || rawConnectionString.Contains("sqlexpress", StringComparison.OrdinalIgnoreCase)
+                  || rawConnectionString.Contains("Trusted_Connection", StringComparison.OrdinalIgnoreCase);
 
-    isPostgreSql = connectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase)
-                || connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
-                || connectionString.Contains("neon.tech", StringComparison.OrdinalIgnoreCase)
-                || connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
-                || (!isLocalDb && !string.IsNullOrWhiteSpace(connectionString));
+    isPostgreSql = rawConnectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase)
+                || rawConnectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+                || rawConnectionString.Contains("neon.tech", StringComparison.OrdinalIgnoreCase)
+                || rawConnectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
+                || (!isLocalDb && !string.IsNullOrWhiteSpace(rawConnectionString));
 }
+
+var connectionString = isPostgreSql
+    ? ConvertPostgreSqlUriToConnectionString(rawConnectionString)
+    : rawConnectionString.Trim().Trim('\"', '\'');
 
 Console.WriteLine($"[Startup] Database provider selected: {(isPostgreSql ? "PostgreSQL" : "SQL Server")}");
 
@@ -81,7 +85,6 @@ builder.Services.AddCors(options =>
             ?? new[]
             {
                 "https://od-application-management-system.vercel.app",
-                "https://od-application-management-system-q7.vercel.app",
                 "http://localhost:5500",
                 "http://127.0.0.1:5500",
                 "http://localhost:3000",
@@ -99,8 +102,7 @@ builder.Services.AddCors(options =>
                       return uri.Host == "localhost"
                           || uri.Host == "127.0.0.1"
                           || uri.Host.StartsWith("192.168.")
-                          || origin.Equals("https://od-application-management-system.vercel.app", StringComparison.OrdinalIgnoreCase)
-                          || origin.Equals("https://od-application-management-system-q7.vercel.app", StringComparison.OrdinalIgnoreCase);
+                          || uri.Host.Equals("od-application-management-system.vercel.app", StringComparison.OrdinalIgnoreCase);
                   }
                   catch
                   {
@@ -135,6 +137,38 @@ builder.Services.AddSingleton<EmailQueue>();
 builder.Services.AddHostedService<EmailBackgroundWorker>();
 
 var app = builder.Build();
+
+// Global Exception Handler: Ensures CORS headers and detailed error JSON on 500 exceptions
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var origin = context.Request.Headers["Origin"].ToString();
+        if (!string.IsNullOrEmpty(origin))
+        {
+            context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+            context.Response.Headers["Access-Control-Allow-Headers"] = "*";
+            context.Response.Headers["Access-Control-Allow-Methods"] = "*";
+        }
+
+        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var ex = exceptionHandlerPathFeature?.Error;
+        var errorMessage = ex?.Message ?? "An internal server error occurred.";
+
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            error = "Internal Server Error",
+            message = errorMessage,
+            path = context.Request.Path.Value
+        }));
+    });
+});
+
+app.UseRouting();
+app.UseCors("AllowAll");
 
 // Load any HOD-made calendar overrides from the database into the live
 // in-memory working-days set, so edits/removals persist across restarts
@@ -172,7 +206,47 @@ if (Directory.Exists(frontendPath))
     });
 }
 
-app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+// Helper to convert URI format (postgres://user:pass@host/db) to standard ADO.NET connection string
+static string ConvertPostgreSqlUriToConnectionString(string connStr)
+{
+    if (string.IsNullOrWhiteSpace(connStr)) return connStr;
+    connStr = connStr.Trim().Trim('\"', '\'');
+
+    if (connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            var uri = new Uri(connStr);
+            var userInfo = uri.UserInfo.Split(':', 2);
+            var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            var database = uri.AbsolutePath.TrimStart('/');
+
+            var builder = new NpgsqlConnectionStringBuilder
+            {
+                Host = host,
+                Port = port,
+                Database = database,
+                Username = username,
+                Password = password,
+                SslMode = SslMode.Require
+            };
+
+            return builder.ConnectionString;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Startup] Warning: could not parse PostgreSQL URI — {ex.Message}");
+            return connStr;
+        }
+    }
+
+    return connStr;
+}
