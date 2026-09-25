@@ -11,6 +11,28 @@ body {
     background: radial-gradient(circle at 10% 0%, #1e1b4b 0%, var(--surface-950) 45%, #020617 100%);
     color: #e2e8f0;
     min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.7);
+}
+
+body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+body::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.7);
+}
+
+body::-webkit-scrollbar-thumb {
+    background: #6366f1;
+    border-radius: 4px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+    background: #818cf8;
 }
 
 /* ── Access gate ── */
@@ -103,9 +125,29 @@ body {
     gap: 8px;
     padding: 16px 32px 0;
     border-bottom: 1px solid rgba(255,255,255,0.08);
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+}
+.admin-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+.admin-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+.admin-tabs::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4);
+    border-radius: 4px;
 }
 .admin-tab {
-    display: flex; align-items: center; gap: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     padding: 10px 18px;
     border: none;
     background: transparent;
@@ -116,6 +158,8 @@ body {
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: all 0.2s ease;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 .admin-tab svg { width: 16px; height: 16px; }
 .admin-tab:hover { color: #e2e8f0; }
@@ -129,7 +173,7 @@ body {
 .admin-tab.active .tab-count { background: rgba(99,102,241,0.25); color: #c7d2fe; }
 
 /* ── Main / panels ── */
-.admin-main { padding: 26px 32px 60px; }
+.admin-main { padding: 26px 32px 60px; overflow-x: hidden; }
 .admin-panel { display: none; animation: fadeIn 0.25s ease; }
 .admin-panel.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
@@ -307,6 +351,8 @@ body {
 }
 .status-pending { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
 .status-resolved { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+.status-rejected { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+.status-noaction { background: rgba(148, 163, 184, 0.18); color: #94a3b8; }
 .resolve-btn { color: #34d399; }
 .resolve-btn:hover { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); }
 /* -- Student status badges ----------------------------------- */
@@ -330,8 +376,165 @@ body {
     color: #f87171;
     white-space: nowrap;
 }
+.badge-upcoming {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    white-space: nowrap;
+}
+.badge-expired {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    white-space: nowrap;
+}
+/* ── Account Status ON/OFF Toggle Switch ── */
+.account-toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 66px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 20px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+    user-select: none;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.account-toggle-switch.active {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    color: #34d399;
+}
+
+.account-toggle-switch.active:hover {
+    background: rgba(16, 185, 129, 0.28);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+.account-toggle-switch.inactive {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: #ef4444;
+    color: #f87171;
+}
+
+.account-toggle-switch.inactive:hover {
+    background: rgba(239, 68, 68, 0.28);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.account-toggle-switch .toggle-slider {
+    position: absolute;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.account-toggle-switch.active .toggle-slider {
+    right: 3px;
+    background: #10b981;
+}
+
+.account-toggle-switch.inactive .toggle-slider {
+    left: 3px;
+    background: #ef4444;
+}
+
+.account-toggle-switch .toggle-text {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.account-toggle-switch.active .toggle-text {
+    margin-right: auto;
+    margin-left: 2px;
+}
+
+.account-toggle-switch.inactive .toggle-text {
+    margin-left: auto;
+    margin-right: 2px;
+}
+
+/* Light Theme overrides for toggle switch */
+[data-theme="light"] .account-toggle-switch.active {
+    background: #dcfce7 !important;
+    border-color: #16a34a !important;
+    color: #15803d !important;
+}
+
+[data-theme="light"] .account-toggle-switch.active .toggle-slider {
+    background: #16a34a !important;
+}
+
+[data-theme="light"] .account-toggle-switch.inactive {
+    background: #fee2e2 !important;
+    border-color: #dc2626 !important;
+    color: #b91c1c !important;
+}
+
+[data-theme="light"] .account-toggle-switch.inactive .toggle-slider {
+    background: #dc2626 !important;
+}
+
+.status-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+.status-toggle-btn.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+.status-toggle-btn.active:hover {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+.status-toggle-btn.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.status-toggle-btn.inactive:hover {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+[data-theme="light"] .status-toggle-btn.active { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; }
+[data-theme="light"] .status-toggle-btn.active:hover { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fca5a5 !important; }
+[data-theme="light"] .status-toggle-btn.inactive { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fca5a5 !important; }
+[data-theme="light"] .status-toggle-btn.inactive:hover { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; }
 [data-theme="light"] .badge-active  { background: rgba(16, 185, 129, 0.12); color: #059669; }
 [data-theme="light"] .badge-deactivated { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+[data-theme="light"] .badge-upcoming { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
+[data-theme="light"] .badge-expired { background: rgba(148, 163, 184, 0.12); color: #64748b; }
 
 /* ── Internal Sub-tabs (Students -> All Students / OD History) ── */
 .sub-tabs-container {

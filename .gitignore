@@ -4,5 +4,4 @@ obj/
 node_modules/
 .env
 appsettings.Development.json
-# Local Gmail OAuth credentials
 GmailOAuthSetup/

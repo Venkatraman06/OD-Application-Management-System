@@ -303,6 +303,8 @@ namespace OnlineOD.Service
                 }
             }
 
+
+
             var od = new OdApply
             {
                 StudentId = dto.StudentId,
@@ -695,8 +697,8 @@ namespace OnlineOD.Service
             var od = await _context.OdApplies.FindAsync(odId);
             if (od == null) return (null, "OD not found.");
 
-            // Approved applications cannot be edited
-            if (string.Equals(od.FacultyStatus, "Approved", StringComparison.OrdinalIgnoreCase) &&
+            // Approved applications cannot be edited (blocked once approved by either Faculty or HOD)
+            if (string.Equals(od.FacultyStatus, "Approved", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(od.HodStatus, "Approved", StringComparison.OrdinalIgnoreCase))
             {
                 return (null, "This OD has already been approved and cannot be edited.");
@@ -763,6 +765,610 @@ namespace OnlineOD.Service
 
             await _context.SaveChangesAsync();
             return (od, null);
+        }
+
+        // ── Analytics OD Student / Report Search ───────────────────────────────
+        public async Task<List<OdReportSearchResultDto>> SearchOdReportsAsync(
+            string? department = null,
+            string? studentName = null,
+            string? registerNumber = null,
+            string? classYearSection = null,
+            string? eventName = null,
+            string? collegeName = null,
+            string? odType = null,
+            string? certification = null,
+            string? startDate = null,
+            string? endDate = null,
+            int? year = null,
+            string? section = null)
+        {
+            IQueryable<OdApply> query = _context.OdApplies.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(odType) && !odType.Equals("All", StringComparison.OrdinalIgnoreCase))
+            {
+                var isGroup = odType.Contains("group", StringComparison.OrdinalIgnoreCase);
+                query = query.Where(o => o.IsGroupOd == isGroup);
+            }
+
+            if (!string.IsNullOrWhiteSpace(eventName))
+            {
+                var ev = eventName.Trim().ToLower();
+                query = query.Where(o => o.Event != null && o.Event.ToLower().Contains(ev));
+            }
+
+            if (!string.IsNullOrWhiteSpace(collegeName))
+            {
+                var col = collegeName.Trim().ToLower();
+                query = query.Where(o => o.CollegeIndustry != null && o.CollegeIndustry.ToLower().Contains(col));
+            }
+
+            if (!string.IsNullOrWhiteSpace(startDate))
+            {
+                var sDate = startDate.Trim();
+                query = query.Where(o => (o.ToDate != null && string.Compare(o.ToDate, sDate) >= 0) || (o.FromDate != null && string.Compare(o.FromDate, sDate) >= 0));
+            }
+
+            if (!string.IsNullOrWhiteSpace(endDate))
+            {
+                var eDate = endDate.Trim();
+                query = query.Where(o => (o.FromDate != null && string.Compare(o.FromDate, eDate) <= 0));
+            }
+
+            var candidateOds = await query.OrderByDescending(o => o.AppliedDate).ToListAsync();
+            if (candidateOds.Count == 0)
+                return new List<OdReportSearchResultDto>();
+
+            // Fast student lookups
+            var allStudents = await _context.Students.AsNoTracking().ToListAsync();
+            var studentById = allStudents.ToDictionary(s => s.StudentId);
+            var studentByReg = allStudents
+                .GroupBy(s => (s.RegisterNumber ?? "").Trim().ToLower())
+                .Where(g => !string.IsNullOrEmpty(g.Key))
+                .ToDictionary(g => g.Key, g => g.First());
+
+            // Fetch certificates for all candidate ODs
+            var candidateOdIds = candidateOds.Select(o => o.OdId).ToList();
+            var allOdCerts = await _context.OdCertificates.AsNoTracking()
+                .Where(c => candidateOdIds.Contains(c.OdId))
+                .ToListAsync();
+            var certsByOd = allOdCerts.GroupBy(c => c.OdId).ToDictionary(g => g.Key, g => g.ToList());
+
+            var targetDept = !string.IsNullOrWhiteSpace(department) ? department.Trim().ToLower() : null;
+            var targetStudentName = !string.IsNullOrWhiteSpace(studentName) ? studentName.Trim().ToLower() : null;
+            var targetRegNo = !string.IsNullOrWhiteSpace(registerNumber) ? registerNumber.Trim().ToLower() : null;
+            var targetClassStr = !string.IsNullOrWhiteSpace(classYearSection) ? classYearSection.Trim().ToLower() : null;
+            var targetCert = !string.IsNullOrWhiteSpace(certification) && !certification.Equals("All", StringComparison.OrdinalIgnoreCase)
+                ? certification.Trim()
+                : null;
+
+            List<string> classTokens = new();
+            if (!string.IsNullOrWhiteSpace(targetClassStr))
+            {
+                classTokens = targetClassStr
+                    .Split(new[] { ' ', ',', '/', '-', '_' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
+            }
+
+            var results = new List<OdReportSearchResultDto>();
+
+            foreach (var od in candidateOds)
+            {
+                studentById.TryGetValue(od.StudentId, out var applicant);
+                if (applicant == null && !string.IsNullOrWhiteSpace(od.registerNumber))
+                {
+                    studentByReg.TryGetValue(od.registerNumber.Trim().ToLower(), out applicant);
+                }
+
+                var associatedStudents = new List<Student>();
+                if (applicant != null) associatedStudents.Add(applicant);
+
+                var memberRegs = ParseList(od.RegisterNumbers);
+                foreach (var reg in memberRegs)
+                {
+                    if (studentByReg.TryGetValue(reg.ToLower(), out var memberStudent))
+                    {
+                        if (!associatedStudents.Any(s => s.StudentId == memberStudent.StudentId))
+                            associatedStudents.Add(memberStudent);
+                    }
+                }
+
+                // 1. Department Scope Filter
+                if (targetDept != null)
+                {
+                    bool deptMatch = (od.department != null && od.department.Trim().ToLower().Contains(targetDept))
+                        || associatedStudents.Any(s => (s.Department ?? "").Trim().ToLower().Contains(targetDept));
+
+                    if (!deptMatch) continue;
+                }
+
+                // Explicit Year Filter (Staff automatic restriction)
+                if (year.HasValue && year.Value > 0)
+                {
+                    bool yearMatch = (applicant != null && applicant.Year == year.Value)
+                        || associatedStudents.Any(s => s.Year == year.Value);
+
+                    if (!yearMatch) continue;
+                }
+
+                // Explicit Section Filter (Staff automatic restriction)
+                if (!string.IsNullOrWhiteSpace(section))
+                {
+                    var targetSec = NormalizeSectionString(section);
+                    bool sectionMatch = (applicant != null && NormalizeSectionString(applicant.Section) == targetSec)
+                        || NormalizeSectionString(od.Section) == targetSec
+                        || associatedStudents.Any(s => NormalizeSectionString(s.Section) == targetSec);
+
+                    if (!sectionMatch) continue;
+                }
+
+                // 2. Student Name Filter
+                if (targetStudentName != null)
+                {
+                    bool nameMatch = (od.StudentName != null && od.StudentName.ToLower().Contains(targetStudentName))
+                        || associatedStudents.Any(s => (s.Name ?? "").ToLower().Contains(targetStudentName));
+
+                    if (!nameMatch) continue;
+                }
+
+                // 3. Register Number Filter
+                if (targetRegNo != null)
+                {
+                    bool regMatch = (od.registerNumber != null && od.registerNumber.ToLower().Contains(targetRegNo))
+                        || (od.RegisterNumbers != null && od.RegisterNumbers.ToLower().Contains(targetRegNo))
+                        || associatedStudents.Any(s => (s.RegisterNumber ?? "").ToLower().Contains(targetRegNo));
+
+                    if (!regMatch) continue;
+                }
+
+                // 4. Class / Year / Section Filter
+                if (classTokens.Count > 0)
+                {
+                    bool classMatch = false;
+                    var candidateDescriptors = new List<(string Dept, int Year, string Section)>();
+
+                    if (applicant != null)
+                    {
+                        candidateDescriptors.Add((applicant.Department ?? "", applicant.Year, applicant.Section ?? ""));
+                    }
+                    else
+                    {
+                        candidateDescriptors.Add((od.department ?? "", 0, od.Section ?? ""));
+                    }
+
+                    foreach (var m in associatedStudents)
+                    {
+                        if (applicant == null || m.StudentId != applicant.StudentId)
+                        {
+                            candidateDescriptors.Add((m.Department ?? "", m.Year, m.Section ?? ""));
+                        }
+                    }
+
+                    foreach (var desc in candidateDescriptors)
+                    {
+                        var dDept = desc.Dept.ToLower();
+                        var dSec = NormalizeSectionString(desc.Section);
+                        var dYear = desc.Year;
+                        var dYearStr = dYear > 0 ? dYear.ToString() : "";
+                        var dYearRoman = dYear == 1 ? "i" : dYear == 2 ? "ii" : dYear == 3 ? "iii" : dYear == 4 ? "iv" : "";
+
+                        bool allTokensMatch = true;
+                        foreach (var token in classTokens)
+                        {
+                            var t = token.ToLower();
+                            if (t == "year" || t == "sec" || t == "section" || t == "class" || t == "std" || t == "b.sc" || t == "bsc" || t == "b.e" || t == "be" || t == "b.tech")
+                            {
+                                continue;
+                            }
+
+                            bool tokenMatch = false;
+                            if (t == dYearStr || t == $"{dYearStr}st" || t == $"{dYearStr}nd" || t == $"{dYearStr}rd" || t == $"{dYearStr}th" || (!string.IsNullOrEmpty(dYearRoman) && t == dYearRoman))
+                            {
+                                tokenMatch = true;
+                            }
+                            else if (t == dSec || NormalizeSectionString(t) == dSec)
+                            {
+                                tokenMatch = true;
+                            }
+                            else if (dDept.Contains(t) || t.Contains(dDept))
+                            {
+                                tokenMatch = true;
+                            }
+
+                            if (!tokenMatch)
+                            {
+                                allTokensMatch = false;
+                                break;
+                            }
+                        }
+
+                        if (allTokensMatch)
+                        {
+                            classMatch = true;
+                            break;
+                        }
+                    }
+
+                    if (!classMatch) continue;
+                }
+
+                // 5. Build Group Member Info & Certificate Data
+                certsByOd.TryGetValue(od.OdId, out var odCerts);
+                odCerts ??= new List<OdCertificate>();
+
+                var memberInfoList = new List<GroupMemberInfoDto>();
+                var applicantReg = (applicant?.RegisterNumber ?? od.registerNumber ?? "").Trim();
+                var applicantCert = odCerts.FirstOrDefault(c => c.RegisterNumber.Equals(applicantReg, StringComparison.OrdinalIgnoreCase));
+
+                string soloCertStatus = !string.IsNullOrWhiteSpace(applicantCert?.WinningStatus)
+                    ? applicantCert.WinningStatus.Trim()
+                    : (!string.IsNullOrWhiteSpace(od.WinningStatus) ? od.WinningStatus.Trim() : (applicantCert != null || !string.IsNullOrWhiteSpace(od.CertificatePhotoUrl) ? "Submitted" : "Not Submitted"));
+
+                bool soloHasCert = (applicantCert != null && !string.IsNullOrWhiteSpace(applicantCert.CertificatePhotoUrl)) || !string.IsNullOrWhiteSpace(od.CertificatePhotoUrl);
+                bool soloCertVerified = applicantCert?.CertificateVerified ?? false;
+
+                if (od.IsGroupOd)
+                {
+                    var allGroupRegs = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(applicantReg))
+                        allGroupRegs.Add(applicantReg);
+                    foreach (var r in memberRegs)
+                    {
+                        if (!allGroupRegs.Any(x => x.Equals(r, StringComparison.OrdinalIgnoreCase)))
+                            allGroupRegs.Add(r);
+                    }
+
+                    foreach (var r in allGroupRegs)
+                    {
+                        var mCert = odCerts.FirstOrDefault(c => c.RegisterNumber.Equals(r, StringComparison.OrdinalIgnoreCase));
+                        string mCertStatus = !string.IsNullOrWhiteSpace(mCert?.WinningStatus)
+                            ? mCert.WinningStatus.Trim()
+                            : (r.Equals(applicantReg, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(od.WinningStatus) ? od.WinningStatus.Trim() : (mCert != null ? "Submitted" : "Not Submitted"));
+
+                        bool mHasCert = (mCert != null && !string.IsNullOrWhiteSpace(mCert.CertificatePhotoUrl)) || (r.Equals(applicantReg, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(od.CertificatePhotoUrl));
+                        bool mCertVerified = mCert?.CertificateVerified ?? false;
+
+                        if (studentByReg.TryGetValue(r.ToLower(), out var sObj))
+                        {
+                            memberInfoList.Add(new GroupMemberInfoDto
+                            {
+                                StudentName = sObj.Name ?? "",
+                                RegisterNumber = sObj.RegisterNumber ?? "",
+                                Department = sObj.Department ?? "",
+                                Year = sObj.Year,
+                                Section = sObj.Section ?? "",
+                                CertificationStatus = mCertStatus,
+                                HasCertificate = mHasCert,
+                                CertificateVerified = mCertVerified
+                            });
+                        }
+                        else
+                        {
+                            memberInfoList.Add(new GroupMemberInfoDto
+                            {
+                                StudentName = r.Equals(od.registerNumber, StringComparison.OrdinalIgnoreCase) ? (od.StudentName ?? "") : "",
+                                RegisterNumber = r,
+                                Department = od.department ?? "",
+                                Section = od.Section ?? "",
+                                CertificationStatus = mCertStatus,
+                                HasCertificate = mHasCert,
+                                CertificateVerified = mCertVerified
+                            });
+                        }
+                    }
+                }
+
+                // Determine primary / overall Certification Status for this OD
+                string overallCertStatus = soloCertStatus;
+                if (od.IsGroupOd && memberInfoList.Count > 0)
+                {
+                    var memberStatuses = memberInfoList
+                        .Select(m => m.CertificationStatus)
+                        .Where(s => !string.IsNullOrWhiteSpace(s) && !s.Equals("Not Submitted", StringComparison.OrdinalIgnoreCase))
+                        .Distinct()
+                        .ToList();
+
+                    if (memberStatuses.Count > 0)
+                    {
+                        overallCertStatus = string.Join(", ", memberStatuses);
+                    }
+                }
+
+                // 6. Certification Filter Check
+                if (targetCert != null)
+                {
+                    bool certMatch = MatchesCertification(overallCertStatus, targetCert)
+                        || MatchesCertification(soloCertStatus, targetCert)
+                        || memberInfoList.Any(m => MatchesCertification(m.CertificationStatus, targetCert));
+
+                    if (!certMatch) continue;
+                }
+
+                // Determine overall status
+                string overallStatus = "Pending";
+                if (string.Equals(od.HodStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+                {
+                    overallStatus = "Approved";
+                }
+                else if (string.Equals(od.HodStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(od.FacultyStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    overallStatus = "Rejected";
+                }
+                else if (string.Equals(od.FacultyStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+                {
+                    overallStatus = "Faculty Approved";
+                }
+
+                results.Add(new OdReportSearchResultDto
+                {
+                    OdId = od.OdId,
+                    StudentId = od.StudentId,
+                    StudentName = applicant?.Name ?? od.StudentName ?? "",
+                    RegisterNumber = applicant?.RegisterNumber ?? od.registerNumber ?? "",
+                    ClassName = applicant?.Department ?? od.department ?? "",
+                    Year = applicant?.Year,
+                    Section = applicant?.Section ?? od.Section ?? "",
+                    EventName = od.Event ?? "",
+                    CollegeName = od.CollegeIndustry ?? "",
+                    OdType = od.IsGroupOd ? "Group OD" : "Solo OD",
+                    IsGroupOd = od.IsGroupOd,
+                    GroupName = od.GroupName,
+                    RegisterNumbers = od.RegisterNumbers,
+                    Members = memberInfoList,
+                    FromDate = od.FromDate ?? "",
+                    ToDate = od.ToDate ?? "",
+                    StartTime = od.StartTime,
+                    EndTime = od.EndTime,
+                    NumberOfDays = od.NumberOfDays,
+                    AppliedDate = od.AppliedDate,
+                    FacultyStatus = od.FacultyStatus,
+                    HodStatus = od.HodStatus,
+                    OverallStatus = overallStatus,
+                    Reason = od.Reason,
+                    CompetitionType = od.CompetitionType,
+                    CertificationStatus = overallCertStatus,
+                    HasCertificate = soloHasCert || memberInfoList.Any(m => m.HasCertificate),
+                    CertificateVerified = soloCertVerified || memberInfoList.Any(m => m.CertificateVerified)
+                });
+            }
+
+            return results;
+        }
+
+        private static bool MatchesCertification(string? status, string targetCert)
+        {
+            if (string.IsNullOrWhiteSpace(status) || status.Equals("Not Submitted", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var s = status.Trim().ToLowerInvariant();
+            var t = targetCert.Trim().ToLowerInvariant();
+
+            if (t.Contains("1st") || t.Contains("first"))
+                return s.Contains("1st") || s.Contains("first");
+            if (t.Contains("2nd") || t.Contains("second"))
+                return s.Contains("2nd") || s.Contains("second");
+            if (t.Contains("3rd") || t.Contains("third"))
+                return s.Contains("3rd") || s.Contains("third");
+            if (t.Contains("participat"))
+                return s.Contains("participat");
+            if (t.Equals("other", StringComparison.OrdinalIgnoreCase))
+                return !s.Contains("1st") && !s.Contains("first") && !s.Contains("2nd") && !s.Contains("second") && !s.Contains("3rd") && !s.Contains("third") && !s.Contains("participat") && !s.Equals("not submitted", StringComparison.OrdinalIgnoreCase);
+
+            return s.Contains(t);
+        }
+
+        // ── Real Excel (.xlsx) Export ─────────────────────────────────────────
+        public async Task<byte[]> GenerateOdReportExcelAsync(
+            string? department = null,
+            string? studentName = null,
+            string? registerNumber = null,
+            string? classYearSection = null,
+            string? eventName = null,
+            string? collegeName = null,
+            string? odType = null,
+            string? certification = null,
+            string? startDate = null,
+            string? endDate = null,
+            int? year = null,
+            string? section = null)
+        {
+            var data = await SearchOdReportsAsync(department, studentName, registerNumber, classYearSection, eventName, collegeName, odType, certification, startDate, endDate, year, section);
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var ws = workbook.Worksheets.Add("OD Report");
+
+            // 1. Institution Letterhead Banner
+            ws.Range("A1:T1").Merge();
+            var titleCell = ws.Cell("A1");
+            titleCell.Value = "NANDHA ARTS AND SCIENCE COLLEGE (AUTONOMOUS)";
+            titleCell.Style.Font.Bold = true;
+            titleCell.Style.Font.FontSize = 14;
+            titleCell.Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
+            titleCell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#107C41"); // Excel Green
+            titleCell.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+            titleCell.Style.Alignment.Vertical = ClosedXML.Excel.XLAlignmentVerticalValues.Center;
+            ws.Row(1).Height = 28;
+
+            ws.Range("A2:T2").Merge();
+            var subTitleCell = ws.Cell("A2");
+            subTitleCell.Value = "ON DUTY (OD) STUDENT PARTICIPATION & STATUS REPORT";
+            subTitleCell.Style.Font.Bold = true;
+            subTitleCell.Style.Font.FontSize = 11;
+            subTitleCell.Style.Font.FontColor = ClosedXML.Excel.XLColor.FromHtml("#0F172A");
+            subTitleCell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#E8F5E9");
+            subTitleCell.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+            subTitleCell.Style.Alignment.Vertical = ClosedXML.Excel.XLAlignmentVerticalValues.Center;
+            ws.Row(2).Height = 22;
+
+            // 2. Metadata / Filter Summary
+            ws.Range("A3:T3").Merge();
+            var metaCell = ws.Cell("A3");
+            var filterParts = new List<string>();
+            filterParts.Add($"Department: {department ?? "All"}");
+            if (year.HasValue && year.Value > 0) filterParts.Add($"Year: {year.Value}");
+            if (!string.IsNullOrWhiteSpace(section)) filterParts.Add($"Section: {section.Trim().ToUpperInvariant()}");
+            if (!string.IsNullOrWhiteSpace(studentName)) filterParts.Add($"Student: {studentName}");
+            if (!string.IsNullOrWhiteSpace(registerNumber)) filterParts.Add($"Reg No: {registerNumber}");
+            if (!string.IsNullOrWhiteSpace(classYearSection)) filterParts.Add($"Class: {classYearSection}");
+            if (!string.IsNullOrWhiteSpace(eventName)) filterParts.Add($"Event: {eventName}");
+            if (!string.IsNullOrWhiteSpace(collegeName)) filterParts.Add($"College: {collegeName}");
+            if (!string.IsNullOrWhiteSpace(odType) && !odType.Equals("All", StringComparison.OrdinalIgnoreCase)) filterParts.Add($"OD Type: {odType}");
+            if (!string.IsNullOrWhiteSpace(certification) && !certification.Equals("All", StringComparison.OrdinalIgnoreCase)) filterParts.Add($"Certification: {certification}");
+            if (!string.IsNullOrWhiteSpace(startDate) || !string.IsNullOrWhiteSpace(endDate)) filterParts.Add($"Date: {startDate ?? "Start"} to {endDate ?? "End"}");
+            filterParts.Add($"Total Records: {data.Count}");
+            filterParts.Add($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm}");
+
+            metaCell.Value = string.Join("  |  ", filterParts);
+            metaCell.Style.Font.FontSize = 9.5;
+            metaCell.Style.Font.Italic = true;
+            metaCell.Style.Font.FontColor = ClosedXML.Excel.XLColor.FromHtml("#475569");
+            metaCell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#F1F5F9");
+            metaCell.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+            metaCell.Style.Alignment.Vertical = ClosedXML.Excel.XLAlignmentVerticalValues.Center;
+            ws.Row(3).Height = 20;
+
+            ws.Row(4).Height = 8; // Spacer
+
+            // 3. Table Headers (Row 5)
+            string[] headers = new[]
+            {
+                "#", "Student Name", "Register No", "Department / Class", "Year", "Section",
+                "Event Name", "Competition Type", "College / Industry", "OD Type", "Group Name / Members",
+                "From Date", "To Date", "Time", "Days", "Applied Date",
+                "Staff Status", "HOD Status", "Overall Status", "Certification Status"
+            };
+
+            for (int c = 0; c < headers.Length; c++)
+            {
+                var cell = ws.Cell(5, c + 1);
+                cell.Value = headers[c];
+                cell.Style.Font.Bold = true;
+                cell.Style.Font.FontSize = 10;
+                cell.Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
+                cell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#107C41");
+                cell.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+                cell.Style.Alignment.Vertical = ClosedXML.Excel.XLAlignmentVerticalValues.Center;
+                cell.Style.Border.OutsideBorder = ClosedXML.Excel.XLBorderStyleValues.Thin;
+                cell.Style.Border.OutsideBorderColor = ClosedXML.Excel.XLColor.FromHtml("#0B5C30");
+            }
+            ws.Row(5).Height = 26;
+
+            // 4. Data Rows
+            int currentRow = 6;
+            for (int i = 0; i < data.Count; i++)
+            {
+                var item = data[i];
+                var isEven = (i % 2 == 1);
+                var rowBg = isEven ? ClosedXML.Excel.XLColor.FromHtml("#F8FAFC") : ClosedXML.Excel.XLColor.White;
+
+                string timeSpan = !string.IsNullOrWhiteSpace(item.StartTime)
+                    ? $"{item.StartTime}{(!string.IsNullOrWhiteSpace(item.EndTime) ? " - " + item.EndTime : "")}"
+                    : "Full Day";
+
+                string membersSummary = "";
+                if (item.IsGroupOd && item.Members.Count > 0)
+                {
+                    membersSummary = $"{item.GroupName ?? "Group"} ({item.Members.Count} members: {string.Join(", ", item.Members.Select(m => $"{m.RegisterNumber} - {m.StudentName}"))})";
+                }
+
+                ws.Cell(currentRow, 1).Value = i + 1;
+                ws.Cell(currentRow, 2).Value = item.StudentName;
+                ws.Cell(currentRow, 3).Value = item.RegisterNumber;
+                ws.Cell(currentRow, 4).Value = item.ClassName;
+                ws.Cell(currentRow, 5).Value = item.Year?.ToString() ?? "-";
+                ws.Cell(currentRow, 6).Value = item.Section;
+                ws.Cell(currentRow, 7).Value = item.EventName;
+                ws.Cell(currentRow, 8).Value = item.CompetitionType ?? "-";
+                ws.Cell(currentRow, 9).Value = item.CollegeName;
+                ws.Cell(currentRow, 10).Value = item.OdType;
+                ws.Cell(currentRow, 11).Value = membersSummary;
+                ws.Cell(currentRow, 12).Value = item.FromDate;
+                ws.Cell(currentRow, 13).Value = item.ToDate;
+                ws.Cell(currentRow, 14).Value = timeSpan;
+                ws.Cell(currentRow, 15).Value = item.NumberOfDays;
+                ws.Cell(currentRow, 16).Value = item.AppliedDate.ToString("yyyy-MM-dd HH:mm");
+                ws.Cell(currentRow, 17).Value = item.FacultyStatus;
+                ws.Cell(currentRow, 18).Value = item.HodStatus;
+                ws.Cell(currentRow, 19).Value = item.OverallStatus;
+                ws.Cell(currentRow, 20).Value = item.CertificationStatus;
+
+                // Center align specific columns
+                int[] centerCols = new[] { 1, 3, 5, 6, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
+                foreach (var colIdx in centerCols)
+                {
+                    ws.Cell(currentRow, colIdx).Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+                }
+
+                for (int c = 1; c <= 20; c++)
+                {
+                    var cell = ws.Cell(currentRow, c);
+                    cell.Style.Fill.BackgroundColor = rowBg;
+                    cell.Style.Font.FontSize = 9.5;
+                    cell.Style.Border.OutsideBorder = ClosedXML.Excel.XLBorderStyleValues.Thin;
+                    cell.Style.Border.OutsideBorderColor = ClosedXML.Excel.XLColor.FromHtml("#E2E8F0");
+                    cell.Style.Alignment.Vertical = ClosedXML.Excel.XLAlignmentVerticalValues.Center;
+                }
+
+                ws.Row(currentRow).Height = 22;
+                currentRow++;
+            }
+
+            // Freeze header row
+            ws.SheetView.FreezeRows(5);
+
+            // Set AutoFilter if data present
+            if (data.Count > 0)
+            {
+                ws.Range(5, 1, currentRow - 1, 20).SetAutoFilter();
+            }
+
+            // Adjust Column Widths
+            ws.Columns(1, 20).AdjustToContents();
+            foreach (var col in ws.Columns(1, 20))
+            {
+                if (col.Width < 12) col.Width = 12;
+                if (col.Width > 45) col.Width = 45;
+            }
+
+            // Signature block at bottom
+            int sigRow = currentRow + 3;
+            ws.Range(sigRow, 2, sigRow, 4).Merge();
+            var sig1 = ws.Cell(sigRow, 2);
+            sig1.Value = "Class In-Charge / Staff Advisor";
+            sig1.Style.Font.Bold = true;
+            sig1.Style.Font.FontSize = 10;
+            sig1.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+            sig1.Style.Border.TopBorder = ClosedXML.Excel.XLBorderStyleValues.Dashed;
+
+            ws.Range(sigRow, 9, sigRow, 11).Merge();
+            var sig2 = ws.Cell(sigRow, 9);
+            sig2.Value = "Head of Department (HOD)";
+            sig2.Style.Font.Bold = true;
+            sig2.Style.Font.FontSize = 10;
+            sig2.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+            sig2.Style.Border.TopBorder = ClosedXML.Excel.XLBorderStyleValues.Dashed;
+
+            ws.Range(sigRow, 16, sigRow, 18).Merge();
+            var sig3 = ws.Cell(sigRow, 16);
+            sig3.Value = "Principal / Authority";
+            sig3.Style.Font.Bold = true;
+            sig3.Style.Font.FontSize = 10;
+            sig3.Style.Alignment.Horizontal = ClosedXML.Excel.XLAlignmentHorizontalValues.Center;
+            sig3.Style.Border.TopBorder = ClosedXML.Excel.XLBorderStyleValues.Dashed;
+
+            using var ms = new MemoryStream();
+            workbook.SaveAs(ms);
+            return ms.ToArray();
+        }
+
+        private static string NormalizeSectionString(string? sec)
+        {
+            if (string.IsNullOrWhiteSpace(sec)) return "";
+            var s = sec.Trim().ToLower();
+            if (s.StartsWith("section ")) s = s.Substring(8).Trim();
+            else if (s.StartsWith("class ")) s = s.Substring(6).Trim();
+            else if (s.StartsWith("sec ")) s = s.Substring(4).Trim();
+            return s;
         }
     }
 }

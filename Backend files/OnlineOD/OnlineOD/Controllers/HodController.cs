@@ -96,6 +96,9 @@ namespace OnlineOD.Controllers
             if (hod == null)
                 return Unauthorized("Invalid username or password");
 
+            if (!hod.IsActive)
+                return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
+
             return Ok(new
             {
                 hodId = hod.HodId,

@@ -230,19 +230,6 @@
                         </div>
 
                         <div class="form-row">
-                            <div class="input-group" id="collegeName-group">
-                                <label for="collegeName">College Name <span class="required">*</span></label>
-                                <div class="input-wrapper">
-                                    <div class="input-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
-                                        </svg>
-                                    </div>
-                                    <input type="text" id="collegeName" name="collegeName" placeholder="Enter college name" required>
-                                </div>
-                                <span class="error-message" id="collegeName-error"></span>
-                            </div>
                             <div class="input-group" id="eventName-group">
                                 <label for="eventName">Event Name <span class="required">*</span></label>
                                 <div class="input-wrapper">
@@ -251,9 +238,24 @@
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                                         </svg>
                                     </div>
-                                    <input type="text" id="eventName" name="eventName" placeholder="Enter event name" required>
+                                    <input type="text" id="eventName" name="eventName" list="eventNameList" required placeholder="Select or type event name..." autocomplete="off">
+                                    <datalist id="eventNameList"></datalist>
                                 </div>
                                 <span class="error-message" id="eventName-error"></span>
+                            </div>
+                            <div class="input-group" id="collegeName-group">
+                                <label for="collegeName">College / Industry Name <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" id="collegeName" name="collegeName" list="collegeNameList" required placeholder="Select or type college / industry name..." autocomplete="off">
+                                    <datalist id="collegeNameList"></datalist>
+                                </div>
+                                <span class="error-message" id="collegeName-error"></span>
                             </div>
                         </div>
 
@@ -267,7 +269,7 @@
                                         </svg>
                                     </div>
                                     <select id="competitionType" name="competitionType" required class="competition-select">
-                                        <option value="">Select competition type...</option>
+                                        <option value="" disabled selected hidden>Select competition type...</option>
                                         <option value="Hackathon">Hackathon</option>
                                         <option value="Cultural">Cultural</option>
                                         <option value="Sports">Sports</option>
@@ -416,19 +418,6 @@
                         </div>
 
                         <div class="form-row">
-                            <div class="input-group" id="groupCollegeName-group">
-                                <label for="groupCollegeName">College Name <span class="required">*</span></label>
-                                <div class="input-wrapper">
-                                    <div class="input-icon">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
-                                        </svg>
-                                    </div>
-                                    <input type="text" id="groupCollegeName" name="groupCollegeName" placeholder="Enter college name" required>
-                                </div>
-                                <span class="error-message" id="groupCollegeName-error"></span>
-                            </div>
                             <div class="input-group" id="groupEventName-group">
                                 <label for="groupEventName">Event Name <span class="required">*</span></label>
                                 <div class="input-wrapper">
@@ -437,9 +426,24 @@
                                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                                         </svg>
                                     </div>
-                                    <input type="text" id="groupEventName" name="groupEventName" placeholder="Enter event name" required>
+                                    <input type="text" id="groupEventName" name="groupEventName" list="groupEventNameList" required placeholder="Select or type event name..." autocomplete="off">
+                                    <datalist id="groupEventNameList"></datalist>
                                 </div>
                                 <span class="error-message" id="groupEventName-error"></span>
+                            </div>
+                            <div class="input-group" id="groupCollegeName-group">
+                                <label for="groupCollegeName">College / Industry Name <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <div class="input-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" id="groupCollegeName" name="groupCollegeName" list="groupCollegeNameList" required placeholder="Select or type college / industry name..." autocomplete="off">
+                                    <datalist id="groupCollegeNameList"></datalist>
+                                </div>
+                                <span class="error-message" id="groupCollegeName-error"></span>
                             </div>
                         </div>
 
@@ -453,7 +457,7 @@
                                         </svg>
                                     </div>
                                     <select id="groupCompetitionType" name="groupCompetitionType" required class="competition-select">
-                                        <option value="">Select competition type...</option>
+                                        <option value="" disabled selected hidden>Select competition type...</option>
                                         <option value="Hackathon">Hackathon</option>
                                         <option value="Cultural">Cultural</option>
                                         <option value="Sports">Sports</option>
@@ -632,6 +636,10 @@
                     </div>
                 </div>
                 <div class="modal-row">
+                    <span class="modal-label">Event Name</span>
+                    <span class="modal-value" id="modalEventNameBody">-</span>
+                </div>
+                <div class="modal-row">
                     <span class="modal-label">Competition Type</span>
                     <span class="modal-value" id="modalCompetitionType">-</span>
                 </div>
@@ -775,7 +783,7 @@
                 </div>
 
                 <div class="modal-row">
-                    <label class="modal-label" for="editGroupCollegeName">College Name <span class="required">*</span></label>
+                    <label class="modal-label" for="editGroupCollegeName">College / Industry Name <span class="required">*</span></label>
                     <input type="text" id="editGroupCollegeName" class="cert-text-input" required>
                 </div>
 
@@ -787,7 +795,7 @@
                 <div class="modal-row">
                     <label class="modal-label" for="editGroupCompetitionType">Competition Type <span class="required">*</span></label>
                     <select id="editGroupCompetitionType" class="cert-text-input" required>
-                        <option value="">Select competition type...</option>
+                        <option value="" disabled selected hidden>Select competition type...</option>
                         <option value="Hackathon">Hackathon</option>
                         <option value="Cultural">Cultural</option>
                         <option value="Sports">Sports</option>

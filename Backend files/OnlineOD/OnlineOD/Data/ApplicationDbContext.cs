@@ -23,6 +23,7 @@ namespace OnlineOD.Data
         public DbSet<ContactAdminRequest> ContactAdminRequests { get; set; }
         public DbSet<WorkingDayOverride> WorkingDayOverrides { get; set; }
         public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
+        public DbSet<Event> Events { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -30,6 +31,18 @@ namespace OnlineOD.Data
 
             modelBuilder.Entity<Student>()
                 .Property(s => s.IsActive)
+                .HasDefaultValue(true);
+
+            modelBuilder.Entity<Staff>()
+                .Property(s => s.IsActive)
+                .HasDefaultValue(true);
+
+            modelBuilder.Entity<Hod>()
+                .Property(h => h.IsActive)
+                .HasDefaultValue(true);
+
+            modelBuilder.Entity<Event>()
+                .Property(e => e.IsActive)
                 .HasDefaultValue(true);
         }
     }

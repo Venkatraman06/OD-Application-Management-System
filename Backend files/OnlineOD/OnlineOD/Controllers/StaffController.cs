@@ -101,6 +101,9 @@ namespace OnlineOD.Controllers
             if (staff == null)
                 return Unauthorized("Invalid username or password");
 
+            if (!staff.IsActive)
+                return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
+
             return Ok(new
             {
                 facultyId = staff.StaffId,

@@ -294,6 +294,66 @@ html, body {
         box-sizing: border-box !important;
     }
 
+    /* Keep proper padding for inputs with icons so text does not overlap icons */
+    .input-wrapper input {
+        padding-left: 46px !important;
+        padding-right: 46px !important;
+    }
+
+    .input-wrapper input#rollNumber,
+    .input-wrapper #rollNumber {
+        padding-left: 46px !important;
+        padding-right: 14px !important;
+    }
+
+    .input-wrapper input#password,
+    .input-wrapper #password {
+        padding-left: 46px !important;
+        padding-right: 46px !important;
+    }
+
+    .input-wrapper .input-icon {
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        left: 14px !important;
+        width: 20px !important;
+        height: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 2 !important;
+        pointer-events: none !important;
+        line-height: 1 !important;
+    }
+
+    .input-wrapper .input-icon svg {
+        width: 18px !important;
+        height: 18px !important;
+        display: block !important;
+    }
+
+    .input-wrapper .toggle-password {
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: 14px !important;
+        width: 20px !important;
+        height: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 2 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
+
+    .input-wrapper .toggle-password svg {
+        width: 18px !important;
+        height: 18px !important;
+        display: block !important;
+    }
+
     /* Member Add Row in Group OD */
     .member-add-row {
         flex-direction: column !important;
@@ -461,6 +521,23 @@ html, body {
         width: 100% !important;
         font-size: 0.82rem !important;
         padding: 10px 14px !important;
+@media (max-width: 900px) {
+    .report-search-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .report-search-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .report-card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    .report-print-btn {
+        width: 100% !important;
+        justify-content: center !important;
     }
 }
 

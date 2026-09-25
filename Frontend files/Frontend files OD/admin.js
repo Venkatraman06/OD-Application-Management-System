@@ -52,12 +52,31 @@ function initAdminApp() {
     let hods = [];
 
     // ── Tabs ──
+    const adminTabsNav = document.querySelector('.admin-tabs');
+    if (adminTabsNav) {
+        adminTabsNav.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                adminTabsNav.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+    }
+
     document.querySelectorAll('.admin-tab').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
             document.getElementById(`panel-${btn.dataset.tab}`)?.classList.add('active');
+
+            const tab = btn.dataset.tab;
+            if (tab === 'students') loadStudents();
+            else if (tab === 'staff') loadStaff();
+            else if (tab === 'hod') loadHods();
+            else if (tab === 'requests') loadRequests();
+            else if (tab === 'odrequests') loadOdRequests();
+            else if (tab === 'events') loadEvents();
         });
     });
 
@@ -72,7 +91,7 @@ function initAdminApp() {
         setTimeout(() => t.remove(), 3500);
     }
 
-    // ── Delete confirmation modal (shared across all 3 tables) ──
+    // ── Delete confirmation modal (shared across all tables) ──
     const deleteOverlay = document.getElementById('deleteConfirmOverlay');
     let pendingDelete = null; // { kind, id, label }
 
@@ -97,6 +116,8 @@ function initAdminApp() {
             const endpoint = kind === 'student' ? `Student/${id}`
                 : kind === 'staff' ? `Faculty/${id}`
                 : kind === 'request' ? `Admin/ContactRequests/${id}`
+                : kind === 'odrequest' ? `Admin/ODRequests/${id}`
+                : kind === 'event' ? `Events/${id}`
                 : `Hod/${id}`;
             const res = await fetch(`${API_BASE}/api/${endpoint}`, { method: 'DELETE' });
             if (!res.ok) { showToast('error', 'Delete failed.'); return; }
@@ -104,6 +125,8 @@ function initAdminApp() {
             if (kind === 'student') loadStudents();
             else if (kind === 'staff') loadStaff();
             else if (kind === 'request') loadRequests();
+            else if (kind === 'odrequest') loadOdRequests();
+            else if (kind === 'event') loadEvents();
             else loadHods();
         } catch (err) {
             console.error(err);
@@ -111,6 +134,29 @@ function initAdminApp() {
         }
         pendingDelete = null;
     });
+
+    async function toggleAccountStatus(role, id) {
+        try {
+            const endpoint = role === 'student' ? `Admin/Students/${id}/ToggleStatus`
+                : role === 'staff' ? `Admin/Staff/${id}/ToggleStatus`
+                : role === 'event' ? `Events/${id}/ToggleStatus`
+                : `Admin/Hod/${id}/ToggleStatus`;
+            const res = await fetch(`${API_BASE}/api/${endpoint}`, { method: 'PUT' });
+            if (!res.ok) {
+                showToast('error', 'Failed to update status.');
+                return;
+            }
+            const data = await res.json();
+            showToast('success', data.message || 'Status updated.');
+            if (role === 'student') loadStudents();
+            else if (role === 'staff') loadStaff();
+            else if (role === 'event') loadEvents();
+            else loadHods();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error updating status.');
+        }
+    }
 
     function esc(str) {
         return String(str ?? '').replace(/[&<>"']/g, c => ({
@@ -224,9 +270,7 @@ function initAdminApp() {
         tbody.innerHTML = list.map(s => {
             const id = s.studentId ?? s.StudentId;
             const active = (s.isActive ?? s.IsActive) !== false;
-            const statusBadge = active
-                ? `<span class="badge-active">Active</span>`
-                : `<span class="badge-deactivated">Deactivated</span>`;
+            const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="student" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
                 <td>${esc(s.name ?? s.Name)}</td>
@@ -236,7 +280,7 @@ function initAdminApp() {
                 <td>${esc(s.year ?? s.Year)}</td>
                 <td>${esc(s.semester ?? s.Semester)}</td>
                 <td>${esc(s.email ?? s.Email ?? '-')}</td>
-                <td>${statusBadge}</td>
+                <td>${statusBtn}</td>
                 <td>
                     <div class="row-actions">
                         <button class="row-btn edit-btn" title="Edit" data-id="${id}">
@@ -262,6 +306,12 @@ function initAdminApp() {
     });
 
     document.getElementById('studentTableBody')?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-toggle-id]');
+        if (toggleBtn) {
+            toggleAccountStatus('student', toggleBtn.dataset.toggleId);
+            return;
+        }
+
         const id = e.target.closest('[data-id]')?.dataset.id;
         if (!id) return;
         const student = students.find(s => String(s.studentId ?? s.StudentId) === String(id));
@@ -385,11 +435,13 @@ function initAdminApp() {
         const tbody = document.getElementById('staffTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No staff yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No staff yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(s => {
             const id = s.staffId ?? s.StaffId;
+            const active = (s.isActive ?? s.IsActive) !== false;
+            const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="staff" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
                 <td>${esc(s.name ?? s.Name)}</td>
@@ -398,6 +450,7 @@ function initAdminApp() {
                 <td>${esc(s.section ?? s.Section ?? '-')}</td>
                 <td>${esc(s.year ?? s.Year ?? '-')}</td>
                 <td>${esc(s.email ?? s.Email)}</td>
+                <td>${statusBtn}</td>
                 <td>
                     <div class="row-actions">
                         <button class="row-btn edit-btn" title="Edit" data-id="${id}">
@@ -423,6 +476,12 @@ function initAdminApp() {
     });
 
     document.getElementById('staffTableBody')?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-toggle-id]');
+        if (toggleBtn) {
+            toggleAccountStatus('staff', toggleBtn.dataset.toggleId);
+            return;
+        }
+
         const id = e.target.closest('[data-id]')?.dataset.id;
         if (!id) return;
         const member = staff.find(s => String(s.staffId ?? s.StaffId) === String(id));
@@ -543,17 +602,20 @@ function initAdminApp() {
         const tbody = document.getElementById('hodTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No HODs yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No HODs yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(h => {
             const id = h.hodId ?? h.HodId;
+            const active = (h.isActive ?? h.IsActive) !== false;
+            const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="hod" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
                 <td>${esc(h.name ?? h.Name)}</td>
                 <td>${esc(h.rollNumber ?? h.RollNumber ?? '-')}</td>
                 <td>${esc(h.department ?? h.Department)}</td>
                 <td>${esc(h.email ?? h.Email ?? '-')}</td>
+                <td>${statusBtn}</td>
                 <td>
                     <div class="row-actions">
                         <button class="row-btn edit-btn" title="Edit" data-id="${id}">
@@ -579,6 +641,12 @@ function initAdminApp() {
     });
 
     document.getElementById('hodTableBody')?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-toggle-id]');
+        if (toggleBtn) {
+            toggleAccountStatus('hod', toggleBtn.dataset.toggleId);
+            return;
+        }
+
         const id = e.target.closest('[data-id]')?.dataset.id;
         if (!id) return;
         const hod = hods.find(h => String(h.hodId ?? h.HodId) === String(id));
@@ -764,9 +832,574 @@ function initAdminApp() {
         ));
     });
 
+    // ============================================
+    // OD REQUESTS MANAGEMENT
+    // ============================================
+    let odRequests = [];
+    let currentOdSubtab = 'pending'; // 'pending' | 'approved' | 'rejected' | 'noaction'
+    let pendingUndoId = null;
+
+    function odHasStarted(o) {
+        if (!o.fromDate) return false;
+        const from = new Date(o.fromDate);
+        if (isNaN(from.getTime())) return false;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        return today >= from;
+    }
+
+    function isOdPending(o) {
+        const fac = o.facultyStatus || 'Pending';
+        const hod = o.hodStatus || 'Pending';
+        if (fac === 'Rejected' || hod === 'Rejected' || hod === 'Approved') return false;
+        return !odHasStarted(o);
+    }
+
+    function isOdApproved(o) {
+        return (o.hodStatus === 'Approved');
+    }
+
+    function isOdRejected(o) {
+        return (o.facultyStatus === 'Rejected' || o.hodStatus === 'Rejected');
+    }
+
+    function isOdNoAction(o) {
+        const fac = o.facultyStatus || 'Pending';
+        const hod = o.hodStatus || 'Pending';
+        if (fac === 'Rejected' || hod === 'Rejected' || hod === 'Approved') return false;
+        return odHasStarted(o);
+    }
+
+    function getFilteredOdList() {
+        if (currentOdSubtab === 'pending') return odRequests.filter(isOdPending);
+        if (currentOdSubtab === 'approved') return odRequests.filter(isOdApproved);
+        if (currentOdSubtab === 'rejected') return odRequests.filter(isOdRejected);
+        if (currentOdSubtab === 'noaction') return odRequests.filter(isOdNoAction);
+        return odRequests;
+    }
+
+    // Sub-tab button event handlers
+    document.querySelectorAll('[data-od-subtab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-od-subtab]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentOdSubtab = btn.dataset.odSubtab;
+
+            const titleEl = document.getElementById('odRequestsListTitle');
+            const subEl = document.getElementById('odRequestsListSub');
+            if (currentOdSubtab === 'pending') {
+                if (titleEl) titleEl.textContent = 'Pending OD Requests';
+                if (subEl) subEl.textContent = 'Awaiting decision before the event begins';
+            } else if (currentOdSubtab === 'approved') {
+                if (titleEl) titleEl.textContent = 'Approved OD Requests';
+                if (subEl) subEl.textContent = 'Successfully approved requests';
+            } else if (currentOdSubtab === 'rejected') {
+                if (titleEl) titleEl.textContent = 'Rejected OD Requests';
+                if (subEl) subEl.textContent = 'Requests rejected by Staff or HOD';
+            } else if (currentOdSubtab === 'noaction') {
+                if (titleEl) titleEl.textContent = 'No Action OD Requests';
+                if (subEl) subEl.textContent = 'Decision window closed — event date has started or finished';
+            }
+
+            filterAndRenderOdRequests();
+        });
+    });
+
+    async function loadOdRequests() {
+        const tbody = document.getElementById('odRequestsTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="14" class="table-empty">Loading OD requests...</td></tr>';
+        try {
+            const res = await fetch(`${API_BASE}/api/Admin/ODRequests?_=${Date.now()}`, { cache: 'no-store' });
+            odRequests = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error(err);
+            odRequests = [];
+            showToast('error', 'Failed to load OD requests.');
+        }
+
+        updateOdCounts();
+        filterAndRenderOdRequests();
+    }
+
+    function updateOdCounts() {
+        const totalPending = odRequests.filter(isOdPending).length;
+        const totalApproved = odRequests.filter(isOdApproved).length;
+        const totalRejected = odRequests.filter(isOdRejected).length;
+        const totalNoAction = odRequests.filter(isOdNoAction).length;
+
+        setEl('odRequestsTabCount', odRequests.length);
+        setEl('odSubtabPendingCount', totalPending);
+        setEl('odSubtabApprovedCount', totalApproved);
+        setEl('odSubtabRejectedCount', totalRejected);
+        setEl('odSubtabNoActionCount', totalNoAction);
+    }
+
+    function filterAndRenderOdRequests() {
+        const q = (document.getElementById('odRequestsSearch')?.value || '').trim().toLowerCase();
+        let list = getFilteredOdList();
+        if (q) {
+            list = list.filter(o =>
+                (o.studentName || '').toLowerCase().includes(q) ||
+                (o.registerNumber || '').toLowerCase().includes(q) ||
+                (o.department || '').toLowerCase().includes(q) ||
+                (o.section || '').toLowerCase().includes(q) ||
+                (o.eventName || '').toLowerCase().includes(q) ||
+                (o.collegeName || '').toLowerCase().includes(q) ||
+                (o.groupName || '').toLowerCase().includes(q) ||
+                (o.registerNumbers || '').toLowerCase().includes(q)
+            );
+        }
+        renderOdRequests(list);
+    }
+
+    function fmtOdDate(dStr) {
+        if (!dStr) return '-';
+        const d = new Date(dStr);
+        if (isNaN(d.getTime())) return esc(dStr);
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function renderOdRequests(list) {
+        const tbody = document.getElementById('odRequestsTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="14" class="table-empty">No OD requests found in this category.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map((item, idx) => {
+            const odId = item.odId ?? item.OdId;
+            const isGroup = item.isGroupOd ?? false;
+            const groupTag = isGroup
+                ? `<span class="report-group-pill" style="display:inline-block;padding:2px 8px;border-radius:100px;font-size:0.7rem;font-weight:700;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);margin-top:3px;">Group: ${esc(item.groupName || 'Group')}</span>`
+                : '';
+
+            let regDisplay = esc(item.registerNumber || '-');
+            if (isGroup && item.registerNumbers) {
+                regDisplay = `<div><b>${esc(item.registerNumber || '-')}</b></div><div style="font-size:0.72rem;color:var(--surface-400);" title="${esc(item.registerNumbers)}">Members: ${esc(item.registerNumbers)}</div>`;
+            }
+
+            const facStatus = item.facultyStatus || 'Pending';
+            const hodStatus = item.hodStatus || 'Pending';
+
+            let overallStatus = 'Pending';
+            let statusBadgeClass = 'status-pending';
+            if (hodStatus === 'Approved') {
+                overallStatus = 'Approved';
+                statusBadgeClass = 'status-resolved';
+            } else if (hodStatus === 'Rejected' || facStatus === 'Rejected') {
+                overallStatus = 'Rejected';
+                statusBadgeClass = 'status-rejected';
+            } else if (facStatus === 'Approved') {
+                overallStatus = 'Pending (HOD)';
+                statusBadgeClass = 'status-pending';
+            } else if (odHasStarted(item)) {
+                overallStatus = 'No Action';
+                statusBadgeClass = 'status-noaction';
+            }
+
+            const canUndo = (facStatus !== 'Pending' || hodStatus !== 'Pending');
+            const certStatus = item.certificationStatus || 'Not Submitted';
+
+            return `
+            <tr>
+                <td style="color:var(--surface-400);font-size:0.78rem;">${idx + 1}</td>
+                <td>
+                    <div style="font-weight:600;color:white;">${esc(item.studentName || '-')}</div>
+                    ${groupTag}
+                </td>
+                <td>${regDisplay}</td>
+                <td>${esc(item.department || '-')}</td>
+                <td>${esc(item.section || '-')}</td>
+                <td>${item.year ? 'Year ' + item.year : '-'}</td>
+                <td><b>${esc(item.eventName || '-')}</b></td>
+                <td>${esc(item.collegeName || '-')}</td>
+                <td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.72rem;font-weight:600;background:rgba(255,255,255,0.06);">${isGroup ? 'Group OD' : 'Solo OD'}</span></td>
+                <td>
+                    <div style="font-size:0.78rem;white-space:nowrap;">${fmtOdDate(item.fromDate)} &rarr; ${fmtOdDate(item.toDate)}</div>
+                    <div style="font-size:0.72rem;color:var(--surface-400);">${item.numberOfDays || 1} day(s)</div>
+                </td>
+                <td style="font-size:0.75rem;color:var(--surface-400);white-space:nowrap;">${fmtOdDate(item.appliedDate)}</td>
+                <td>
+                    <div><span class="status-pill ${statusBadgeClass}">${overallStatus}</span></div>
+                    <div style="font-size:0.72rem;color:var(--surface-400);margin-top:3px;">
+                        Staff: <b>${esc(facStatus)}</b> | HOD: <b>${esc(hodStatus)}</b>
+                    </div>
+                </td>
+                <td><span style="font-size:0.75rem;color:#cbd5e1;">${esc(certStatus)}</span></td>
+                <td>
+                    <div class="row-actions" style="justify-content:center;">
+                        <button class="row-btn edit-od-btn" title="Edit OD Details & Decision" data-id="${odId}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                        ${canUndo ? `
+                        <button class="row-btn undo-od-btn" title="Undo Decision (Reset to Pending for Staff/HOD review)" data-id="${odId}" style="color:#fbbf24;border-color:rgba(251,191,36,0.3);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        </button>` : ''}
+                        <button class="row-btn delete-od-btn" title="Delete OD Request" data-id="${odId}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // Wire click handlers on rendered rows
+        tbody.querySelectorAll('.edit-od-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const item = odRequests.find(o => String(o.odId ?? o.OdId) === String(id));
+                if (item) openEditOdModal(item);
+            });
+        });
+
+        tbody.querySelectorAll('.undo-od-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const item = odRequests.find(o => String(o.odId ?? o.OdId) === String(id));
+                if (item) openUndoConfirmModal(item);
+            });
+        });
+
+        tbody.querySelectorAll('.delete-od-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const item = odRequests.find(o => String(o.odId ?? o.OdId) === String(id));
+                if (item) {
+                    askDelete('odrequest', id, `OD request for "${item.studentName}" (${item.eventName || 'OD'})`);
+                }
+            });
+        });
+    }
+
+    document.getElementById('odRequestsSearch')?.addEventListener('input', () => {
+        filterAndRenderOdRequests();
+    });
+
+    document.getElementById('refreshOdRequestsBtn')?.addEventListener('click', () => {
+        loadOdRequests();
+    });
+
+    // ── Edit OD Modal Handlers ──
+    const editOdModalOverlay = document.getElementById('editOdModalOverlay');
+    const editOdForm = document.getElementById('editOdForm');
+
+    function openEditOdModal(od) {
+        document.getElementById('editOdId').value = od.odId ?? od.OdId ?? '';
+        document.getElementById('editOdStudentName').value = od.studentName ?? od.StudentName ?? '';
+        document.getElementById('editOdRegNo').value = od.registerNumber ?? od.RegisterNumber ?? '';
+        document.getElementById('editOdDept').value = od.department ?? od.Department ?? '';
+        document.getElementById('editOdSection').value = od.section ?? od.Section ?? '';
+        document.getElementById('editOdEvent').value = od.eventName ?? od.Event ?? '';
+        document.getElementById('editOdCollege').value = od.collegeName ?? od.CollegeIndustry ?? '';
+        document.getElementById('editOdFromDate').value = od.fromDate ? String(od.fromDate).slice(0, 10) : '';
+        document.getElementById('editOdToDate').value = od.toDate ? String(od.toDate).slice(0, 10) : '';
+        document.getElementById('editOdDays').value = od.numberOfDays ?? 1;
+        document.getElementById('editOdCompType').value = od.competitionType ?? od.CompetitionType ?? '';
+        document.getElementById('editOdStartTime').value = od.startTime ?? '';
+        document.getElementById('editOdEndTime').value = od.endTime ?? '';
+        document.getElementById('editOdReason').value = od.reason ?? od.Reason ?? '';
+        document.getElementById('editOdFacultyStatus').value = od.facultyStatus ?? 'Pending';
+        document.getElementById('editOdHodStatus').value = od.hodStatus ?? 'Pending';
+
+        if (editOdModalOverlay) editOdModalOverlay.classList.add('active');
+    }
+
+    function closeEditOdModal() {
+        if (editOdModalOverlay) editOdModalOverlay.classList.remove('active');
+    }
+
+    document.getElementById('editOdModalCloseBtn')?.addEventListener('click', closeEditOdModal);
+    document.getElementById('editOdCancelBtn')?.addEventListener('click', closeEditOdModal);
+    editOdModalOverlay?.addEventListener('click', (e) => {
+        if (e.target === editOdModalOverlay) closeEditOdModal();
+    });
+
+    editOdForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editOdId').value;
+        if (!id) return;
+
+        const payload = {
+            studentName: document.getElementById('editOdStudentName').value.trim(),
+            registerNumber: document.getElementById('editOdRegNo').value.trim(),
+            department: document.getElementById('editOdDept').value.trim(),
+            section: document.getElementById('editOdSection').value.trim(),
+            event: document.getElementById('editOdEvent').value.trim(),
+            collegeIndustry: document.getElementById('editOdCollege').value.trim(),
+            fromDate: document.getElementById('editOdFromDate').value,
+            toDate: document.getElementById('editOdToDate').value,
+            numberOfDays: parseInt(document.getElementById('editOdDays').value, 10) || 1,
+            competitionType: document.getElementById('editOdCompType').value.trim(),
+            startTime: document.getElementById('editOdStartTime').value,
+            endTime: document.getElementById('editOdEndTime').value,
+            reason: document.getElementById('editOdReason').value.trim(),
+            facultyStatus: document.getElementById('editOdFacultyStatus').value,
+            hodStatus: document.getElementById('editOdHodStatus').value
+        };
+
+        if (!payload.studentName || !payload.registerNumber || !payload.department || !payload.event || !payload.fromDate || !payload.toDate) {
+            showToast('error', 'Please fill all required fields.');
+            return;
+        }
+
+        const saveBtn = document.getElementById('editOdSaveBtn');
+        if (saveBtn) saveBtn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Admin/ODRequests/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                showToast('error', text || 'Could not update OD request.');
+                return;
+            }
+
+            showToast('success', 'OD request updated successfully.');
+            closeEditOdModal();
+            loadOdRequests();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error while updating OD request.');
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+    });
+
+    // ── Undo Decision Modal Handlers ──
+    const undoConfirmOverlay = document.getElementById('undoConfirmOverlay');
+
+    function openUndoConfirmModal(od) {
+        pendingUndoId = od.odId ?? od.OdId;
+        document.getElementById('undoConfirmText').textContent =
+            `This will reset the Staff and HOD decision for "${od.studentName}" (${od.eventName}) to Pending, allowing Staff and HOD to review and decide again.`;
+        if (undoConfirmOverlay) undoConfirmOverlay.classList.add('active');
+    }
+
+    function closeUndoConfirmModal() {
+        pendingUndoId = null;
+        if (undoConfirmOverlay) undoConfirmOverlay.classList.remove('active');
+    }
+
+    document.getElementById('undoCancelBtn')?.addEventListener('click', closeUndoConfirmModal);
+    undoConfirmOverlay?.addEventListener('click', (e) => {
+        if (e.target === undoConfirmOverlay) closeUndoConfirmModal();
+    });
+
+    document.getElementById('undoConfirmBtn')?.addEventListener('click', async () => {
+        if (!pendingUndoId) return;
+        const id = pendingUndoId;
+        closeUndoConfirmModal();
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Admin/ODRequests/${id}/UndoDecision`, {
+                method: 'POST'
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                showToast('error', text || 'Could not undo decision.');
+                return;
+            }
+
+            showToast('success', 'Decision reset to Pending. Staff and HOD can now review again.');
+            loadOdRequests();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error while resetting decision.');
+        }
+    });
+
+    // ============================================
+    // EVENTS MANAGEMENT
+    // ============================================
+    let events = [];
+    const eventForm = document.getElementById('eventForm');
+    const eventIdEl = document.getElementById('eventId');
+    const eventSubmitBtn = document.getElementById('eventSubmitBtn');
+    const eventFormTitle = document.getElementById('eventFormTitle');
+
+    function getEventStatus(ev) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const start = ev.startingDate ? String(ev.startingDate).slice(0, 10) : '';
+        const dead = ev.deadlineDate ? String(ev.deadlineDate).slice(0, 10) : '';
+
+        if (start && todayStr < start) {
+            return { label: 'Upcoming', badgeClass: 'badge-upcoming' };
+        }
+        if (dead && todayStr > dead) {
+            return { label: 'Expired', badgeClass: 'badge-expired' };
+        }
+        return { label: 'Going on', badgeClass: 'badge-active' };
+    }
+
+    async function loadEvents() {
+        try {
+            const res = await fetch(`${API_BASE}/api/Events?_=${Date.now()}`, { cache: 'no-store' });
+            events = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error(err);
+            events = [];
+            showToast('error', 'Failed to load events.');
+        }
+        setEl('eventsTabCount', events.length);
+        renderEvents(events);
+    }
+
+    function renderEvents(list) {
+        const tbody = document.getElementById('eventsTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No events yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(ev => {
+            const id = ev.id ?? ev.Id;
+            const active = (ev.isActive ?? ev.IsActive) !== false;
+            const statusInfo = getEventStatus(ev);
+            const toggleSwitch = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="event" title="Event Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
+            return `
+            <tr>
+                <td><b>${esc(ev.eventName ?? ev.EventName)}</b></td>
+                <td>${esc(ev.collegeName ?? ev.CollegeName)}</td>
+                <td>${fmtOdDate(ev.startingDate ?? ev.StartingDate)}</td>
+                <td>${fmtOdDate(ev.deadlineDate ?? ev.DeadlineDate)}</td>
+                <td><span class="${statusInfo.badgeClass}">${statusInfo.label}</span></td>
+                <td>${toggleSwitch}</td>
+                <td>
+                    <div class="row-actions">
+                        <button class="row-btn edit-btn" title="Edit" data-id="${id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                        <button class="row-btn delete-btn" title="Delete" data-id="${id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('eventsSearch')?.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) { renderEvents(events); return; }
+        renderEvents(events.filter(ev =>
+            (ev.eventName ?? ev.EventName ?? '').toLowerCase().includes(q) ||
+            (ev.collegeName ?? ev.CollegeName ?? '').toLowerCase().includes(q)
+        ));
+    });
+
+    document.getElementById('eventsTableBody')?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('.account-toggle-switch');
+        if (toggleBtn) {
+            toggleAccountStatus('event', toggleBtn.dataset.toggleId);
+            return;
+        }
+
+        const id = e.target.closest('[data-id]')?.dataset.id;
+        if (!id) return;
+        const ev = events.find(x => String(x.id ?? x.Id) === String(id));
+        if (!ev) return;
+
+        if (e.target.closest('.delete-btn')) {
+            askDelete('event', id, `event "${ev.eventName ?? ev.EventName}"`);
+            return;
+        }
+        if (e.target.closest('.edit-btn')) {
+            fillEventForm(ev);
+        }
+    });
+
+    function fillEventForm(ev) {
+        eventIdEl.value = ev.id ?? ev.Id ?? '';
+        document.getElementById('eventInputName').value = ev.eventName ?? ev.EventName ?? '';
+        document.getElementById('eventCollegeName').value = ev.collegeName ?? ev.CollegeName ?? '';
+        document.getElementById('eventStartingDate').value = ev.startingDate ? String(ev.startingDate).slice(0, 10) : '';
+        document.getElementById('eventDeadlineDate').value = ev.deadlineDate ? String(ev.deadlineDate).slice(0, 10) : '';
+        if (eventSubmitBtn) eventSubmitBtn.textContent = 'Update Event';
+        if (eventFormTitle) eventFormTitle.textContent = 'Edit Event';
+        document.getElementById('panel-events')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('eventResetBtn')?.addEventListener('click', () => {
+        eventForm.reset();
+        eventIdEl.value = '';
+        if (eventSubmitBtn) eventSubmitBtn.textContent = 'Add Event';
+        if (eventFormTitle) eventFormTitle.textContent = 'Add Event';
+    });
+
+    eventForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = eventIdEl.value;
+        const isEdit = !!id;
+
+        const payload = {
+            eventName: document.getElementById('eventInputName').value.trim(),
+            collegeName: document.getElementById('eventCollegeName').value.trim(),
+            startingDate: document.getElementById('eventStartingDate').value,
+            deadlineDate: document.getElementById('eventDeadlineDate').value
+        };
+
+        if (!payload.eventName || !payload.collegeName || !payload.startingDate || !payload.deadlineDate) {
+            showToast('error', 'Please fill all required fields.');
+            return;
+        }
+        if (payload.startingDate > payload.deadlineDate) {
+            showToast('error', 'Deadline date cannot be earlier than Starting date.');
+            return;
+        }
+
+        if (eventSubmitBtn) eventSubmitBtn.disabled = true;
+        try {
+            let res;
+            if (isEdit) {
+                res = await fetch(`${API_BASE}/api/Events/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                res = await fetch(`${API_BASE}/api/Events`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                let msg = 'Could not save event.';
+                try {
+                    const parsed = JSON.parse(text);
+                    if (parsed.message) msg = parsed.message;
+                } catch {
+                    if (text && text.length < 150) msg = text;
+                }
+                showToast('error', msg);
+                return;
+            }
+            showToast('success', isEdit ? 'Event updated.' : 'Event added.');
+            eventForm.reset();
+            eventIdEl.value = '';
+            if (eventSubmitBtn) eventSubmitBtn.textContent = 'Add Event';
+            if (eventFormTitle) eventFormTitle.textContent = 'Add Event';
+            loadEvents();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error — could not save event.');
+        } finally {
+            if (eventSubmitBtn) eventSubmitBtn.disabled = false;
+        }
+    });
+
     // ── Initial load ──
     loadStudents();
     loadStaff();
     loadHods();
     loadRequests();
+    loadOdRequests();
+    loadEvents();
 }

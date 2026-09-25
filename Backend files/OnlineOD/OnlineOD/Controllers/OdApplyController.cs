@@ -33,7 +33,7 @@ namespace OnlineOD.Controllers
         }
 
         // GET /api/OdApply/{odId}
-        [HttpGet("{odId}")]
+        [HttpGet("{odId:int}")]
         public async Task<IActionResult> GetOdById(int odId)
         {
             var od = await _service.GetOdApplyByIdAsync(odId);
@@ -371,6 +371,82 @@ namespace OnlineOD.Controllers
 
             var data = await _service.GetAnalyticsAsync(department);
             return Ok(data);
+        }
+
+        // GET /api/OdApply/ReportSearch
+        // Dedicated search & report endpoint for the Analytics 4th Box ("OD Student / Report Search").
+        // If staffId is provided, the backend enforces the staff member's assigned year and section
+        // from the database — frontend-supplied year/section params are IGNORED for staff users.
+        [HttpGet("ReportSearch")]
+        public async Task<IActionResult> ReportSearch(
+            [FromQuery] string? department = null,
+            [FromQuery] string? studentName = null,
+            [FromQuery] string? registerNumber = null,
+            [FromQuery] string? classYearSection = null,
+            [FromQuery] string? eventName = null,
+            [FromQuery] string? collegeName = null,
+            [FromQuery] string? odType = null,
+            [FromQuery] string? certification = null,
+            [FromQuery] string? startDate = null,
+            [FromQuery] string? endDate = null,
+            [FromQuery] int? year = null,
+            [FromQuery] string? section = null,
+            [FromQuery] int? staffId = null)
+        {
+            // If staffId is provided, enforce the staff member's actual assigned year/section.
+            // This prevents manipulation of year/section query params from the frontend.
+            if (staffId.HasValue && staffId.Value > 0)
+            {
+                var staff = await _staffService.GetStaffByIdAsync(staffId.Value);
+                if (staff != null)
+                {
+                    year = staff.Year;
+                    section = staff.Section;
+                }
+            }
+
+            var results = await _service.SearchOdReportsAsync(
+                department, studentName, registerNumber, classYearSection, eventName, collegeName, odType, certification, startDate, endDate, year, section);
+            return Ok(results);
+        }
+
+        // GET /api/OdApply/ReportExportExcel
+        // Generates and downloads a real Microsoft Excel (.xlsx) workbook for the Analytics 4th Box.
+        // If staffId is provided, the backend enforces the staff member's actual assigned year/section.
+        [HttpGet("ReportExportExcel")]
+        public async Task<IActionResult> ReportExportExcel(
+            [FromQuery] string? department = null,
+            [FromQuery] string? studentName = null,
+            [FromQuery] string? registerNumber = null,
+            [FromQuery] string? classYearSection = null,
+            [FromQuery] string? eventName = null,
+            [FromQuery] string? collegeName = null,
+            [FromQuery] string? odType = null,
+            [FromQuery] string? certification = null,
+            [FromQuery] string? startDate = null,
+            [FromQuery] string? endDate = null,
+            [FromQuery] int? year = null,
+            [FromQuery] string? section = null,
+            [FromQuery] int? staffId = null)
+        {
+            // If staffId is provided, enforce the staff member's actual assigned year/section.
+            if (staffId.HasValue && staffId.Value > 0)
+            {
+                var staff = await _staffService.GetStaffByIdAsync(staffId.Value);
+                if (staff != null)
+                {
+                    year = staff.Year;
+                    section = staff.Section;
+                }
+            }
+
+            var excelBytes = await _service.GenerateOdReportExcelAsync(
+                department, studentName, registerNumber, classYearSection, eventName, collegeName, odType, certification, startDate, endDate, year, section);
+
+            var deptSanitized = string.IsNullOrWhiteSpace(department) ? "All" : department.Trim().Replace(" ", "_");
+            var fileName = $"OD_Report_{deptSanitized}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+            return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 
         // PUT /api/OdApply/{odId}/VerifyCertificate?registerNumber=XXX

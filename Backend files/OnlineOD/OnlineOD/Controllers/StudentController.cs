@@ -141,7 +141,7 @@ namespace OnlineOD.Controllers
                 return Unauthorized("Invalid register number or password");
 
             if (!student.IsActive)
-                return StatusCode(403, new { message = "Your account is currently deactivated by your class advisor. Please contact them." });
+                return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
 
             return Ok(new
             {

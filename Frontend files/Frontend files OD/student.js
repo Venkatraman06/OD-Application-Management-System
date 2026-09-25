@@ -18,8 +18,91 @@ async function loadStudentNameLookup() {
     }
 }
 
+let activeEventsList = [];
+
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function populateCollegesForEvent(eventName, datalistId) {
+    const datalist = document.getElementById(datalistId);
+    if (!datalist) return;
+
+    if (!eventName || !eventName.trim()) {
+        const allColleges = [];
+        activeEventsList.forEach(ev => {
+            const c = (ev.collegeName || ev.CollegeName || '').trim();
+            if (c && !allColleges.some(existing => existing.toLowerCase() === c.toLowerCase())) {
+                allColleges.push(c);
+            }
+        });
+        datalist.innerHTML = allColleges.map(c => `<option value="${escapeHtml(c)}">`).join('');
+        return;
+    }
+
+    const matching = activeEventsList.filter(ev =>
+        (ev.eventName || ev.EventName || '').trim().toLowerCase() === eventName.trim().toLowerCase()
+    );
+
+    const colleges = [];
+    matching.forEach(ev => {
+        const c = (ev.collegeName || ev.CollegeName || '').trim();
+        if (c && !colleges.some(existing => existing.toLowerCase() === c.toLowerCase())) {
+            colleges.push(c);
+        }
+    });
+
+    if (colleges.length > 0) {
+        datalist.innerHTML = colleges.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    } else {
+        const allColleges = [];
+        activeEventsList.forEach(ev => {
+            const c = (ev.collegeName || ev.CollegeName || '').trim();
+            if (c && !allColleges.some(existing => existing.toLowerCase() === c.toLowerCase())) {
+                allColleges.push(c);
+            }
+        });
+        datalist.innerHTML = allColleges.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    }
+}
+
+async function loadActiveEvents() {
+    try {
+        const res = await fetch(`${API_BASE}/api/Events/Active?_=${Date.now()}`);
+        if (!res.ok) {
+            console.error('Failed to load active events, status:', res.status);
+            activeEventsList = [];
+        } else {
+            activeEventsList = await res.json();
+        }
+
+        const eventDatalist = document.getElementById('eventNameList');
+        const grpEventDatalist = document.getElementById('groupEventNameList');
+
+        const uniqueEventNames = [];
+        activeEventsList.forEach(ev => {
+            const name = (ev.eventName || ev.EventName || '').trim();
+            if (name && !uniqueEventNames.some(existing => existing.toLowerCase() === name.toLowerCase())) {
+                uniqueEventNames.push(name);
+            }
+        });
+
+        const optionsHtml = uniqueEventNames.map(name => `<option value="${escapeHtml(name)}">`).join('');
+        if (eventDatalist) eventDatalist.innerHTML = optionsHtml;
+        if (grpEventDatalist) grpEventDatalist.innerHTML = optionsHtml;
+
+        populateCollegesForEvent(document.getElementById('eventName')?.value || '', 'collegeNameList');
+        populateCollegesForEvent(document.getElementById('groupEventName')?.value || '', 'groupCollegeNameList');
+    } catch (err) {
+        console.error('Failed to load active events:', err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     loadStudentNameLookup();
+    loadActiveEvents();
 
     // ── Guard: must be logged in ──
     const studentId = localStorage.getItem('studentId');
@@ -528,6 +611,55 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('refreshBtn')?.addEventListener('click', loadODStatus);
 
+    // ── Event selection & typing dependent college datalist ──
+    const soloEventInput = document.getElementById('eventName');
+    const soloCollegeInput = document.getElementById('collegeName');
+    if (soloEventInput) {
+        const handleSoloEventChange = () => {
+            const val = soloEventInput.value.trim();
+            populateCollegesForEvent(val, 'collegeNameList');
+            const matching = activeEventsList.filter(ev =>
+                (ev.eventName || ev.EventName || '').trim().toLowerCase() === val.toLowerCase()
+            );
+            if (matching.length === 1 && soloCollegeInput && !soloCollegeInput.value.trim()) {
+                soloCollegeInput.value = matching[0].collegeName || matching[0].CollegeName || '';
+            }
+        };
+        soloEventInput.addEventListener('input', handleSoloEventChange);
+        soloEventInput.addEventListener('change', handleSoloEventChange);
+    }
+
+    const grpEventInput = document.getElementById('groupEventName');
+    const grpCollegeInput = document.getElementById('groupCollegeName');
+    if (grpEventInput) {
+        const handleGrpEventChange = () => {
+            const val = grpEventInput.value.trim();
+            populateCollegesForEvent(val, 'groupCollegeNameList');
+            const matching = activeEventsList.filter(ev =>
+                (ev.eventName || ev.EventName || '').trim().toLowerCase() === val.toLowerCase()
+            );
+            if (matching.length === 1 && grpCollegeInput && !grpCollegeInput.value.trim()) {
+                grpCollegeInput.value = matching[0].collegeName || matching[0].CollegeName || '';
+            }
+        };
+        grpEventInput.addEventListener('input', handleGrpEventChange);
+        grpEventInput.addEventListener('change', handleGrpEventChange);
+    }
+
+    document.getElementById('resetBtn')?.addEventListener('click', () => {
+        if (soloCollegeInput) soloCollegeInput.value = '';
+        populateCollegesForEvent('', 'collegeNameList');
+        if (daysEl) daysEl.value = '';
+    });
+
+    document.getElementById('groupResetBtn')?.addEventListener('click', () => {
+        if (grpCollegeInput) grpCollegeInput.value = '';
+        populateCollegesForEvent('', 'groupCollegeNameList');
+        if (groupDaysEl) groupDaysEl.value = '';
+        window.groupMemberList = [];
+        renderMemberList();
+    });
+
     // ── Solo OD Form Submit ──
     document.getElementById('odForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -625,11 +757,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('odForm').reset();
                 if (daysEl) daysEl.value = '';
+                if (soloCollegeInput) soloCollegeInput.value = '';
                 switchTab('apply-status');
             } else {
                 const errText = await res.text();
                 console.error('Submit failed:', res.status, errText);
-                showToast('error', `Failed to submit OD (${res.status})`);
+                let msg = `Failed to submit OD (${res.status})`;
+                try {
+                    const parsed = JSON.parse(errText);
+                    if (parsed.message) msg = parsed.message;
+                    else if (typeof parsed === 'string') msg = parsed;
+                } catch {
+                    if (errText && errText.length < 150) msg = errText;
+                }
+                showToast('error', msg);
             }
         } catch (err) {
             console.error('Submit network error:', err);
@@ -747,6 +888,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 document.getElementById('groupOdForm').reset();
                 if (groupDaysEl) groupDaysEl.value = '';
+                if (grpCollegeInput) grpCollegeInput.value = '';
                 // Reset dynamic member list
                 window.groupMemberList = [];
                 renderMemberList();
@@ -754,7 +896,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 const errText = await res.text();
                 console.error('Group OD submit failed:', res.status, errText);
-                showToast('error', `Failed to submit Group OD (${res.status})`);
+                let msg = `Failed to submit Group OD (${res.status})`;
+                try {
+                    const parsed = JSON.parse(errText);
+                    if (parsed.message) msg = parsed.message;
+                    else if (typeof parsed === 'string') msg = parsed;
+                } catch {
+                    if (errText && errText.length < 150) msg = errText;
+                }
+                showToast('error', msg);
             }
         } catch (err) {
             console.error('Group OD network error:', err);
@@ -866,6 +1016,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const odId           = od.OdId ?? od.odId ?? '';
 
         setEl('modalEventName', eventName || 'OD Request');
+        setEl('modalEventNameBody', eventName || '-');
         const compType = od.CompetitionType ?? od.competitionType ?? '';
         setEl('modalCollege', college || '-');
         const modalCompEl = document.getElementById('modalCompetitionType');
@@ -1744,8 +1895,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>` : '';
 
-                const isFullyApproved = (myFacultyStatus === 'Approved' && hodStatus === 'Approved');
-                const canEdit = !isFullyApproved;
+                const isStaffApproved = (myFacultyStatus === 'Approved');
+                const isHodApproved = (hodStatus === 'Approved');
+                const canEdit = !isStaffApproved && !isHodApproved;
 
                 return `
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
