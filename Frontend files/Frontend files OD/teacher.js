@@ -760,15 +760,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (endDate) params.append('endDate', endDate);
         params.append('_', Date.now());
 
-        showToast('info', 'Generating and downloading Excel report (.xlsx)...');
+        showToast('info', 'Generating Excel report (.xlsx)...');
 
         const exportUrl = `${API_BASE}/api/OdApply/ReportExportExcel?${params.toString()}`;
-        const link = document.createElement('a');
-        link.href = exportUrl;
-        link.setAttribute('download', '');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+            const res = await fetch(exportUrl);
+            if (!res.ok) {
+                showToast('error', `Download failed (HTTP ${res.status})`);
+                return;
+            }
+            const blob = await res.blob();
+            const filename = `OD_Report_${dept || 'Dept'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
+            }, 2000);
+            showToast('success', 'Excel report downloaded successfully.');
+        } catch (err) {
+            console.error('Download error:', err);
+            // Fallback for popup/iframe blockers
+            window.open(exportUrl, '_blank');
+        }
     }
 
 

@@ -8,6 +8,8 @@
 html, body {
     max-width: 100%;
     overflow-x: hidden;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ── Tablet & Small Desktop (<= 992px) ── */
@@ -327,6 +329,14 @@ html, body {
         line-height: 1 !important;
     }
 
+    /* Fix: in textarea (Reason for OD), descriptive icon is at top, not centered */
+    .input-wrapper.textarea-wrapper .input-icon,
+    .input-wrapper .textarea-icon {
+        top: 16px !important;
+        transform: none !important;
+        align-self: flex-start !important;
+    }
+
     .input-wrapper .input-icon svg {
         width: 18px !important;
         height: 18px !important;
@@ -393,22 +403,35 @@ html, body {
         padding: 12px !important;
     }
 
-    /* ── Responsive Tables & Cards ── */
+    /* ── Responsive Tables & Cards (Smooth Horizontal & Vertical Mobile Scrolling) ── */
+    .table-wrap,
     .table-container,
+    .table-scroll,
+    .table-scroll-container,
+    .report-table-wrapper,
     .students-table-card,
     .admin-card.table-card,
     .history-card {
         overflow-x: auto !important;
+        overflow-y: visible !important;
+        max-height: none !important;
         -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-x pan-y !important;
         border-radius: 12px !important;
         padding: 14px 12px !important;
         max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .students-table,
     .admin-table,
-    .history-table {
-        min-width: 540px !important;
+    .analytics-table,
+    .excel-table,
+    .excel-report-table,
+    .history-table,
+    .details-table {
+        min-width: 600px !important;
     }
 
     /* ── Status Cards & OD Detail View ── */
@@ -521,6 +544,38 @@ html, body {
         width: 100% !important;
         font-size: 0.82rem !important;
         padding: 10px 14px !important;
+    }
+}
+
+/* ── Admin Page Mobile Scrolling & Layout ── */
+@media (max-width: 768px) {
+    .admin-shell {
+        padding: 0 0 40px !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+        overflow-y: visible !important;
+    }
+
+    .admin-header {
+        padding: 14px 16px !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+
+    .admin-main {
+        padding: 14px 12px 60px !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .admin-tabs {
+        padding: 10px 12px 0 !important;
+        gap: 4px !important;
+    }
+}
+
 @media (max-width: 900px) {
     .report-search-grid {
         grid-template-columns: repeat(2, 1fr) !important;

@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    OD Application - Login Page Styles
    ============================================ */
 
@@ -434,6 +434,25 @@ body {
     height: 18px;
 }
 
+/* Suppress native browser reveal button so only single custom eye is visible */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    pointer-events: none !important;
+}
+
+input[type="password"]::-webkit-contacts-auto-fill-button,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden !important;
+    display: none !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+}
+
 .input-focus-line {
     display: none;
 }
@@ -795,7 +814,7 @@ input:focus-visible {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
-/* ── Competition Type Tag (shared) ── */
+/* â”€â”€ Competition Type Tag (shared) â”€â”€ */
 .competition-tag {
     display: inline-flex;
     align-items: center;
@@ -908,9 +927,9 @@ input:focus-visible {
     box-shadow: 0 0 0 3px var(--primary-100);
 }
 
-/* ══════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    GLOBAL THEME TOGGLE BUTTON & LIGHT THEME (styles.css)
-   ══════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .theme-toggle-btn {
     display: inline-flex;
     align-items: center;
@@ -932,7 +951,7 @@ input:focus-visible {
     transform: rotate(20deg) scale(1.08);
 }
 
-/* ── Pure Light Theme Overrides (styles.css) ── */
+/* â”€â”€ Pure Light Theme Overrides (styles.css) â”€â”€ */
 [data-theme="light"] body {
     background: #ffffff !important;
     color: #0f172a !important;
