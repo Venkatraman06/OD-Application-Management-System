@@ -8,6 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="Google.Apis" Version="1.76.0" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.76.0" />
+    <PackageReference Include="Google.Apis.Gmail.v1" Version="1.75.0.4225" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
@@ -19,11 +22,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
-  <ItemGroup>
-  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
-  
-</ItemGroup>
 
 </Project>
