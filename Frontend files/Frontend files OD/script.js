@@ -110,6 +110,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const forgotNewPasswordInput = document.getElementById('forgotNewPassword');
     const forgotConfirmPasswordInput = document.getElementById('forgotConfirmPassword');
     const forgotResetSubmitBtn = document.getElementById('forgotResetSubmitBtn');
+    const toggleForgotNewPasswordBtn = document.getElementById('toggleForgotNewPassword');
+    const toggleForgotConfirmPasswordBtn = document.getElementById('toggleForgotConfirmPassword');
+
+    toggleForgotNewPasswordBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!forgotNewPasswordInput) return;
+        const isPass = forgotNewPasswordInput.type === 'password';
+        forgotNewPasswordInput.type = isPass ? 'text' : 'password';
+        const eyeOpen = toggleForgotNewPasswordBtn.querySelector('.eye-open');
+        const eyeClosed = toggleForgotNewPasswordBtn.querySelector('.eye-closed');
+        if (eyeOpen) eyeOpen.style.display = isPass ? 'none' : 'block';
+        if (eyeClosed) eyeClosed.style.display = isPass ? 'block' : 'none';
+    });
+
+    toggleForgotConfirmPasswordBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!forgotConfirmPasswordInput) return;
+        const isPass = forgotConfirmPasswordInput.type === 'password';
+        forgotConfirmPasswordInput.type = isPass ? 'text' : 'password';
+        const eyeOpen = toggleForgotConfirmPasswordBtn.querySelector('.eye-open');
+        const eyeClosed = toggleForgotConfirmPasswordBtn.querySelector('.eye-closed');
+        if (eyeOpen) eyeOpen.style.display = isPass ? 'none' : 'block';
+        if (eyeClosed) eyeClosed.style.display = isPass ? 'block' : 'none';
+    });
 
     const forgotStep4Success = document.getElementById('forgotStep4Success');
     const forgotSuccessLoginBtn = document.getElementById('forgotSuccessLoginBtn');
@@ -135,6 +159,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (forgotStep1Form) forgotStep1Form.reset();
         if (forgotStep2Form) forgotStep2Form.reset();
         if (forgotStep3Form) forgotStep3Form.reset();
+        if (forgotNewPasswordInput) forgotNewPasswordInput.type = 'password';
+        if (forgotConfirmPasswordInput) forgotConfirmPasswordInput.type = 'password';
+        if (toggleForgotNewPasswordBtn) {
+            const op = toggleForgotNewPasswordBtn.querySelector('.eye-open');
+            const cl = toggleForgotNewPasswordBtn.querySelector('.eye-closed');
+            if (op) op.style.display = 'block';
+            if (cl) cl.style.display = 'none';
+        }
+        if (toggleForgotConfirmPasswordBtn) {
+            const op = toggleForgotConfirmPasswordBtn.querySelector('.eye-open');
+            const cl = toggleForgotConfirmPasswordBtn.querySelector('.eye-closed');
+            if (op) op.style.display = 'block';
+            if (cl) cl.style.display = 'none';
+        }
         currentResetEmail = '';
         verifiedResetCode = '';
         showForgotStep(1);
@@ -381,6 +419,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (facultyResult.error && facultyResult.status === 403) {
+            showToast('error', facultyResult.error);
+            setLoading(false);
+            return;
+        }
+
         const hodResult = await tryLogin(`${API_BASE}/api/Hod/Login`, {
             name: username,
             password: password
@@ -394,6 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userDept', hodResult.data.department);
             showToast('success', 'HOD login successful!');
             setTimeout(() => window.location.href = 'hod.html', 1200);
+            return;
+        }
+
+        if (hodResult.error && hodResult.status === 403) {
+            showToast('error', hodResult.error);
+            setLoading(false);
             return;
         }
 

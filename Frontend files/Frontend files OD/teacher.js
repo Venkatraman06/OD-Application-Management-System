@@ -264,10 +264,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function resultTagClass(status) {
-        if (status === '1st Prize') return 'gold';
-        if (status === '2nd Prize') return 'silver';
-        if (status === '3rd Prize') return 'bronze';
-        if (status === 'Participated') return 'neutral';
+        if (!status) return 'other';
+        const s = status.toLowerCase();
+        if (s.includes('1st') || s.includes('first')) return 'gold';
+        if (s.includes('2nd') || s.includes('second')) return 'silver';
+        if (s.includes('3rd') || s.includes('third')) return 'bronze';
+        if (s.includes('participat')) return 'neutral';
+        if (s.includes('not submitted')) return 'empty';
         return 'other';
     }
 
@@ -322,9 +325,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p>No certificate data yet for <strong>${escHtml(dept)}</strong> department.<br>
                        Charts will appear once students upload their event certificates.</p>
                 </div>`;
-            if (tableCard) tableCard.querySelector('#analyticsTableBody').innerHTML =
-                `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">
-                    No certificates uploaded yet.</td></tr>`;
+            const tBodyEl = document.getElementById('analyticsTableBody');
+            if (tBodyEl) {
+                tBodyEl.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">No certificates uploaded yet.</td></tr>`;
+            }
             return;
         }
 
@@ -444,6 +448,329 @@ document.addEventListener('DOMContentLoaded', async () => {
             `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">No certificate data yet.</td></tr>`;
         }
     }
+
+    // ============================================
+    // 4th Box: OD Student / Report Search
+    // ============================================
+    // 4th Box: OD Student / Report Search
+    // ============================================
+    let currentReportSearchResults = [];
+
+    function applyDatePreset(preset) {
+        const startInput = document.getElementById('rptStartDate');
+        const endInput = document.getElementById('rptEndDate');
+        const errEl = document.getElementById('rptDateError');
+        if (errEl) errEl.style.display = 'none';
+
+        if (!startInput || !endInput) return;
+
+        const now = new Date();
+        const fmt = (d) => {
+            const yr = d.getFullYear();
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+            const da = String(d.getDate()).padStart(2, '0');
+            return `${yr}-${mo}-${da}`;
+        };
+
+        if (preset === 'all') {
+            startInput.value = '';
+            endInput.value = '';
+        } else if (preset === 'week') {
+            const d = new Date(now);
+            const day = d.getDay(); // 0=Sun
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+            const monday = new Date(d.setDate(diff));
+            monday.setHours(0,0,0,0);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            startInput.value = fmt(monday);
+            endInput.value = fmt(sunday);
+        } else if (preset === 'month') {
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            startInput.value = fmt(firstDay);
+            endInput.value = fmt(lastDay);
+        } else if (preset === 'year') {
+            const firstDay = new Date(now.getFullYear(), 0, 1);
+            const lastDay = new Date(now.getFullYear(), 11, 31);
+            startInput.value = fmt(firstDay);
+            endInput.value = fmt(lastDay);
+        }
+    }
+
+    function initReportSearch() {
+        const btnSearch = document.getElementById('btnSearchReport');
+        const btnClear = document.getElementById('btnClearReport');
+        const btnPrint = document.getElementById('btnPrintReport');
+        const selOdType = document.getElementById('rptOdType');
+        const selCert = document.getElementById('rptCertification');
+        const selDatePreset = document.getElementById('rptDatePreset');
+        const startInput = document.getElementById('rptStartDate');
+        const endInput = document.getElementById('rptEndDate');
+
+        if (btnSearch && btnSearch.dataset.bound === 'true') {
+            return; // idempotent: prevent duplicate listener attachments
+        }
+        if (btnSearch) btnSearch.dataset.bound = 'true';
+
+        btnSearch?.addEventListener('click', doSearchReport);
+        btnClear?.addEventListener('click', doClearReport);
+        btnPrint?.addEventListener('click', doPrintReport);
+        selOdType?.addEventListener('change', () => doSearchReport());
+        selCert?.addEventListener('change', () => doSearchReport());
+
+        selDatePreset?.addEventListener('change', (e) => {
+            applyDatePreset(e.target.value);
+            doSearchReport();
+        });
+
+        startInput?.addEventListener('change', () => {
+            const presetSel = document.getElementById('rptDatePreset');
+            if (presetSel && presetSel.value !== 'custom') presetSel.value = 'custom';
+            doSearchReport();
+        });
+
+        endInput?.addEventListener('change', () => {
+            const presetSel = document.getElementById('rptDatePreset');
+            if (presetSel && presetSel.value !== 'custom') presetSel.value = 'custom';
+            doSearchReport();
+        });
+
+        const inputs = [
+            'rptStudentName',
+            'rptRegisterNumber',
+            'rptEventName',
+            'rptCollegeName'
+        ];
+
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        doSearchReport();
+                    }
+                });
+            }
+        });
+    }
+
+    async function doSearchReport() {
+        const studentName = document.getElementById('rptStudentName')?.value.trim() || '';
+        const registerNumber = document.getElementById('rptRegisterNumber')?.value.trim() || '';
+        const eventName = document.getElementById('rptEventName')?.value.trim() || '';
+        const collegeName = document.getElementById('rptCollegeName')?.value.trim() || '';
+        const odType = document.getElementById('rptOdType')?.value || 'All';
+        const certification = document.getElementById('rptCertification')?.value || 'All';
+        const startDate = document.getElementById('rptStartDate')?.value.trim() || '';
+        const endDate = document.getElementById('rptEndDate')?.value.trim() || '';
+        const errEl = document.getElementById('rptDateError');
+
+        if (startDate && endDate && endDate < startDate) {
+            if (errEl) {
+                errEl.textContent = 'End date cannot be before start date';
+                errEl.style.display = 'block';
+            }
+            showToast('error', 'End date cannot be before start date');
+            return;
+        } else {
+            if (errEl) errEl.style.display = 'none';
+        }
+
+        const tbody = document.getElementById('odReportTableBody');
+        const badge = document.getElementById('rptResultBadge');
+
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="15" class="report-empty-cell">
+                        <span class="spinner" style="display:inline-block;width:18px;height:18px;vertical-align:middle;margin-right:8px;border:2px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;"></span>
+                        Searching OD records...
+                    </td>
+                </tr>
+            `;
+        }
+
+        try {
+            const params = new URLSearchParams();
+            if (dept) params.append('department', dept);
+            // Pass staffId so the backend enforces this staff member's actual assigned year/section.
+            // The backend will look up the real Year and Section from the Staff table.
+            // This prevents a staff member from manipulating year/section query params.
+            if (facultyId) params.append('staffId', facultyId);
+            if (studentName) params.append('studentName', studentName);
+            if (registerNumber) params.append('registerNumber', registerNumber);
+            if (eventName) params.append('eventName', eventName);
+            if (collegeName) params.append('collegeName', collegeName);
+            if (odType && odType !== 'All') params.append('odType', odType);
+            if (certification && certification !== 'All') params.append('certification', certification);
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            params.append('_', Date.now());
+
+            const res = await fetch(`${API_BASE}/api/OdApply/ReportSearch?${params.toString()}`, { cache: 'no-store' });
+            if (!res.ok) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="15" class="report-empty-cell error">Failed to search OD records.</td></tr>';
+                return;
+            }
+
+            const data = await res.json();
+            currentReportSearchResults = Array.isArray(data) ? data : [];
+            renderReportSearchResults(currentReportSearchResults);
+        } catch (err) {
+            console.error('Report search error:', err);
+            if (tbody) tbody.innerHTML = '<tr><td colspan="15" class="report-empty-cell error">Network error occurred during search.</td></tr>';
+        }
+    }
+
+
+    function renderReportSearchResults(list) {
+        const tbody = document.getElementById('odReportTableBody');
+        const badge = document.getElementById('rptResultBadge');
+
+        if (badge) {
+            badge.style.display = 'inline-block';
+            badge.textContent = `${list.length} record(s) found`;
+            badge.className = list.length > 0 ? 'report-status-badge success' : 'report-status-badge empty';
+        }
+
+        if (!tbody) return;
+
+        if (!list || list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="15" class="report-empty-cell">No matching OD records found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map((item, idx) => {
+            const memberCount = item.members ? item.members.length : 0;
+            const groupTag = item.isGroupOd
+                ? `<span class="report-group-pill" title="Group: ${escHtml(item.groupName || 'Group')} (${memberCount} members)">Group (${memberCount})</span>`
+                : '';
+
+            let regDisplay = escHtml(item.registerNumber || '-');
+            if (item.isGroupOd && item.members && item.members.length > 0) {
+                const memberListStr = item.members.map(m => `${m.registerNumber} (${m.studentName})`).join(', ');
+                regDisplay = `<div class="reg-lead">${escHtml(item.registerNumber || '-')}</div><div class="reg-members" title="${escHtml(memberListStr)}">Members: ${escHtml(item.members.map(m => m.registerNumber).join(', '))}</div>`;
+            }
+
+            const statusClass = (item.overallStatus || '').toLowerCase().includes('approved') ? 'badge-approved'
+                : (item.overallStatus || '').toLowerCase().includes('rejected') ? 'badge-rejected'
+                : 'badge-pending';
+
+            const facStatusClass = (item.facultyStatus || '').toLowerCase().includes('approved') ? 'status-text-approved'
+                : (item.facultyStatus || '').toLowerCase().includes('rejected') ? 'status-text-rejected'
+                : 'status-text-pending';
+
+            const hodStatusClass = (item.hodStatus || '').toLowerCase().includes('approved') ? 'status-text-approved'
+                : (item.hodStatus || '').toLowerCase().includes('rejected') ? 'status-text-rejected'
+                : 'status-text-pending';
+
+            const certStatus = item.certificationStatus || 'Not Submitted';
+            const certTagCls = resultTagClass(certStatus);
+
+            return `
+                <tr>
+                    <td class="cell-index">${idx + 1}</td>
+                    <td>
+                        <div class="cell-student-name">
+                            <b>${escHtml(item.studentName || '-')}</b>
+                            ${groupTag}
+                        </div>
+                    </td>
+                    <td>${regDisplay}</td>
+                    <td>${escHtml(item.className || '-')}</td>
+                    <td>${item.year ? 'Year ' + item.year : '-'}</td>
+                    <td><span class="section-tag">${escHtml(item.section || '-')}</span></td>
+                    <td>${escHtml(item.eventName || '-')}</td>
+                    <td>${escHtml(item.collegeName || '-')}</td>
+                    <td><span class="od-type-pill ${item.isGroupOd ? 'group' : 'solo'}">${escHtml(item.odType || (item.isGroupOd ? 'Group OD' : 'Solo OD'))}</span></td>
+                    <td>${fmtDate(item.fromDate)}</td>
+                    <td>${fmtDate(item.toDate)}</td>
+                    <td>${fmtDate(item.appliedDate)}</td>
+                    <td><span class="report-status-pill ${statusClass}">${escHtml(item.overallStatus || 'Pending')}</span></td>
+                    <td class="cell-approval-details">
+                        <div>Faculty: <span class="${facStatusClass}"><b>${escHtml(item.facultyStatus || 'Pending')}</b></span></div>
+                        <div>HOD: <span class="${hodStatusClass}"><b>${escHtml(item.hodStatus || 'Pending')}</b></span></div>
+                    </td>
+                    <td><span class="result-tag ${certTagCls}">${escHtml(certStatus)}</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function doClearReport() {
+        const studentName = document.getElementById('rptStudentName');
+        const registerNumber = document.getElementById('rptRegisterNumber');
+        const eventName = document.getElementById('rptEventName');
+        const collegeName = document.getElementById('rptCollegeName');
+        const odType = document.getElementById('rptOdType');
+        const certEl = document.getElementById('rptCertification');
+        const datePreset = document.getElementById('rptDatePreset');
+        const startDate = document.getElementById('rptStartDate');
+        const endDate = document.getElementById('rptEndDate');
+        const errEl = document.getElementById('rptDateError');
+        const tbody = document.getElementById('odReportTableBody');
+        const badge = document.getElementById('rptResultBadge');
+
+        if (studentName) studentName.value = '';
+        if (registerNumber) registerNumber.value = '';
+        if (eventName) eventName.value = '';
+        if (collegeName) collegeName.value = '';
+        if (odType) odType.value = 'All';
+        if (certEl) certEl.value = 'All';
+        if (datePreset) datePreset.value = 'all';
+        if (startDate) startDate.value = '';
+        if (endDate) endDate.value = '';
+        if (errEl) errEl.style.display = 'none';
+
+        currentReportSearchResults = [];
+
+        if (badge) {
+            badge.style.display = 'none';
+            badge.textContent = '';
+        }
+
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="15" class="report-empty-cell">Use the filters above and click Search to display OD reports.</td></tr>';
+        }
+    }
+
+    function doPrintReport() {
+        const studentName = document.getElementById('rptStudentName')?.value.trim() || '';
+        const registerNumber = document.getElementById('rptRegisterNumber')?.value.trim() || '';
+        const eventName = document.getElementById('rptEventName')?.value.trim() || '';
+        const collegeName = document.getElementById('rptCollegeName')?.value.trim() || '';
+        const odType = document.getElementById('rptOdType')?.value || 'All';
+        const certification = document.getElementById('rptCertification')?.value || 'All';
+        const startDate = document.getElementById('rptStartDate')?.value.trim() || '';
+        const endDate = document.getElementById('rptEndDate')?.value.trim() || '';
+
+        const params = new URLSearchParams();
+        if (dept) params.append('department', dept);
+        // Pass staffId so the backend enforces this staff member's actual assigned year/section.
+        if (facultyId) params.append('staffId', facultyId);
+        if (studentName) params.append('studentName', studentName);
+        if (registerNumber) params.append('registerNumber', registerNumber);
+        if (eventName) params.append('eventName', eventName);
+        if (collegeName) params.append('collegeName', collegeName);
+        if (odType && odType !== 'All') params.append('odType', odType);
+        if (certification && certification !== 'All') params.append('certification', certification);
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        params.append('_', Date.now());
+
+        showToast('info', 'Generating and downloading Excel report (.xlsx)...');
+
+        const exportUrl = `${API_BASE}/api/OdApply/ReportExportExcel?${params.toString()}`;
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.setAttribute('download', '');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
 
     // ── Load certificates (view-only) — faculty-approved ODs whose dates have finished ──
     // Shows BOTH uploaded and not-yet-uploaded, same as HOD page. Also
@@ -759,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             : 'Pending';
 
         setEl('odDetailEvent', od.event || '');
+        setEl('odDetailEventName', od.event || od.Event || '-');
         const compTypeEl = document.getElementById('odDetailCompetitionType');
         if (compTypeEl) compTypeEl.textContent = od.competitionType || '-';
         const overallBadge = document.getElementById('odDetailOverallBadge');
@@ -1977,6 +2305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load the certificates badge count in the background too, so it's ready before the tab is clicked
     loadCertificates();
     loadStudentLookup();
+    initReportSearch();
     // Preload my students count for badge
     (async () => {
         try {

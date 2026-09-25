@@ -77,6 +77,14 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Requests <span class="tab-count" id="requestsTabCount">0</span>
         </button>
+        <button class="admin-tab" data-tab="odrequests">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            OD Request <span class="tab-count" id="odRequestsTabCount">0</span>
+        </button>
+        <button class="admin-tab" data-tab="events">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Events <span class="tab-count" id="eventsTabCount">0</span>
+        </button>
     </nav>
 
     <main class="admin-main">
@@ -255,11 +263,11 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Email</th><th></th>
+                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Email</th><th>Status</th><th></th>
                                 </tr>
                             </thead>
                             <tbody id="staffTableBody">
-                                <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                                <tr><td colspan="8" class="table-empty">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -310,11 +318,11 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Email</th><th></th>
+                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Email</th><th>Status</th><th></th>
                                 </tr>
                             </thead>
                             <tbody id="hodTableBody">
-                                <tr><td colspan="5" class="table-empty">Loading...</td></tr>
+                                <tr><td colspan="6" class="table-empty">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -344,6 +352,121 @@
             </div>
         </section>
 
+        <!-- ============== OD REQUESTS ============== -->
+        <section class="admin-panel" id="panel-odrequests">
+            <div class="sub-tabs-container">
+                <button type="button" class="sub-tab-btn active" id="subtabOdPending" data-od-subtab="pending">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Pending <span class="tab-count" id="odSubtabPendingCount">0</span>
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabOdApproved" data-od-subtab="approved">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Approved <span class="tab-count" id="odSubtabApprovedCount">0</span>
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabOdRejected" data-od-subtab="rejected">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    Rejected <span class="tab-count" id="odSubtabRejectedCount">0</span>
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabOdNoAction" data-od-subtab="noaction">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    No Action <span class="tab-count" id="odSubtabNoActionCount">0</span>
+                </button>
+            </div>
+
+            <div class="admin-card list-card requests-full">
+                <div class="list-card-header">
+                    <div>
+                        <h2 id="odRequestsListTitle">Pending OD Requests</h2>
+                        <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);" id="odRequestsListSub">Review, edit, undo decision, or manage OD requests</p>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <input type="text" class="admin-search" id="odRequestsSearch" placeholder="Search student / reg no / event / dept...">
+                        <button class="action-btn icon-btn" id="refreshOdRequestsBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student Name</th>
+                                <th>Reg. No.</th>
+                                <th>Dept</th>
+                                <th>Sec</th>
+                                <th>Year</th>
+                                <th>Event Name</th>
+                                <th>College / Industry</th>
+                                <th>OD Type</th>
+                                <th>Dates</th>
+                                <th>Applied</th>
+                                <th>Status</th>
+                                <th>Certification</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="odRequestsTableBody">
+                            <tr><td colspan="14" class="table-empty">Loading OD requests...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============== EVENTS ============== -->
+        <section class="admin-panel" id="panel-events">
+            <div class="admin-grid">
+                <div class="admin-card form-card">
+                    <h2 id="eventFormTitle">Add Event</h2>
+                    <form id="eventForm" class="admin-form" novalidate>
+                        <input type="hidden" id="eventId" value="">
+                        <div class="form-row">
+                            <label>Event Name</label>
+                            <input type="text" id="eventInputName" required placeholder="e.g. Smart India Hackathon">
+                        </div>
+                        <div class="form-row">
+                            <label>College Name / Venue</label>
+                            <input type="text" id="eventCollegeName" required placeholder="e.g. IIT Madras">
+                        </div>
+                        <div class="form-row two-col">
+                            <div>
+                                <label>Starting Date</label>
+                                <input type="date" id="eventStartingDate" required>
+                            </div>
+                            <div>
+                                <label>Deadline Date</label>
+                                <input type="date" id="eventDeadlineDate" required>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" id="eventResetBtn">Clear</button>
+                            <button type="submit" class="btn-primary" id="eventSubmitBtn">Add Event</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="admin-card list-card">
+                    <div class="list-card-header">
+                        <h2>All Events</h2>
+                        <input type="text" class="admin-search" id="eventsSearch" placeholder="Search event / college...">
+                    </div>
+                    <div class="table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Event Name</th><th>College</th><th>Start Date</th><th>Deadline</th><th>Status</th><th>Active / Inactive</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="eventsTableBody">
+                                <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 </div>
 
@@ -356,6 +479,117 @@
     <option value="CIVIL">
     <option value="AI&DS">
 </datalist>
+
+<!-- Edit OD Modal -->
+<div class="modal-overlay" id="editOdModalOverlay">
+    <div class="modal-box" style="max-width:620px;text-align:left;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:1.15rem;font-weight:700;color:white;">Edit OD Request</h3>
+            <button type="button" id="editOdModalCloseBtn" style="background:none;border:none;color:var(--surface-400);cursor:pointer;font-size:1.4rem;line-height:1;">&times;</button>
+        </div>
+        <form id="editOdForm" class="admin-form" novalidate>
+            <input type="hidden" id="editOdId" value="">
+            <div class="form-row two-col">
+                <div>
+                    <label>Student Name</label>
+                    <input type="text" id="editOdStudentName" required>
+                </div>
+                <div>
+                    <label>Register Number</label>
+                    <input type="text" id="editOdRegNo" required>
+                </div>
+            </div>
+            <div class="form-row two-col">
+                <div>
+                    <label>Department</label>
+                    <input type="text" id="editOdDept" list="deptList" required>
+                </div>
+                <div>
+                    <label>Section</label>
+                    <input type="text" id="editOdSection">
+                </div>
+            </div>
+            <div class="form-row two-col">
+                <div>
+                    <label>Event Name</label>
+                    <input type="text" id="editOdEvent" required>
+                </div>
+                <div>
+                    <label>College / Industry</label>
+                    <input type="text" id="editOdCollege">
+                </div>
+            </div>
+            <div class="form-row two-col">
+                <div>
+                    <label>From Date</label>
+                    <input type="date" id="editOdFromDate" required>
+                </div>
+                <div>
+                    <label>To Date</label>
+                    <input type="date" id="editOdToDate" required>
+                </div>
+            </div>
+            <div class="form-row two-col">
+                <div>
+                    <label>Number of Days</label>
+                    <input type="number" id="editOdDays" min="1" required>
+                </div>
+                <div>
+                    <label>Competition Type</label>
+                    <input type="text" id="editOdCompType" placeholder="e.g. Hackathon, Workshop">
+                </div>
+            </div>
+            <div class="form-row two-col">
+                <div>
+                    <label>Start Time</label>
+                    <input type="time" id="editOdStartTime">
+                </div>
+                <div>
+                    <label>End Time</label>
+                    <input type="time" id="editOdEndTime">
+                </div>
+            </div>
+            <div class="form-row">
+                <label>Reason</label>
+                <input type="text" id="editOdReason" placeholder="Purpose or details of OD">
+            </div>
+            <div class="form-row two-col">
+                <div>
+                    <label>Faculty Status (Staff)</label>
+                    <select id="editOdFacultyStatus" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                <div>
+                    <label>HOD Status</label>
+                    <select id="editOdHodStatus" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions" style="margin-top:20px;">
+                <button type="button" class="btn-secondary" id="editOdCancelBtn">Cancel</button>
+                <button type="submit" class="btn-primary" id="editOdSaveBtn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Undo Decision confirmation -->
+<div class="modal-overlay" id="undoConfirmOverlay">
+    <div class="modal-box">
+        <h3>Undo Decision?</h3>
+        <p id="undoConfirmText">This will reset the Staff and HOD decision to Pending so they can review and act on it again.</p>
+        <div class="modal-box-actions">
+            <button type="button" class="btn-secondary" id="undoCancelBtn">Cancel</button>
+            <button type="button" class="btn-primary" id="undoConfirmBtn">Confirm Undo</button>
+        </div>
+    </div>
+</div>
 
 <!-- Delete confirmation -->
 <div class="modal-overlay" id="deleteConfirmOverlay">

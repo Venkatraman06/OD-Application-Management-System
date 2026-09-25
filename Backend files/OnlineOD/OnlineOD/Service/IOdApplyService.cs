@@ -57,5 +57,40 @@ namespace OnlineOD.Service
         /// Returns (null, error) if not found or not editable.
         /// </summary>
         Task<(OdApply? od, string? error)> EditGroupOdAsync(int odId, OnlineOD.Dtos.EditGroupOdDto dto);
+
+        /// <summary>
+        /// Searches and filters OD records for the Analytics OD Student / Report Search box.
+        /// Supports multi-field filtering, Class/Year/Section smart matching, Solo/Group OD types, Group member search, and Date Range filtering.
+        /// </summary>
+        Task<List<OdReportSearchResultDto>> SearchOdReportsAsync(
+            string? department = null,
+            string? studentName = null,
+            string? registerNumber = null,
+            string? classYearSection = null,
+            string? eventName = null,
+            string? collegeName = null,
+            string? odType = null,
+            string? certification = null,
+            string? startDate = null,
+            string? endDate = null,
+            int? year = null,
+            string? section = null);
+
+        /// <summary>
+        /// Generates a real Microsoft Excel (.xlsx) workbook for the filtered OD report records.
+        /// </summary>
+        Task<byte[]> GenerateOdReportExcelAsync(
+            string? department = null,
+            string? studentName = null,
+            string? registerNumber = null,
+            string? classYearSection = null,
+            string? eventName = null,
+            string? collegeName = null,
+            string? odType = null,
+            string? certification = null,
+            string? startDate = null,
+            string? endDate = null,
+            int? year = null,
+            string? section = null);
     }
 }

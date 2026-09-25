@@ -16,5 +16,7 @@ namespace OnlineOD.Models
         public string Email { get; set; }
         [JsonIgnore]
         public string Password { get; set; }
+
+        public bool IsActive { get; set; } = true;
     }
 }

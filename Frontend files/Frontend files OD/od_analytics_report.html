@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OD Student Analytics Report - Excel View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --excel-green: #107c41;
+            --excel-green-dark: #0b5c30;
+            --excel-green-light: #e8f5e9;
+            --excel-border: #d4d4d4;
+            --excel-grid: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Action / Header Bar */
+        .top-bar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--excel-border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .excel-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--excel-green);
+            color: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 0 2px 6px rgba(16, 124, 65, 0.3);
+        }
+
+        .report-title-text h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+
+        .report-title-text p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .actions-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .btn-excel {
+            background: var(--excel-green);
+            color: white;
+        }
+        .btn-excel:hover {
+            background: var(--excel-green-dark);
+            box-shadow: 0 2px 6px rgba(16, 124, 65, 0.35);
+        }
+
+        .btn-csv {
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #cbd5e1;
+        }
+        .btn-csv:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .btn-print {
+            background: #4f46e5;
+            color: white;
+        }
+        .btn-print:hover {
+            background: #4338ca;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+        }
+
+        .btn-close {
+            background: #ffffff;
+            color: #ef4444;
+            border-color: #fecaca;
+        }
+        .btn-close:hover {
+            background: #fef2f2;
+            border-color: #f87171;
+        }
+
+        /* Filter Summary Ribbon */
+        .filter-ribbon {
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 8px 24px;
+            font-size: 0.82rem;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-tags {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag-pill {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #334155;
+        }
+
+        .tag-pill strong {
+            color: #0f172a;
+        }
+
+        .record-count-badge {
+            background: var(--excel-green-light);
+            color: var(--excel-green-dark);
+            border: 1px solid rgba(16, 124, 65, 0.3);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        /* Main Spreadsheet Page Wrapper */
+        .main-container {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .spreadsheet-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Institutional Letterhead in Report */
+        .report-header-banner {
+            padding: 20px 24px 16px;
+            border-bottom: 2px solid var(--excel-green);
+            text-align: center;
+            background: #ffffff;
+        }
+
+        .report-header-banner h2 {
+            font-size: 1.35rem;
+            color: #1e3a8a;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .report-header-banner h3 {
+            font-size: 1.05rem;
+            color: #0f172a;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .report-header-banner p {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        /* Dedicated Horizontal Table Scroll Container */
+        .table-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            background: #ffffff;
+        }
+
+        /* Visible Scrollbar */
+        .table-scroll-container::-webkit-scrollbar {
+            height: 10px;
+            width: 10px;
+        }
+        .table-scroll-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 5px;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Excel Styled Grid Table */
+        .excel-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            color: #1e293b;
+            text-align: left;
+        }
+
+        .excel-table th, 
+        .excel-table td {
+            border: 1px solid var(--excel-grid);
+            padding: 8px 12px;
+            white-space: nowrap;
+        }
+
+        .excel-table thead th {
+            background: #f8fafc;
+            color: #0f172a;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #cbd5e1;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .excel-table thead tr:first-child th {
+            background: #107c41;
+            color: #ffffff;
+            font-weight: 700;
+            text-align: center;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            padding: 10px;
+            border: 1px solid #0b5c30;
+        }
+
+        .excel-table tbody tr:nth-child(even) {
+            background-color: #fbfcfe;
+        }
+
+        .excel-table tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .col-idx {
+            text-align: center;
+            font-weight: 600;
+            color: #64748b;
+            background: #f8fafc;
+            width: 44px;
+        }
+
+        .col-lead-name {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .col-members-list {
+            font-size: 0.74rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .badge-approved {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+        .badge-rejected {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .badge-pending {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .badge-group {
+            background: #f3e8ff;
+            color: #7e22ce;
+            border: 1px solid #e9d5ff;
+        }
+        .badge-solo {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+
+        /* Empty State */
+        .empty-row td {
+            text-align: center;
+            padding: 40px 16px;
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+
+        /* Signatures Block */
+        .signatures-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            padding: 48px 32px 24px;
+            margin-top: 20px;
+            background: #ffffff;
+        }
+
+        .sig-block {
+            text-align: center;
+            border-top: 1px dashed #94a3b8;
+            padding-top: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 10mm;
+            }
+
+            body {
+                background: #ffffff;
+                color: #000000;
+            }
+
+            .top-bar, .no-print {
+                display: none !important;
+            }
+
+            .main-container {
+                padding: 0;
+            }
+
+            .spreadsheet-card {
+                border: none;
+                box-shadow: none;
+            }
+
+            .excel-table th, 
+            .excel-table td {
+                border: 1px solid #64748b !important;
+                padding: 6px 8px;
+                color: #000000;
+            }
+
+            .excel-table thead tr:first-child th {
+                background: #e2e8f0 !important;
+                color: #000000 !important;
+            }
+
+            .excel-table thead th {
+                background: #f1f5f9 !important;
+                color: #000000 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Action Bar -->
+    <div class="top-bar no-print">
+        <div class="brand-section">
+            <div class="excel-icon">X</div>
+            <div class="report-title-text">
+                <h1>OD Student Report &amp; Analytics</h1>
+                <p id="generatedTimestamp">Spreadsheet Report View</p>
+            </div>
+        </div>
+
+        <div class="actions-group">
+            <button type="button" class="btn btn-excel" id="btnExportExcel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download Excel (.xls)
+            </button>
+
+            <button type="button" class="btn btn-csv" id="btnExportCsv">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Download CSV (.csv)
+            </button>
+
+            <button type="button" class="btn btn-print" id="btnPrint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Print / Save PDF
+            </button>
+
+            <button type="button" class="btn btn-close" id="btnClose">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Close Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Filter Ribbon -->
+    <div class="filter-ribbon no-print" id="filterRibbon">
+        <div class="filter-tags" id="filterTagsContainer">
+            <span>Filter Criteria:</span>
+            <span class="tag-pill" id="filterDeptTag">Department: <strong>All</strong></span>
+        </div>
+        <div class="record-count-badge" id="recordCountBadge">0 Records Found</div>
+    </div>
+
+    <!-- Main Report Page -->
+    <div class="main-container">
+        <div class="spreadsheet-card">
+            
+            <!-- Letterhead / Header -->
+            <div class="report-header-banner">
+                <h2>Nandha Arts and Science College (Autonomous)</h2>
+                <h3>On Duty (OD) Application &amp; Student Participation Report</h3>
+                <p id="reportSubHeader">Generated on: -</p>
+            </div>
+
+            <!-- Horizontally Scrollable Table Wrapper -->
+            <div class="table-scroll-container" id="reportScrollWrapper">
+                <table class="excel-table" id="reportExcelTable">
+                    <thead>
+                        <tr>
+                            <th colspan="16">ON DUTY STUDENT PARTICIPATION &amp; STATUS REPORT</th>
+                        </tr>
+                        <tr>
+                            <th class="col-idx">#</th>
+                            <th>Student Name</th>
+                            <th>Register No</th>
+                            <th>Class / Dept</th>
+                            <th>Year</th>
+                            <th>Section</th>
+                            <th>Event Name</th>
+                            <th>Competition Type</th>
+                            <th>College / Industry</th>
+                            <th>OD Type</th>
+                            <th>From Date</th>
+                            <th>To Date</th>
+                            <th>Time</th>
+                            <th>Days</th>
+                            <th>Staff Status</th>
+                            <th>Overall Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody">
+                        <tr class="empty-row">
+                            <td colspan="16">Loading report records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Signature Placeholders -->
+            <div class="signatures-container">
+                <div class="sig-block">Class In-Charge / Staff Advisor</div>
+                <div class="sig-block">Head of the Department (HOD)</div>
+                <div class="sig-block">Principal / Authority</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const rawData = sessionStorage.getItem('od_analytics_report_data');
+            let reportData = null;
+
+            try {
+                if (rawData) {
+                    reportData = JSON.parse(rawData);
+                }
+            } catch (err) {
+                console.error('Failed to parse report data:', err);
+            }
+
+            const list = reportData && Array.isArray(reportData.results) ? reportData.results : [];
+            const meta = reportData?.filters || {};
+            const dept = reportData?.department || 'Department';
+
+            // Populate Metadata Ribbon
+            const nowStr = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+            document.getElementById('generatedTimestamp').textContent = `Generated: ${nowStr} • Department: ${dept}`;
+            document.getElementById('reportSubHeader').textContent = `Department of ${dept} | Generated on ${nowStr}`;
+            document.getElementById('recordCountBadge').textContent = `${list.length} Record(s) Found`;
+
+            const tagsContainer = document.getElementById('filterTagsContainer');
+            if (tagsContainer) {
+                let tagsHtml = `<span>Filter Criteria:</span>`;
+                tagsHtml += `<span class="tag-pill">Department: <strong>${escapeHtml(dept)}</strong></span>`;
+                if (meta.studentName) tagsHtml += `<span class="tag-pill">Student: <strong>${escapeHtml(meta.studentName)}</strong></span>`;
+                if (meta.registerNumber) tagsHtml += `<span class="tag-pill">Reg No: <strong>${escapeHtml(meta.registerNumber)}</strong></span>`;
+                if (meta.classYearSection) tagsHtml += `<span class="tag-pill">Class: <strong>${escapeHtml(meta.classYearSection)}</strong></span>`;
+                if (meta.eventName) tagsHtml += `<span class="tag-pill">Event: <strong>${escapeHtml(meta.eventName)}</strong></span>`;
+                if (meta.collegeName) tagsHtml += `<span class="tag-pill">College: <strong>${escapeHtml(meta.collegeName)}</strong></span>`;
+                if (meta.odType && meta.odType !== 'All') tagsHtml += `<span class="tag-pill">OD Type: <strong>${escapeHtml(meta.odType)}</strong></span>`;
+                if (meta.startDate || meta.endDate) {
+                    const rangeStr = `${meta.startDate || 'Start'} to ${meta.endDate || 'End'}`;
+                    tagsHtml += `<span class="tag-pill">Date Range: <strong>${escapeHtml(rangeStr)}</strong></span>`;
+                }
+                tagsContainer.innerHTML = tagsHtml;
+            }
+
+            // Render Table Rows
+            const tbody = document.getElementById('reportTableBody');
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr class="empty-row"><td colspan="16">No matching OD records found in the current search criteria.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map((item, idx) => {
+                const isGroup = !!item.isGroupOd;
+                const members = item.members || [];
+                const numMembers = members.length;
+
+                let studentDisplay = `<div class="col-lead-name">${escapeHtml(item.studentName || '-')}</div>`;
+                let regDisplay = `<div>${escapeHtml(item.registerNumber || '-')}</div>`;
+
+                if (isGroup && numMembers > 0) {
+                    const memberNames = members.map(m => m.studentName).filter(Boolean).join(', ');
+                    const memberRegs = members.map(m => m.registerNumber).filter(Boolean).join(', ');
+                    studentDisplay += `<div class="col-members-list" title="${escapeHtml(memberNames)}">Group: ${escapeHtml(item.groupName || 'Group')} (${numMembers} members)</div>`;
+                    regDisplay += `<div class="col-members-list" title="${escapeHtml(memberRegs)}">${escapeHtml(memberRegs)}</div>`;
+                }
+
+                const timeSpan = item.startTime ? `${escapeHtml(item.startTime)}${item.endTime ? ' - ' + escapeHtml(item.endTime) : ''}` : 'Full Day';
+                const status = item.overallStatus || 'Pending';
+                const statusClass = status.toLowerCase().includes('approved') ? 'badge-approved' : status.toLowerCase().includes('rejected') ? 'badge-rejected' : 'badge-pending';
+                const facStatus = item.facultyStatus || 'Pending';
+                const facStatusClass = facStatus.toLowerCase().includes('approved') ? 'badge-approved' : facStatus.toLowerCase().includes('rejected') ? 'badge-rejected' : 'badge-pending';
+
+                return `
+                    <tr>
+                        <td class="col-idx">${idx + 1}</td>
+                        <td>${studentDisplay}</td>
+                        <td>${regDisplay}</td>
+                        <td>${escapeHtml(item.className || dept || '-')}</td>
+                        <td style="text-align:center;">${escapeHtml(item.year != null ? String(item.year) : '-')}</td>
+                        <td style="text-align:center;">${escapeHtml(item.section || '-')}</td>
+                        <td><strong>${escapeHtml(item.eventName || '-')}</strong></td>
+                        <td>${escapeHtml(item.competitionType || '-')}</td>
+                        <td>${escapeHtml(item.collegeName || '-')}</td>
+                        <td style="text-align:center;"><span class="badge ${isGroup ? 'badge-group' : 'badge-solo'}">${isGroup ? 'Group OD' : 'Solo OD'}</span></td>
+                        <td>${escapeHtml(formatDate(item.fromDate))}</td>
+                        <td>${escapeHtml(formatDate(item.toDate))}</td>
+                        <td>${timeSpan}</td>
+                        <td style="text-align:center;font-weight:600;">${item.numberOfDays != null ? item.numberOfDays : 1}</td>
+                        <td><span class="badge ${facStatusClass}">${escapeHtml(facStatus)}</span></td>
+                        <td><span class="badge ${statusClass}">${escapeHtml(status)}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Action: Export to Excel (.xls)
+            document.getElementById('btnExportExcel')?.addEventListener('click', () => {
+                exportToExcel(list, dept);
+            });
+
+            // Action: Export to CSV (.csv)
+            document.getElementById('btnExportCsv')?.addEventListener('click', () => {
+                exportToCsv(list, dept);
+            });
+
+            // Action: Print (Manual only)
+            document.getElementById('btnPrint')?.addEventListener('click', () => {
+                window.print();
+            });
+
+            // Action: Close
+            document.getElementById('btnClose')?.addEventListener('click', () => {
+                window.close();
+            });
+        });
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatDate(d) {
+            if (!d) return '-';
+            try {
+                const dt = new Date(d);
+                return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB');
+            } catch {
+                return d;
+            }
+        }
+
+        function exportToExcel(list, dept) {
+            let tableHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <!--[if gte mso 9]>
+                    <xml>
+                        <x:ExcelWorkbook>
+                            <x:ExcelWorksheets>
+                                <x:ExcelWorksheet>
+                                    <x:Name>OD_Student_Report</x:Name>
+                                    <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                                </x:ExcelWorksheet>
+                            </x:ExcelWorksheets>
+                        </x:ExcelWorkbook>
+                    </xml>
+                    <![endif]-->
+                    <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+                    <style>
+                        table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 11pt; }
+                        th { background-color: #107C41; color: #ffffff; font-weight: bold; border: 1px solid #000000; padding: 6px; }
+                        td { border: 1px solid #d4d4d4; padding: 6px; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <thead>
+                            <tr><th colspan="16" style="font-size:14pt;text-align:center;background-color:#107C41;color:#ffffff;">NANDHA ARTS AND SCIENCE COLLEGE - OD REPORT (${dept})</th></tr>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Student Name</th>
+                                <th>Register No</th>
+                                <th>Department</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th>Event Name</th>
+                                <th>Competition Type</th>
+                                <th>College / Industry</th>
+                                <th>OD Type</th>
+                                <th>From Date</th>
+                                <th>To Date</th>
+                                <th>Time</th>
+                                <th>Days</th>
+                                <th>Staff Status</th>
+                                <th>Overall Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            list.forEach((item, idx) => {
+                const timeSpan = item.startTime ? `${item.startTime}${item.endTime ? ' - ' + item.endTime : ''}` : 'Full Day';
+                tableHtml += `
+                    <tr>
+                        <td style="text-align:center;">${idx + 1}</td>
+                        <td>${escapeHtml(item.studentName || '-')}</td>
+                        <td>${escapeHtml(item.registerNumber || '-')}</td>
+                        <td>${escapeHtml(item.className || dept || '-')}</td>
+                        <td style="text-align:center;">${item.year != null ? item.year : '-'}</td>
+                        <td style="text-align:center;">${escapeHtml(item.section || '-')}</td>
+                        <td>${escapeHtml(item.eventName || '-')}</td>
+                        <td>${escapeHtml(item.competitionType || '-')}</td>
+                        <td>${escapeHtml(item.collegeName || '-')}</td>
+                        <td style="text-align:center;">${item.isGroupOd ? 'Group OD' : 'Solo OD'}</td>
+                        <td>${formatDate(item.fromDate)}</td>
+                        <td>${formatDate(item.toDate)}</td>
+                        <td>${escapeHtml(timeSpan)}</td>
+                        <td style="text-align:center;">${item.numberOfDays != null ? item.numberOfDays : 1}</td>
+                        <td>${escapeHtml(item.facultyStatus || 'Pending')}</td>
+                        <td>${escapeHtml(item.overallStatus || 'Pending')}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table></body></html>`;
+
+            const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateTag = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.href = url;
+            a.download = `OD_Report_${dept}_${dateTag}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportToCsv(list, dept) {
+            const headers = [
+                'S.No', 'Student Name', 'Register No', 'Department', 'Year', 'Section',
+                'Event Name', 'Competition Type', 'College / Industry', 'OD Type',
+                'From Date', 'To Date', 'Time', 'Days', 'Staff Status', 'Overall Status'
+            ];
+
+            const rows = list.map((item, idx) => {
+                const timeSpan = item.startTime ? `${item.startTime}${item.endTime ? ' - ' + item.endTime : ''}` : 'Full Day';
+                return [
+                    idx + 1,
+                    item.studentName || '',
+                    item.registerNumber || '',
+                    item.className || dept || '',
+                    item.year != null ? item.year : '',
+                    item.section || '',
+                    item.eventName || '',
+                    item.competitionType || '',
+                    item.collegeName || '',
+                    item.isGroupOd ? 'Group OD' : 'Solo OD',
+                    formatDate(item.fromDate),
+                    formatDate(item.toDate),
+                    timeSpan,
+                    item.numberOfDays != null ? item.numberOfDays : 1,
+                    item.facultyStatus || 'Pending',
+                    item.overallStatus || 'Pending'
+                ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+            });
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateTag = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.href = url;
+            a.download = `OD_Report_${dept}_${dateTag}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

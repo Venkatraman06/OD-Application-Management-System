@@ -326,25 +326,136 @@
                     </div>
                 </div>
 
-                <div class="analytics-table-card">
-                    <div class="chart-card-header">
-                        <h3>Student Result Breakdown</h3>
+                <!-- 4th Box: OD Student / Report Search -->
+                <div class="analytics-table-card report-search-card" id="odReportSearchCard">
+                    <div class="chart-card-header report-card-header">
+                        <div class="report-header-titles">
+                            <h3>OD Student / Report Search</h3>
+                            <p class="report-header-sub">Search, filter by student, register number, class/year/section, event, college, or OD type, and generate printable reports</p>
+                        </div>
+                        <div class="report-header-actions">
+                            <button type="button" class="btn-primary report-print-btn" id="btnPrintReport">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
+                                Print Report
+                            </button>
+                        </div>
                     </div>
-                    <div class="table-scroll">
-                        <table class="analytics-table">
-                            <thead>
-                                <tr>
-                                    <th>Register No.</th>
-                                    <th>Name</th>
-                                    <th>Section</th>
-                                    <th>Event</th>
-                                    <th>College</th>
-                                    <th>Result</th>
-                                    <th>Dates</th>
-                                </tr>
-                            </thead>
-                            <tbody id="analyticsTableBody"></tbody>
-                        </table>
+
+                    <!-- Search Fields Grid -->
+                    <div class="report-search-grid">
+                        <div class="search-field-item">
+                            <label for="rptStudentName">Student Name</label>
+                            <input type="text" id="rptStudentName" class="report-search-input" placeholder="e.g. Venkatraman" autocomplete="off">
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptRegisterNumber">Register Number</label>
+                            <input type="text" id="rptRegisterNumber" class="report-search-input" placeholder="e.g. 23CS001" autocomplete="off">
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptClassYearSection">Class / Year / Section</label>
+                            <input type="text" id="rptClassYearSection" class="report-search-input" placeholder="e.g. III B.Sc CS A, CS, 3, A" autocomplete="off">
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptEventName">Event Name</label>
+                            <input type="text" id="rptEventName" class="report-search-input" placeholder="e.g. Hackathon, Symposium" autocomplete="off">
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptCollegeName">College Name</label>
+                            <input type="text" id="rptCollegeName" class="report-search-input" placeholder="e.g. ABC College, Tech Corp" autocomplete="off">
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptOdType">OD Type</label>
+                            <select id="rptOdType" class="report-search-input report-search-select">
+                                <option value="All" selected>All</option>
+                                <option value="Solo OD">Solo OD</option>
+                                <option value="Group OD">Group OD</option>
+                            </select>
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptCertification">Certification</label>
+                            <select id="rptCertification" class="report-search-input report-search-select">
+                                <option value="All" selected>All</option>
+                                <option value="1st Place">1st Place</option>
+                                <option value="2nd Place">2nd Place</option>
+                                <option value="3rd Place">3rd Place</option>
+                                <option value="Participation">Participation</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptDatePreset">Date Filter</label>
+                            <select id="rptDatePreset" class="report-search-input report-search-select">
+                                <option value="all" selected>All Dates</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom Date</option>
+                            </select>
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptStartDate">Start Date</label>
+                            <input type="date" id="rptStartDate" class="report-search-input">
+                        </div>
+                        <div class="search-field-item">
+                            <label for="rptEndDate">End Date</label>
+                            <input type="date" id="rptEndDate" class="report-search-input">
+                        </div>
+                    </div>
+                    <div id="rptDateError" class="report-date-error-msg" style="display:none;color:#ef4444;font-size:0.8rem;margin-top:6px;font-weight:500;"></div>
+
+                    <!-- Search / Clear Buttons Row -->
+                    <div class="report-buttons-row">
+                        <button type="button" class="btn-primary report-action-btn" id="btnSearchReport">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            Search
+                        </button>
+                        <button type="button" class="btn-secondary report-action-btn" id="btnClearReport">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            Clear
+                        </button>
+                        <span class="report-status-badge" id="rptResultBadge" style="display:none;"></span>
+                    </div>
+
+                    <!-- Excel-Style Results Table -->
+                    <div class="report-table-wrapper" id="rptTableWrapper">
+                        <div class="table-scroll excel-table-scroll">
+                            <table class="analytics-table excel-report-table" id="odReportTable">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Student Name</th>
+                                        <th>Register No.</th>
+                                        <th>Class</th>
+                                        <th>Year</th>
+                                        <th>Section</th>
+                                        <th>Event Name</th>
+                                        <th>College Name</th>
+                                        <th>OD Type</th>
+                                        <th>OD From Date</th>
+                                        <th>OD To Date</th>
+                                        <th>Applied Date</th>
+                                        <th>OD Status</th>
+                                        <th>Approval Details</th>
+                                        <th>Certification</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="odReportTableBody">
+                                    <tr>
+                                        <td colspan="15" class="report-empty-cell">Use the filters above and click Search to display OD reports.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -439,6 +550,10 @@
                 <button class="modal-close" id="odDetailCloseBtn" type="button">&times;</button>
             </div>
             <div class="od-detail-body">
+                <div class="od-detail-row">
+                    <span class="od-detail-label">Event Name</span>
+                    <span class="od-detail-value" id="odDetailEventName">-</span>
+                </div>
                 <div class="od-detail-row">
                     <span class="od-detail-label">Student</span>
                     <span class="od-detail-value" id="odDetailStudent">-</span>
