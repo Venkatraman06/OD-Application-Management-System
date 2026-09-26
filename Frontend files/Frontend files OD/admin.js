@@ -76,6 +76,7 @@ function initAdminApp() {
             else if (tab === 'hod') loadHods();
             else if (tab === 'requests') loadRequests();
             else if (tab === 'odrequests') loadOdRequests();
+            else if (tab === 'certificates') loadCertificates();
             else if (tab === 'events') loadEvents();
         });
     });
@@ -251,6 +252,15 @@ function initAdminApp() {
         try {
             const res = await fetch(`${API_BASE}/api/Student?_=${Date.now()}`, { cache: 'no-store' });
             students = res.ok ? await res.json() : [];
+            if (window.setStudentNameLookup) {
+                const map = {};
+                students.forEach(s => {
+                    const r = (s.registerNumber || s.RegisterNumber || '').trim();
+                    const n = s.name || s.Name || '';
+                    if (r) map[r] = n;
+                });
+                window.setStudentNameLookup(map);
+            }
         } catch (err) {
             console.error(err);
             students = [];
@@ -269,12 +279,14 @@ function initAdminApp() {
         }
         tbody.innerHTML = list.map(s => {
             const id = s.studentId ?? s.StudentId;
+            const sName = s.name ?? s.Name ?? '';
+            const sReg = s.registerNumber ?? s.RegisterNumber ?? '';
             const active = (s.isActive ?? s.IsActive) !== false;
             const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="student" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
-                <td>${esc(s.name ?? s.Name)}</td>
-                <td>${esc(s.registerNumber ?? s.RegisterNumber)}</td>
+                <td>${esc(sName)}</td>
+                <td>${window.renderRegHover(sReg, sName)}</td>
                 <td>${esc(s.department ?? s.Department)}</td>
                 <td>${esc(s.section ?? s.Section ?? '-')}</td>
                 <td>${esc(s.year ?? s.Year)}</td>
@@ -1395,11 +1407,272 @@ function initAdminApp() {
         }
     });
 
+    // ============================================
+    // CERTIFICATES (PENDING & SUBMITTED)
+    // ============================================
+    let certPendingList = [];
+    let certSubmittedList = [];
+    let currentCertSubtab = 'pending';
+
+    const subtabCertPending = document.getElementById('subtabCertPending');
+    const subtabCertSubmitted = document.getElementById('subtabCertSubmitted');
+    const subtabViewCertPending = document.getElementById('subtabViewCertPending');
+    const subtabViewCertSubmitted = document.getElementById('subtabViewCertSubmitted');
+
+    subtabCertPending?.addEventListener('click', () => {
+        subtabCertPending.classList.add('active');
+        subtabCertSubmitted?.classList.remove('active');
+        if (subtabViewCertPending) subtabViewCertPending.style.display = 'block';
+        if (subtabViewCertSubmitted) subtabViewCertSubmitted.style.display = 'none';
+        currentCertSubtab = 'pending';
+        filterAndRenderCertificates();
+    });
+
+    subtabCertSubmitted?.addEventListener('click', () => {
+        subtabCertSubmitted.classList.add('active');
+        subtabCertPending?.classList.remove('active');
+        if (subtabViewCertSubmitted) subtabViewCertSubmitted.style.display = 'block';
+        if (subtabViewCertPending) subtabViewCertPending.style.display = 'none';
+        currentCertSubtab = 'submitted';
+        filterAndRenderCertificates();
+    });
+
+    async function loadCertificates() {
+        const pBody = document.getElementById('certPendingTableBody');
+        const sBody = document.getElementById('certSubmittedTableBody');
+        if (pBody) pBody.innerHTML = '<tr><td colspan="12" class="table-empty">Loading pending certificates...</td></tr>';
+        if (sBody) sBody.innerHTML = '<tr><td colspan="12" class="table-empty">Loading submitted certificates...</td></tr>';
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Admin/Certificates?_=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                certPendingList = data.pending || [];
+                certSubmittedList = data.submitted || [];
+            } else {
+                certPendingList = [];
+                certSubmittedList = [];
+                showToast('error', 'Failed to load certificates.');
+            }
+        } catch (err) {
+            console.error(err);
+            certPendingList = [];
+            certSubmittedList = [];
+            showToast('error', 'Network error while loading certificates.');
+        }
+
+        setEl('certificatesTabCount', certPendingList.length + certSubmittedList.length);
+        setEl('certPendingTabCount', certPendingList.length);
+        setEl('certSubmittedTabCount', certSubmittedList.length);
+
+        filterAndRenderCertificates();
+    }
+
+    function filterAndRenderCertificates() {
+        if (currentCertSubtab === 'pending') {
+            const q = (document.getElementById('certPendingSearch')?.value || '').trim().toLowerCase();
+            let list = certPendingList;
+            if (q) {
+                list = list.filter(p =>
+                    (p.studentName || '').toLowerCase().includes(q) ||
+                    (p.registerNumber || '').toLowerCase().includes(q) ||
+                    (p.department || '').toLowerCase().includes(q) ||
+                    (p.section || '').toLowerCase().includes(q) ||
+                    (p.eventName || '').toLowerCase().includes(q) ||
+                    (p.collegeName || '').toLowerCase().includes(q) ||
+                    (p.groupName || '').toLowerCase().includes(q)
+                );
+            }
+            renderCertPending(list);
+        } else {
+            const q = (document.getElementById('certSubmittedSearch')?.value || '').trim().toLowerCase();
+            let list = certSubmittedList;
+            if (q) {
+                list = list.filter(s =>
+                    (s.studentName || '').toLowerCase().includes(q) ||
+                    (s.registerNumber || '').toLowerCase().includes(q) ||
+                    (s.department || '').toLowerCase().includes(q) ||
+                    (s.section || '').toLowerCase().includes(q) ||
+                    (s.eventName || '').toLowerCase().includes(q) ||
+                    (s.collegeName || '').toLowerCase().includes(q) ||
+                    (s.winningStatus || '').toLowerCase().includes(q)
+                );
+            }
+            renderCertSubmitted(list);
+        }
+    }
+
+    function renderCertPending(list) {
+        const tbody = document.getElementById('certPendingTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="12" class="table-empty">No pending certificates found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map((item, idx) => {
+            const groupTag = item.isGroupOd
+                ? `<span class="report-group-pill" style="display:inline-block;padding:2px 8px;border-radius:100px;font-size:0.7rem;font-weight:700;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);margin-top:3px;">Group: ${esc(item.groupName || 'Group')}</span>`
+                : '';
+
+            return `
+            <tr>
+                <td style="color:var(--surface-400);font-size:0.78rem;">${idx + 1}</td>
+                <td>
+                    <div style="font-weight:600;color:white;">${esc(item.studentName || '-')}</div>
+                    ${groupTag}
+                </td>
+                <td>${window.renderRegHover(item.registerNumber, item.studentName)}</td>
+                <td>${esc(item.department || '-')}</td>
+                <td>${esc(item.section || '-')}</td>
+                <td>${item.year ? 'Year ' + item.year : '-'}</td>
+                <td><b>${esc(item.eventName || '-')}</b></td>
+                <td>${esc(item.collegeName || '-')}</td>
+                <td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.72rem;font-weight:600;background:rgba(255,255,255,0.06);">${item.isGroupOd ? 'Group OD' : 'Solo OD'}</span></td>
+                <td>
+                    <div style="font-size:0.78rem;white-space:nowrap;">${fmtOdDate(item.fromDate)} &rarr; ${fmtOdDate(item.toDate)}</div>
+                </td>
+                <td>${item.numberOfDays || 1}</td>
+                <td>
+                    <span class="status-badge" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:600;">Certificate Pending</span>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderCertSubmitted(list) {
+        const tbody = document.getElementById('certSubmittedTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="12" class="table-empty">No submitted certificates found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map((item, idx) => {
+            const rawUrl = item.certificatePhotoUrl || '';
+            const resolvedUrl = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${API_BASE}${rawUrl}`) : '';
+            const groupTag = item.isGroupOd
+                ? `<span class="report-group-pill" style="display:inline-block;padding:2px 8px;border-radius:100px;font-size:0.7rem;font-weight:700;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);margin-top:3px;">Group: ${esc(item.groupName || 'Group')}</span>`
+                : '';
+
+            const verifiedBadge = item.certificateVerified
+                ? `<span style="color:#4ade80;font-weight:600;font-size:0.78rem;">✓ Verified</span>`
+                : `<span style="color:var(--surface-400);font-size:0.78rem;">Uploaded</span>`;
+
+            return `
+            <tr>
+                <td style="color:var(--surface-400);font-size:0.78rem;">${idx + 1}</td>
+                <td>
+                    <div style="font-weight:600;color:white;">${esc(item.studentName || '-')}</div>
+                    ${groupTag}
+                </td>
+                <td>${window.renderRegHover(item.registerNumber, item.studentName)}</td>
+                <td>${esc(item.department || '-')}</td>
+                <td>${esc(item.section || '-')}</td>
+                <td>${item.year ? 'Year ' + item.year : '-'}</td>
+                <td><b>${esc(item.eventName || '-')}</b></td>
+                <td>${esc(item.collegeName || '-')}</td>
+                <td>
+                    <div style="font-size:0.78rem;white-space:nowrap;">${fmtOdDate(item.fromDate)} &rarr; ${fmtOdDate(item.toDate)}</div>
+                </td>
+                <td><span class="status-badge cert-badge">${esc(item.winningStatus || 'Participant')}</span></td>
+                <td>${verifiedBadge}</td>
+                <td>
+                    <div class="row-actions" style="justify-content:center;gap:6px;">
+                        <button type="button" class="action-btn view-cert-btn" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#c7d2fe;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.78rem;display:inline-flex;align-items:center;gap:4px;" data-url="${esc(resolvedUrl)}" data-name="${esc(item.studentName)}" data-event="${esc(item.eventName)}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View
+                        </button>
+                        <a href="${esc(resolvedUrl)}" download target="_blank" class="action-btn" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#f1f5f9;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:0.78rem;display:inline-flex;align-items:center;gap:4px;" title="Download Certificate">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download
+                        </a>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.view-cert-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const url = btn.dataset.url;
+                const name = btn.dataset.name;
+                const ev = btn.dataset.event;
+                openAdminCertPreview(url, name, ev);
+            });
+        });
+    }
+
+    document.getElementById('certPendingSearch')?.addEventListener('input', () => {
+        filterAndRenderCertificates();
+    });
+
+    document.getElementById('certSubmittedSearch')?.addEventListener('input', () => {
+        filterAndRenderCertificates();
+    });
+
+    document.getElementById('refreshCertPendingBtn')?.addEventListener('click', loadCertificates);
+    document.getElementById('refreshCertSubmittedBtn')?.addEventListener('click', loadCertificates);
+
+    // ── In-Page Certificate Preview Modal ──
+    const adminCertOverlay = document.getElementById('adminCertPreviewOverlay');
+    const adminCertImg = document.getElementById('adminCertPreviewImg');
+    const adminCertIframe = document.getElementById('adminCertPreviewIframe');
+    const adminCertFallback = document.getElementById('adminCertPreviewFallback');
+    const adminCertDownloadBtn = document.getElementById('adminCertDownloadBtn');
+    const adminCertTitle = document.getElementById('adminCertPreviewTitle');
+    const adminCertSub = document.getElementById('adminCertPreviewSub');
+
+    function openAdminCertPreview(url, studentName, eventName) {
+        if (!url) { showToast('error', 'Certificate file not available.'); return; }
+
+        if (adminCertTitle) adminCertTitle.textContent = `${studentName || 'Student'}'s Certificate`;
+        if (adminCertSub) adminCertSub.textContent = eventName ? `Event: ${eventName}` : '';
+        if (adminCertDownloadBtn) adminCertDownloadBtn.href = url;
+
+        const isPdf = /\.pdf(\?.*)?$/i.test(url);
+        const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+
+        if (isPdf) {
+            if (adminCertImg) adminCertImg.style.display = 'none';
+            if (adminCertFallback) adminCertFallback.style.display = 'none';
+            if (adminCertIframe) {
+                adminCertIframe.style.display = 'block';
+                adminCertIframe.src = url;
+            }
+        } else if (isImg || !isPdf) {
+            if (adminCertIframe) adminCertIframe.style.display = 'none';
+            if (adminCertFallback) adminCertFallback.style.display = 'none';
+            if (adminCertImg) {
+                adminCertImg.style.display = 'block';
+                adminCertImg.src = url;
+                adminCertImg.onerror = () => {
+                    adminCertImg.style.display = 'none';
+                    if (adminCertFallback) adminCertFallback.style.display = 'block';
+                };
+            }
+        }
+
+        if (adminCertOverlay) adminCertOverlay.style.display = 'flex';
+    }
+
+    function closeAdminCertPreview() {
+        if (adminCertOverlay) adminCertOverlay.style.display = 'none';
+        if (adminCertIframe) adminCertIframe.src = '';
+        if (adminCertImg) adminCertImg.src = '';
+    }
+
+    document.getElementById('adminCertPreviewCloseBtn')?.addEventListener('click', closeAdminCertPreview);
+    document.getElementById('adminCertPreviewCloseBtn2')?.addEventListener('click', closeAdminCertPreview);
+    adminCertOverlay?.addEventListener('click', (e) => {
+        if (e.target === adminCertOverlay) closeAdminCertPreview();
+    });
+
     // ── Initial load ──
     loadStudents();
     loadStaff();
     loadHods();
     loadRequests();
     loadOdRequests();
+    loadCertificates();
     loadEvents();
 }

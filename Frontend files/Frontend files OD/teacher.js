@@ -95,6 +95,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     year: s.year || s.Year || ''
                 };
             });
+            if (window.setStudentNameLookup) {
+                const nameMap = {};
+                Object.keys(studentLookup).forEach(k => {
+                    nameMap[k] = studentLookup[k].name;
+                });
+                window.setStudentNameLookup(nameMap);
+            }
             // Re-render if the certificates tab is already showing, so member
             // names fill in even if this lookup finished after the first paint.
             if (currentFilter === 'certificates' && certsLoaded) {
@@ -1042,14 +1049,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const userSec = (localStorage.getItem('userSection') || section || '').trim().toLowerCase();
             const isMySec = userSec && (od.section || '').trim().toLowerCase() === userSec;
             const secBadgeHtml = od.section ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:4px;${isMySec ? 'background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.4);font-weight:600' : 'background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.12)'}">${isMySec ? '⭐ My ' : ''}Sec ${od.section}</span>` : '';
+            const missingCerts = od.missingPreviousCertificates || od.MissingPreviousCertificates || [];
+            const members = (od.registerNumbers || od.RegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+            const totalGroupMembersCount = od.isGroupOd ? (members.length || 1) : 1;
+            const missingCertBannerHtml = window.renderMissingCertWarningHtml ? window.renderMissingCertWarningHtml(missingCerts, od.isGroupOd, totalGroupMembersCount) : '';
+            const regHtml = window.renderRegHover ? window.renderRegHover(od.registerNumber, od.studentName) : (od.registerNumber || '');
+
             return `
             <div class="request-card" data-odid="${od.odId}">
+                ${missingCertBannerHtml}
                 ${countdown.text ? `<div class="od-countdown-banner ${countdown.cls}">${countdown.text}</div>` : ''}
                 <div class="card-header">
                     <div class="student-avatar">${(od.studentName||'S').charAt(0).toUpperCase()}</div>
                     <div class="student-info">
                         <h3>${od.studentName || ''} ${od.isGroupOd ? `<span class="status-badge" style="font-size:10px;padding:2px 8px;margin-left:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)">GROUP: ${od.groupName || ''}</span>` : ''} ${od.competitionType ? `<span class="competition-tag" title="Competition Type" style="font-size:10px;padding:2px 8px;margin-left:4px">${escCompType(od.competitionType)}</span>` : ''} ${secBadgeHtml}</h3>
-                        <p>${od.registerNumber || ''} &bull; ${od.department || ''} &bull; Year ${od.year || ''}${od.section ? ' &bull; Sec ' + od.section : ''}</p>
+                        <p>${regHtml} &bull; ${od.department || ''} &bull; Year ${od.year || ''}${od.section ? ' &bull; Sec ' + od.section : ''}</p>
                     </div>
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
                 </div>
@@ -1104,6 +1118,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             : od.facultyStatus === 'Approved' ? 'Awaiting HOD'
             : 'Pending';
 
+        const modalMissingBannerEl = document.getElementById('odDetailMissingCertBanner');
+        if (modalMissingBannerEl) {
+            const missingCerts = od.missingPreviousCertificates || od.MissingPreviousCertificates || [];
+            const members = (od.registerNumbers || od.RegisterNumbers || '').split(',').map(r => r.trim()).filter(r => r);
+            const totalGroupMembersCount = od.isGroupOd ? (members.length || 1) : 1;
+            modalMissingBannerEl.innerHTML = window.renderMissingCertWarningHtml ? window.renderMissingCertWarningHtml(missingCerts, od.isGroupOd, totalGroupMembersCount) : '';
+        }
+
         setEl('odDetailEvent', od.event || '');
         setEl('odDetailEventName', od.event || od.Event || '-');
         const compTypeEl = document.getElementById('odDetailCompetitionType');
@@ -1112,7 +1134,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (overallBadge) { overallBadge.className = `badge-${bdg(overall === 'approved' ? 'Approved' : overall === 'rejected' ? 'Rejected' : 'Pending')}`; overallBadge.textContent = overallLabel; }
 
         setEl('odDetailStudent', od.studentName || '');
-        setEl('odDetailRegNo', od.registerNumber || '');
+        const regEl = document.getElementById('odDetailRegNo');
+        if (regEl) {
+            const r = od.registerNumber || '';
+            const n = od.studentName || '';
+            regEl.innerHTML = window.renderRegHover ? window.renderRegHover(r, n) : escHtml(r);
+        }
         setEl('odDetailDeptSection', [od.department, od.section ? `Section ${od.section}` : ''].filter(Boolean).join(' • '));
         setEl('odDetailYear', od.year || '-');
         setEl('odDetailCollege', od.collegeIndustry || '');
@@ -1160,8 +1187,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const known = m.toLowerCase() === (od.registerNumber || '').toLowerCase()
                             ? { name: od.studentName }
                             : lookupStudent(m);
-                        const label = known?.name ? `${m} — ${known.name}` : m;
-                        return `<span>${escHtml(label)}</span>`;
+                        const name = known?.name || '';
+                        const regHtml = window.renderRegHover ? window.renderRegHover(m, name) : escHtml(m);
+                        const label = name ? `${regHtml} — ${escHtml(name)}` : regHtml;
+                        return `<span data-reg="${escHtml(m)}">${label}</span>`;
                     }).join('')
                     : '<span>No members listed</span>';
             }

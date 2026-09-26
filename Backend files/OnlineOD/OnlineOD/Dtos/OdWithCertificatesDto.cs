@@ -57,5 +57,6 @@ namespace OnlineOD.Dtos
         public string? OriginalEndTime { get; set; }
 
         public List<OdCertificate> Certificates { get; set; } = new();
+        public List<MissingCertificateDto> MissingPreviousCertificates { get; set; } = new();
     }
 }

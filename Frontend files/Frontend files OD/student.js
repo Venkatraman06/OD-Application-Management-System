@@ -13,6 +13,9 @@ async function loadStudentNameLookup() {
             const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
             if (reg) studentNameLookup[reg] = s.name || s.Name || '';
         });
+        if (window.setStudentNameLookup) {
+            window.setStudentNameLookup(studentNameLookup);
+        }
     } catch (err) {
         console.error('Failed to load student name lookup:', err);
     }
@@ -84,6 +87,61 @@ async function loadActiveEvents() {
     populateCollegesForEvent('', 'groupCollegeName');
 }
 
+async function checkSoloMissingCertificates() {
+    const reg = (localStorage.getItem('registerNumber') || '').trim();
+    const bannerEl = document.getElementById('soloMissingCertBanner');
+    if (!bannerEl || !reg) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/OdApply/CheckMissingCertificates?registerNumbers=${encodeURIComponent(reg)}&_=${Date.now()}`);
+        if (res.ok) {
+            const missing = await res.json();
+            if (missing && missing.length > 0) {
+                bannerEl.innerHTML = window.renderMissingCertWarningHtml ? window.renderMissingCertWarningHtml(missing, false, 1) : '';
+            } else {
+                bannerEl.innerHTML = '';
+            }
+        }
+    } catch (err) {
+        console.error('Check solo missing certs error:', err);
+    }
+}
+
+async function checkGroupMissingCertificates() {
+    const myReg = (localStorage.getItem('registerNumber') || '').trim();
+    const bannerEl = document.getElementById('groupMissingCertBanner');
+    if (!bannerEl) return;
+
+    const allRegs = [];
+    if (myReg) allRegs.push(myReg);
+    if (Array.isArray(window.groupMemberList)) {
+        window.groupMemberList.forEach(m => {
+            const r = (typeof m === 'string' ? m : (m.regNo || m.registerNumber || m.RegisterNumber || '')).trim();
+            if (r && !allRegs.some(x => x.toLowerCase() === r.toLowerCase())) {
+                allRegs.push(r);
+            }
+        });
+    }
+
+    if (allRegs.length === 0) {
+        bannerEl.innerHTML = '';
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/OdApply/CheckMissingCertificates?registerNumbers=${encodeURIComponent(allRegs.join(','))}&_=${Date.now()}`);
+        if (res.ok) {
+            const missing = await res.json();
+            if (missing && missing.length > 0) {
+                bannerEl.innerHTML = window.renderMissingCertWarningHtml ? window.renderMissingCertWarningHtml(missing, true, allRegs.length) : '';
+            } else {
+                bannerEl.innerHTML = '';
+            }
+        }
+    } catch (err) {
+        console.error('Check group missing certs error:', err);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     loadStudentNameLookup();
     loadActiveEvents();
@@ -138,6 +196,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('userDept',       dept);
             localStorage.setItem('userSection',    sect);
             if (email) localStorage.setItem('userEmail', email);
+
+            checkSoloMissingCertificates();
+            checkGroupMissingCertificates();
         }
     } catch (err) { console.error('Student load error:', err); }
 
@@ -556,7 +617,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             tabIndicator.style.transform = `translateX(${positions[tabId] ?? '0%'})`;
         }
 
-        if (tabId === 'apply-status') {
+        if (tabId === 'od-apply') {
+            checkSoloMissingCertificates();
+        } else if (tabId === 'group-od-apply') {
+            checkGroupMissingCertificates();
+        } else if (tabId === 'apply-status') {
             loadODStatus();
         }
     }
@@ -1087,6 +1152,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const modalDateEditedTitle = document.getElementById('modalDateEditedTitle');
         const modalDateEditedDetail = document.getElementById('modalDateEditedDetail');
 
+        const modalMissingBannerEl = document.getElementById('modalMissingCertBanner');
+        if (modalMissingBannerEl) {
+            const missingCerts = od.MissingPreviousCertificates ?? od.missingPreviousCertificates ?? [];
+            const members = regNumbersRaw.split(',').map(r => r.trim()).filter(r => r.length > 0);
+            const totalGroupMembersCount = isGroup ? (members.length || 1) : 1;
+            modalMissingBannerEl.innerHTML = window.renderMissingCertWarningHtml ? window.renderMissingCertWarningHtml(missingCerts, isGroup, totalGroupMembersCount) : '';
+        }
+
         if (modalDateEditedRow) {
             if (isDateEdited) {
                 if (modalDateEditedTitle) modalDateEditedTitle.textContent = `Date & Time was modified by ${dateEditedBy}`;
@@ -1136,11 +1209,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? members.map(m => {
                         const isMemberRejected = facRejected.includes(m.toLowerCase()) && !hodOverridden.includes(m.toLowerCase());
                         const isMemberApproved = !isMemberRejected && facApproved.includes(m.toLowerCase());
-                        const memberName = studentNameLookup[m.toLowerCase()] || '';
-                        const label = memberName ? `${m} — ${escapeHtml(memberName)}` : escapeHtml(m);
+                        const memberName = studentNameLookup[m.toLowerCase()] || (window.lookupStudentName ? window.lookupStudentName(m) : '');
+                        const regHtml = window.renderRegHover ? window.renderRegHover(m, memberName) : escapeHtml(m);
+                        const label = memberName ? `${regHtml} — ${escapeHtml(memberName)}` : regHtml;
                         const cls = isMemberRejected ? 'member-rejected' : isMemberApproved ? 'member-approved' : '';
                         const icon = isMemberRejected ? ' ✕' : isMemberApproved ? ' ✓' : '';
-                        return `<span class="${cls}">${label}${icon}</span>`;
+                        return `<span class="${cls}" data-reg="${escapeHtml(m)}">${label}${icon}</span>`;
                     }).join('')
                     : '<span>No members listed</span>';
             }
@@ -1252,6 +1326,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderMemberList();
             });
         });
+
+        checkGroupMissingCertificates();
     }
 
     async function addMember() {
@@ -1950,8 +2026,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const isHodApproved = (hodStatus === 'Approved');
                 const canEdit = !isStaffApproved && !isHodApproved;
 
+                const missingCerts = od.MissingPreviousCertificates ?? od.missingPreviousCertificates ?? [];
+                const membersList = (od.RegisterNumbers ?? od.registerNumbers ?? '').split(',').map(r => r.trim()).filter(r => r);
+                const totalGroupMembersCount = isGroup ? (membersList.length || 1) : 1;
+                const missingCertBannerHtml = window.renderMissingCertWarningHtml ? window.renderMissingCertWarningHtml(missingCerts, isGroup, totalGroupMembersCount) : '';
+
                 return `
                 <div class="od-status-card" data-overall="${overall}" data-odid="${odId}">
+                    ${missingCertBannerHtml}
                     ${dateEditedBannerHtml}
                     <div class="card-top">
                         <div>

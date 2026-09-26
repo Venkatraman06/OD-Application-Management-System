@@ -497,7 +497,7 @@ namespace OnlineOD.Service
             return cert;
         }
 
-        // Bulk-attaches each OD's per-member certificates in one extra query
+        // Bulk-attaches each OD's per-member certificates and previous missing certificate warnings in extra queries
         // (instead of one query per OD), then maps to the response DTO.
         public async Task<List<OdWithCertificatesDto>> AttachCertificatesAsync(List<OdApply> ods)
         {
@@ -512,45 +512,206 @@ namespace OnlineOD.Service
                 .Where(s => studentIds.Contains(s.StudentId))
                 .ToDictionaryAsync(s => s.StudentId, s => s.Year);
 
-            return ods.Select(od => new OdWithCertificatesDto
+            // Collect all involved register numbers across all ODs to compute missing previous certificates
+            var allRegs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var od in ods)
             {
-                OdId = od.OdId,
-                StudentId = od.StudentId,
-                StudentName = od.StudentName,
-                registerNumber = od.registerNumber,
-                department = od.department,
-                Section = od.Section,
-                FromDate = od.FromDate,
-                ToDate = od.ToDate,
-                StartTime = od.StartTime,
-                EndTime = od.EndTime,
-                NumberOfDays = od.NumberOfDays,
-                Event = od.Event,
-                CompetitionType = od.CompetitionType,
-                Reason = od.Reason,
-                CollegeIndustry = od.CollegeIndustry,
-                Year = studentYears.TryGetValue(od.StudentId, out var yr) ? yr : (int?)null,
-                AppliedDate = od.AppliedDate,
-                FacultyStatus = od.FacultyStatus,
-                HodStatus = od.HodStatus,
-                IsGroupOd = od.IsGroupOd,
-                GroupName = od.GroupName,
-                RegisterNumbers = od.RegisterNumbers,
-                FacultyRejectedRegisterNumbers = od.FacultyRejectedRegisterNumbers,
-                FacultyApprovedRegisterNumbers = od.FacultyApprovedRegisterNumbers,
-                HodApprovedRegisterNumbers = od.HodApprovedRegisterNumbers,
-                WinningStatus = od.WinningStatus,
-                CertificatePhotoUrl = od.CertificatePhotoUrl,
-                CertificateVerified = od.CertificateVerified,
-                IsOngoing = IsOdOngoing(od.FromDate, od.ToDate),
-                IsDateEdited = od.IsDateEdited,
-                DateEditedBy = od.DateEditedBy,
-                OriginalFromDate = od.OriginalFromDate,
-                OriginalToDate = od.OriginalToDate,
-                OriginalStartTime = od.OriginalStartTime,
-                OriginalEndTime = od.OriginalEndTime,
-                Certificates = certsByOd.TryGetValue(od.OdId, out var list) ? list : new List<OdCertificate>()
+                if (!string.IsNullOrWhiteSpace(od.registerNumber))
+                    allRegs.Add(od.registerNumber.Trim());
+                if (od.IsGroupOd && !string.IsNullOrWhiteSpace(od.RegisterNumbers))
+                {
+                    foreach (var reg in ParseList(od.RegisterNumbers))
+                        allRegs.Add(reg.Trim());
+                }
+            }
+
+            var allMissing = await GetMissingPreviousCertificatesAsync(allRegs);
+            var missingByReg = allMissing
+                .GroupBy(m => m.RegisterNumber.Trim().ToLower())
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            return ods.Select(od =>
+            {
+                var memberRegs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (!string.IsNullOrWhiteSpace(od.registerNumber))
+                    memberRegs.Add(od.registerNumber.Trim().ToLower());
+
+                if (od.IsGroupOd && !string.IsNullOrWhiteSpace(od.RegisterNumbers))
+                {
+                    var rejected = ParseList(od.FacultyRejectedRegisterNumbers).Select(r => r.ToLower()).ToHashSet();
+                    var hodAppr = ParseList(od.HodApprovedRegisterNumbers).Select(r => r.ToLower()).ToHashSet();
+                    foreach (var reg in ParseList(od.RegisterNumbers))
+                    {
+                        var rLower = reg.ToLower();
+                        if (!rejected.Contains(rLower) || hodAppr.Contains(rLower))
+                        {
+                            memberRegs.Add(rLower);
+                        }
+                    }
+                }
+
+                var odMissingList = new List<MissingCertificateDto>();
+                foreach (var reg in memberRegs)
+                {
+                    if (missingByReg.TryGetValue(reg, out var list))
+                    {
+                        foreach (var m in list)
+                        {
+                            if (m.OdId != od.OdId && !odMissingList.Any(x => x.OdId == m.OdId && x.RegisterNumber.Equals(m.RegisterNumber, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                odMissingList.Add(m);
+                            }
+                        }
+                    }
+                }
+
+                return new OdWithCertificatesDto
+                {
+                    OdId = od.OdId,
+                    StudentId = od.StudentId,
+                    StudentName = od.StudentName,
+                    registerNumber = od.registerNumber,
+                    department = od.department,
+                    Section = od.Section,
+                    FromDate = od.FromDate,
+                    ToDate = od.ToDate,
+                    StartTime = od.StartTime,
+                    EndTime = od.EndTime,
+                    NumberOfDays = od.NumberOfDays,
+                    Event = od.Event,
+                    CompetitionType = od.CompetitionType,
+                    Reason = od.Reason,
+                    CollegeIndustry = od.CollegeIndustry,
+                    Year = studentYears.TryGetValue(od.StudentId, out var yr) ? yr : (int?)null,
+                    AppliedDate = od.AppliedDate,
+                    FacultyStatus = od.FacultyStatus,
+                    HodStatus = od.HodStatus,
+                    IsGroupOd = od.IsGroupOd,
+                    GroupName = od.GroupName,
+                    RegisterNumbers = od.RegisterNumbers,
+                    FacultyRejectedRegisterNumbers = od.FacultyRejectedRegisterNumbers,
+                    FacultyApprovedRegisterNumbers = od.FacultyApprovedRegisterNumbers,
+                    HodApprovedRegisterNumbers = od.HodApprovedRegisterNumbers,
+                    WinningStatus = od.WinningStatus,
+                    CertificatePhotoUrl = od.CertificatePhotoUrl,
+                    CertificateVerified = od.CertificateVerified,
+                    IsOngoing = IsOdOngoing(od.FromDate, od.ToDate),
+                    IsDateEdited = od.IsDateEdited,
+                    DateEditedBy = od.DateEditedBy,
+                    OriginalFromDate = od.OriginalFromDate,
+                    OriginalToDate = od.OriginalToDate,
+                    OriginalStartTime = od.OriginalStartTime,
+                    OriginalEndTime = od.OriginalEndTime,
+                    Certificates = certsByOd.TryGetValue(od.OdId, out var cList) ? cList : new List<OdCertificate>(),
+                    MissingPreviousCertificates = odMissingList
+                };
             }).ToList();
+        }
+
+        public async Task<List<MissingCertificateDto>> GetMissingPreviousCertificatesAsync(IEnumerable<string> registerNumbers, int? currentOdId = null)
+        {
+            var targets = registerNumbers
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim().ToLower())
+                .Distinct()
+                .ToList();
+
+            if (targets.Count == 0) return new List<MissingCertificateDto>();
+
+            var today = DateTime.Today;
+
+            // Fetch all approved ODs from database
+            var allApprovedOds = await _context.OdApplies
+                .Where(o => o.HodStatus == "Approved")
+                .ToListAsync();
+
+            // Filter to completed ODs (ToDate < today, and excluding currentOdId if specified)
+            var completedOds = allApprovedOds.Where(o =>
+            {
+                if (currentOdId.HasValue && o.OdId == currentOdId.Value) return false;
+                if (!DateTime.TryParse(o.ToDate, out var to)) return false;
+                return to.Date < today;
+            }).ToList();
+
+            if (completedOds.Count == 0) return new List<MissingCertificateDto>();
+
+            var completedOdIds = completedOds.Select(o => o.OdId).ToList();
+
+            // Fetch all uploaded certificates for these completed ODs
+            var certs = await _context.OdCertificates
+                .Where(c => completedOdIds.Contains(c.OdId) && !string.IsNullOrEmpty(c.CertificatePhotoUrl))
+                .ToListAsync();
+
+            var certsByOdAndReg = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in certs)
+            {
+                if (!string.IsNullOrWhiteSpace(c.RegisterNumber))
+                {
+                    certsByOdAndReg.Add($"{c.OdId}_{c.RegisterNumber.Trim().ToLower()}");
+                }
+            }
+
+            // Fetch student names map
+            var students = await _context.Students
+                .Where(s => targets.Contains(s.RegisterNumber.ToLower()))
+                .ToDictionaryAsync(s => s.RegisterNumber.ToLower(), s => s.Name ?? "");
+
+            var result = new List<MissingCertificateDto>();
+
+            foreach (var target in targets)
+            {
+                students.TryGetValue(target, out var studentName);
+
+                foreach (var od in completedOds)
+                {
+                    bool isApplicant = (od.registerNumber ?? "").Trim().ToLower() == target;
+                    bool isGroupMember = false;
+
+                    if (od.IsGroupOd && !string.IsNullOrWhiteSpace(od.RegisterNumbers))
+                    {
+                        var members = ParseList(od.RegisterNumbers).Select(m => m.ToLower()).ToList();
+                        if (members.Contains(target))
+                        {
+                            var rejected = ParseList(od.FacultyRejectedRegisterNumbers).Select(m => m.ToLower()).ToList();
+                            var hodApproved = ParseList(od.HodApprovedRegisterNumbers).Select(m => m.ToLower()).ToList();
+                            bool isRejected = rejected.Contains(target) && !hodApproved.Contains(target);
+                            if (!isRejected)
+                            {
+                                isGroupMember = true;
+                            }
+                        }
+                    }
+
+                    if (isApplicant || isGroupMember)
+                    {
+                        bool hasCert = certsByOdAndReg.Contains($"{od.OdId}_{target}");
+                        if (!hasCert && !od.IsGroupOd && !string.IsNullOrEmpty(od.CertificatePhotoUrl) && isApplicant)
+                        {
+                            hasCert = true;
+                        }
+
+                        if (!hasCert)
+                        {
+                            result.Add(new MissingCertificateDto
+                            {
+                                OdId = od.OdId,
+                                RegisterNumber = target.ToUpper(),
+                                StudentName = !string.IsNullOrWhiteSpace(studentName) ? studentName : (isApplicant ? od.StudentName : ""),
+                                EventName = od.Event,
+                                FromDate = od.FromDate,
+                                ToDate = od.ToDate,
+                                CollegeName = od.CollegeIndustry,
+                                IsGroupOd = od.IsGroupOd,
+                                GroupName = od.GroupName
+                            });
+                        }
+                    }
+                }
+            }
+
+            return result
+                .OrderByDescending(r => DateTime.TryParse(r.ToDate, out var d) ? d : DateTime.MinValue)
+                .ToList();
         }
 
         // True once today is on/after the OD's own FromDate — covers an OD

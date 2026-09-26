@@ -39,6 +39,7 @@ namespace OnlineOD.Service
         Task<List<OdCertificate>> GetCertificatesForOdAsync(int odId);
         Task<OdCertificate?> VerifyMemberCertificateAsync(int odId, string registerNumber);
         Task<List<OdWithCertificatesDto>> AttachCertificatesAsync(List<OdApply> ods);
+        Task<List<MissingCertificateDto>> GetMissingPreviousCertificatesAsync(IEnumerable<string> registerNumbers, int? currentOdId = null);
 
         // staffId identifies WHICH staff is acting — required so a staff can
         // only reject/unreject members from their OWN class section, never

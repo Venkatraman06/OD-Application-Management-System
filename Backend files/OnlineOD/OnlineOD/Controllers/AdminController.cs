@@ -205,6 +205,220 @@ namespace OnlineOD.Controllers
             return Ok(result);
         }
 
+        // GET /api/Admin/Certificates
+        // Returns both Pending Certificates (completed ODs without submitted certificates)
+        // and Submitted Certificates (completed or uploaded certificates with in-page viewable info).
+        [HttpGet("Certificates")]
+        public async Task<IActionResult> GetCertificates()
+        {
+            var today = DateTime.Today;
+
+            var allOds = await _context.OdApplies
+                .OrderByDescending(o => o.AppliedDate)
+                .ToListAsync();
+
+            var allCerts = await _context.OdCertificates
+                .OrderByDescending(c => c.UploadedDate)
+                .ToListAsync();
+
+            var studentList = await _context.Students.ToListAsync();
+            var studentsByReg = studentList
+                .Where(s => !string.IsNullOrEmpty(s.RegisterNumber))
+                .GroupBy(s => s.RegisterNumber.Trim().ToLower())
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var odsById = allOds.ToDictionary(o => o.OdId, o => o);
+            var pending = new List<AdminPendingCertDto>();
+            var submitted = new List<AdminSubmittedCertDto>();
+            var processedSubmittedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 1. Process all submitted certificates from OdCertificates table
+            foreach (var cert in allCerts)
+            {
+                if (string.IsNullOrWhiteSpace(cert.CertificatePhotoUrl)) continue;
+
+                odsById.TryGetValue(cert.OdId, out var od);
+                var regKey = (cert.RegisterNumber ?? "").Trim().ToLower();
+                studentsByReg.TryGetValue(regKey, out var student);
+
+                string studentName = student?.Name ?? "";
+                if (string.IsNullOrWhiteSpace(studentName) && od != null && (od.registerNumber ?? "").Trim().ToLower() == regKey)
+                {
+                    studentName = od.StudentName ?? "";
+                }
+
+                processedSubmittedKeys.Add($"{cert.OdId}_{regKey}");
+
+                submitted.Add(new AdminSubmittedCertDto
+                {
+                    CertId = cert.Id,
+                    OdId = cert.OdId,
+                    StudentId = student?.StudentId ?? (od?.StudentId ?? 0),
+                    StudentName = !string.IsNullOrWhiteSpace(studentName) ? studentName : cert.RegisterNumber,
+                    RegisterNumber = cert.RegisterNumber,
+                    Department = student?.Department ?? od?.department,
+                    Section = student?.Section ?? od?.Section,
+                    Year = student?.Year,
+                    EventName = od?.Event ?? "",
+                    CollegeName = od?.CollegeIndustry ?? "",
+                    CompetitionType = od?.CompetitionType,
+                    FromDate = od?.FromDate,
+                    ToDate = od?.ToDate,
+                    NumberOfDays = od?.NumberOfDays ?? 0,
+                    IsGroupOd = od?.IsGroupOd ?? false,
+                    GroupName = od?.GroupName,
+                    Reason = od?.Reason,
+                    WinningStatus = cert.WinningStatus,
+                    CertificatePhotoUrl = cert.CertificatePhotoUrl,
+                    CertificateVerified = cert.CertificateVerified,
+                    UploadedDate = cert.UploadedDate
+                });
+            }
+
+            // Also check if any solo OdApply has CertificatePhotoUrl without an OdCertificate row
+            foreach (var od in allOds)
+            {
+                if (!string.IsNullOrWhiteSpace(od.CertificatePhotoUrl) && !od.IsGroupOd)
+                {
+                    var regKey = (od.registerNumber ?? "").Trim().ToLower();
+                    if (!processedSubmittedKeys.Contains($"{od.OdId}_{regKey}"))
+                    {
+                        studentsByReg.TryGetValue(regKey, out var student);
+                        processedSubmittedKeys.Add($"{od.OdId}_{regKey}");
+                        submitted.Add(new AdminSubmittedCertDto
+                        {
+                            CertId = 0,
+                            OdId = od.OdId,
+                            StudentId = od.StudentId,
+                            StudentName = od.StudentName ?? student?.Name ?? od.registerNumber ?? "",
+                            RegisterNumber = od.registerNumber ?? "",
+                            Department = od.department ?? student?.Department,
+                            Section = od.Section ?? student?.Section,
+                            Year = student?.Year,
+                            EventName = od.Event ?? "",
+                            CollegeName = od.CollegeIndustry ?? "",
+                            CompetitionType = od.CompetitionType,
+                            FromDate = od.FromDate,
+                            ToDate = od.ToDate,
+                            NumberOfDays = od.NumberOfDays,
+                            IsGroupOd = false,
+                            GroupName = od.GroupName,
+                            Reason = od.Reason,
+                            WinningStatus = od.WinningStatus,
+                            CertificatePhotoUrl = od.CertificatePhotoUrl,
+                            CertificateVerified = od.CertificateVerified,
+                            UploadedDate = od.AppliedDate
+                        });
+                    }
+                }
+            }
+
+            // 2. Process Pending Certificates (completed approved ODs where certificate is NOT submitted)
+            var completedApprovedOds = allOds.Where(o =>
+                o.HodStatus == "Approved" &&
+                DateTime.TryParse(o.ToDate, out var to) &&
+                to.Date < today
+            ).ToList();
+
+            foreach (var od in completedApprovedOds)
+            {
+                if (!od.IsGroupOd)
+                {
+                    var regKey = (od.registerNumber ?? "").Trim().ToLower();
+                    bool hasCert = processedSubmittedKeys.Contains($"{od.OdId}_{regKey}");
+                    if (!hasCert)
+                    {
+                        studentsByReg.TryGetValue(regKey, out var student);
+                        pending.Add(new AdminPendingCertDto
+                        {
+                            OdId = od.OdId,
+                            StudentId = od.StudentId,
+                            StudentName = od.StudentName ?? student?.Name ?? od.registerNumber ?? "",
+                            RegisterNumber = od.registerNumber ?? "",
+                            Department = od.department ?? student?.Department,
+                            Section = od.Section ?? student?.Section,
+                            Year = student?.Year,
+                            EventName = od.Event,
+                            CollegeName = od.CollegeIndustry,
+                            CompetitionType = od.CompetitionType,
+                            FromDate = od.FromDate,
+                            ToDate = od.ToDate,
+                            NumberOfDays = od.NumberOfDays,
+                            IsGroupOd = false,
+                            GroupName = od.GroupName,
+                            Reason = od.Reason,
+                            AppliedDate = od.AppliedDate
+                        });
+                    }
+                }
+                else
+                {
+                    // Group OD: check EACH approved member
+                    var allMembers = (od.RegisterNumbers ?? "")
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(r => r.Trim())
+                        .ToList();
+
+                    var rejected = (od.FacultyRejectedRegisterNumbers ?? "")
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(r => r.Trim().ToLower())
+                        .ToHashSet();
+
+                    var hodAppr = (od.HodApprovedRegisterNumbers ?? "")
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(r => r.Trim().ToLower())
+                        .ToHashSet();
+
+                    foreach (var memberReg in allMembers)
+                    {
+                        var mLower = memberReg.ToLower();
+                        bool isRejected = rejected.Contains(mLower) && !hodAppr.Contains(mLower);
+                        if (isRejected) continue; // Rejected members did not attend OD
+
+                        bool hasCert = processedSubmittedKeys.Contains($"{od.OdId}_{mLower}");
+                        if (!hasCert)
+                        {
+                            studentsByReg.TryGetValue(mLower, out var student);
+                            string memberName = student?.Name ?? "";
+                            if (string.IsNullOrWhiteSpace(memberName) && (od.registerNumber ?? "").Trim().ToLower() == mLower)
+                            {
+                                memberName = od.StudentName ?? "";
+                            }
+
+                            pending.Add(new AdminPendingCertDto
+                            {
+                                OdId = od.OdId,
+                                StudentId = student?.StudentId ?? 0,
+                                StudentName = !string.IsNullOrWhiteSpace(memberName) ? memberName : memberReg,
+                                RegisterNumber = memberReg,
+                                Department = student?.Department ?? od.department,
+                                Section = student?.Section ?? od.Section,
+                                Year = student?.Year,
+                                EventName = od.Event,
+                                CollegeName = od.CollegeIndustry,
+                                CompetitionType = od.CompetitionType,
+                                FromDate = od.FromDate,
+                                ToDate = od.ToDate,
+                                NumberOfDays = od.NumberOfDays,
+                                IsGroupOd = true,
+                                GroupName = od.GroupName,
+                                Reason = od.Reason,
+                                AppliedDate = od.AppliedDate
+                            });
+                        }
+                    }
+                }
+            }
+
+            var certificatesResult = new AdminCertificatesResultDto
+            {
+                Pending = pending.OrderByDescending(p => DateTime.TryParse(p.ToDate, out var d) ? d : DateTime.MinValue).ToList(),
+                Submitted = submitted.OrderByDescending(s => s.UploadedDate).ToList()
+            };
+
+            return Ok(certificatesResult);
+        }
+
         // GET /api/Admin/ODRequests/{id}
         [HttpGet("ODRequests/{id}")]
         public async Task<IActionResult> GetOdRequestById(int id)

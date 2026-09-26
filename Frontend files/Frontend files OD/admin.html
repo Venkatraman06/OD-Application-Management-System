@@ -97,6 +97,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             OD Request <span class="tab-count" id="odRequestsTabCount">0</span>
         </button>
+        <button class="admin-tab" data-tab="certificates">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15l-2 5l9-5l-9-5l2 5zm0 0l-7 2l2-7l7 2l-2 3z"/><path d="M12 2l3.09 6.26L22 9.27l-5 4.87l1.18 6.88L12 17.77l-6.18 3.25L7 14.14L2 9.27l6.91-1.01L12 2z"/></svg>
+            Certificates <span class="tab-count" id="certificatesTabCount">0</span>
+        </button>
         <button class="admin-tab" data-tab="events">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Events <span class="tab-count" id="eventsTabCount">0</span>
@@ -430,6 +434,102 @@
             </div>
         </section>
 
+        <!-- ============== CERTIFICATES ============== -->
+        <section class="admin-panel" id="panel-certificates">
+            <div class="sub-tabs-container">
+                <button type="button" class="sub-tab-btn active" id="subtabCertPending" data-cert-subtab="pending">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Pending Certificates <span class="tab-count" id="certPendingTabCount">0</span>
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabCertSubmitted" data-cert-subtab="submitted">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Submitted Certificates <span class="tab-count" id="certSubmittedTabCount">0</span>
+                </button>
+            </div>
+
+            <!-- Subtab A: Pending Certificates -->
+            <div id="subtabViewCertPending">
+                <div class="admin-card list-card requests-full">
+                    <div class="list-card-header">
+                        <div>
+                            <h2>Pending Certificates (OD Completed)</h2>
+                            <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);">Students with completed ODs who have not yet submitted certificates</p>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="text" class="admin-search" id="certPendingSearch" placeholder="Search student / reg no / event / dept...">
+                            <button class="action-btn icon-btn" id="refreshCertPendingBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    <th>Reg. No.</th>
+                                    <th>Dept</th>
+                                    <th>Sec</th>
+                                    <th>Year</th>
+                                    <th>Event Name</th>
+                                    <th>College / Industry</th>
+                                    <th>OD Type</th>
+                                    <th>OD Dates</th>
+                                    <th>Days</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="certPendingTableBody">
+                                <tr><td colspan="12" class="table-empty">Loading pending certificates...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subtab B: Submitted Certificates -->
+            <div id="subtabViewCertSubmitted" style="display:none;">
+                <div class="admin-card list-card requests-full">
+                    <div class="list-card-header">
+                        <div>
+                            <h2>Submitted Certificates</h2>
+                            <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);">View certificates directly inside page or download</p>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="text" class="admin-search" id="certSubmittedSearch" placeholder="Search student / reg no / event / dept...">
+                            <button class="action-btn icon-btn" id="refreshCertSubmittedBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    <th>Reg. No.</th>
+                                    <th>Dept</th>
+                                    <th>Sec</th>
+                                    <th>Year</th>
+                                    <th>Event Name</th>
+                                    <th>College / Industry</th>
+                                    <th>OD Dates</th>
+                                    <th>Winning Status</th>
+                                    <th>Verified</th>
+                                    <th style="text-align:center;">Certificate Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="certSubmittedTableBody">
+                                <tr><td colspan="12" class="table-empty">Loading submitted certificates...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ============== EVENTS ============== -->
         <section class="admin-panel" id="panel-events">
             <div class="admin-grid">
@@ -615,6 +715,34 @@
         <div class="modal-box-actions">
             <button type="button" class="btn-secondary" id="deleteCancelBtn">Cancel</button>
             <button type="button" class="btn-danger" id="deleteConfirmBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Certificate In-Page Preview & Download Modal -->
+<div class="modal-overlay" id="adminCertPreviewOverlay" style="display:none;">
+    <div class="modal-box" style="max-width:850px;width:95%;max-height:92vh;display:flex;flex-direction:column;text-align:left;padding:0;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.95);">
+            <div>
+                <h3 id="adminCertPreviewTitle" style="margin:0;font-size:1.1rem;font-weight:700;color:white;">Certificate Preview</h3>
+                <p id="adminCertPreviewSub" style="margin:2px 0 0;font-size:0.78rem;color:var(--surface-400);"></p>
+            </div>
+            <button type="button" id="adminCertPreviewCloseBtn" style="background:none;border:none;color:var(--surface-400);cursor:pointer;font-size:1.6rem;line-height:1;padding:4px 8px;">&times;</button>
+        </div>
+        <div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;min-height:350px;max-height:68vh;padding:16px;background:rgba(2,6,23,0.6);">
+            <img id="adminCertPreviewImg" src="" alt="Certificate" style="max-width:100%;max-height:64vh;border-radius:8px;object-fit:contain;display:none;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+            <iframe id="adminCertPreviewIframe" src="" style="width:100%;height:64vh;border:none;border-radius:8px;display:none;"></iframe>
+            <div id="adminCertPreviewFallback" style="display:none;text-align:center;padding:24px;color:var(--surface-400);">
+                <p>Preview not available directly for this file format.</p>
+                <p>Use the download button below to view.</p>
+            </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.95);">
+            <a id="adminCertDownloadBtn" href="#" target="_blank" download class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:9px 18px;font-size:0.85rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Certificate
+            </a>
+            <button type="button" class="btn-secondary" id="adminCertPreviewCloseBtn2" style="padding:9px 18px;font-size:0.85rem;">Close</button>
         </div>
     </div>
 </div>

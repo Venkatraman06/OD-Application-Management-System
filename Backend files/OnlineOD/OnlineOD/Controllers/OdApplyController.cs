@@ -86,6 +86,18 @@ namespace OnlineOD.Controllers
             return Ok(certs);
         }
 
+        // GET /api/OdApply/CheckMissingCertificates?registerNumbers=23CS101,23CS102
+        [HttpGet("CheckMissingCertificates")]
+        public async Task<IActionResult> CheckMissingCertificates([FromQuery] string registerNumbers)
+        {
+            if (string.IsNullOrWhiteSpace(registerNumbers))
+                return Ok(new List<MissingCertificateDto>());
+
+            var regs = registerNumbers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var missing = await _service.GetMissingPreviousCertificatesAsync(regs);
+            return Ok(missing);
+        }
+
         // POST /api/OdApply/OD-Apply
         [HttpPost("OD-Apply")]
         public async Task<IActionResult> CreateOdApply([FromBody] OdApplyDto dto)
