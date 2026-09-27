@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -42,21 +42,30 @@ namespace OnlineOD.Service
         // or removes a day from the calendar).
         public static HashSet<string> WorkingDays { get; private set; } = new HashSet<string>(SeedWorkingDays);
 
+        // Special days dictionary (Date -> (DayType, Name))
+        public static Dictionary<string, SpecialDayItem> SpecialDays { get; private set; } = new Dictionary<string, SpecialDayItem>(StringComparer.OrdinalIgnoreCase);
+
         public static string MinDate => WorkingDays.Count > 0 ? WorkingDays.Min() : SeedMinDate;
         public static string MaxDate => WorkingDays.Count > 0 ? WorkingDays.Max() : SeedMaxDate;
 
         /// <summary>Applies a batch of HOD-made overrides on top of the seed list — called once at app startup.</summary>
+        public static void LoadOverrides(IEnumerable<(string Date, bool IsWorking, string? DayType, string? Name)> overrides)
+        {
+            foreach (var o in overrides)
+                ApplyOverride(o.Date, o.IsWorking, o.DayType, o.Name);
+        }
+
         public static void LoadOverrides(IEnumerable<(string Date, bool IsWorking)> overrides)
         {
             foreach (var o in overrides)
-                ApplyOverride(o.Date, o.IsWorking);
+                ApplyOverride(o.Date, o.IsWorking, null, null);
         }
 
         /// <summary>
         /// HOD edits a single date: true = mark/keep it a working day
         /// (add to calendar), false = remove it from the calendar (holiday).
         /// </summary>
-        public static bool ApplyOverride(string dateStr, bool isWorking)
+        public static bool ApplyOverride(string dateStr, bool isWorking, string? dayType = null, string? name = null)
         {
             var normalized = Normalize(dateStr);
             if (normalized == null) return false;
@@ -64,7 +73,35 @@ namespace OnlineOD.Service
             if (isWorking) WorkingDays.Add(normalized);
             else WorkingDays.Remove(normalized);
 
+            if (!string.IsNullOrWhiteSpace(dayType))
+            {
+                SpecialDays[normalized] = new SpecialDayItem
+                {
+                    Date = normalized,
+                    DayType = dayType.Trim(),
+                    Name = name?.Trim() ?? string.Empty
+                };
+            }
+            else
+            {
+                SpecialDays.Remove(normalized);
+            }
+
             return true;
+        }
+
+        public static List<SpecialDayItem> GetSpecialDaysInRange(string? fromStr, string? toStr)
+        {
+            var from = Normalize(fromStr);
+            var to = Normalize(toStr);
+            if (from == null || to == null || string.Compare(from, to, StringComparison.Ordinal) > 0)
+                return new List<SpecialDayItem>();
+
+            return SpecialDays.Values
+                .Where(s => string.Compare(s.Date, from, StringComparison.Ordinal) >= 0 &&
+                            string.Compare(s.Date, to, StringComparison.Ordinal) <= 0)
+                .OrderBy(s => s.Date)
+                .ToList();
         }
 
         /// <summary>True if the given date string (any parseable format, compared as yyyy-MM-dd) is a published working day.</summary>
@@ -118,5 +155,12 @@ namespace OnlineOD.Service
                 return dt.ToString("yyyy-MM-dd");
             return null;
         }
+    }
+
+    public class SpecialDayItem
+    {
+        public string Date { get; set; } = string.Empty;
+        public string DayType { get; set; } = "Holiday"; // "Holiday" | "Examination"
+        public string Name { get; set; } = string.Empty;
     }
 }

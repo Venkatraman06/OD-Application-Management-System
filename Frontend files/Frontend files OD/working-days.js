@@ -32,6 +32,7 @@ const COLLEGE_WORKING_DAYS = generateWorkingDays();
 
 const CollegeWorkingDays = (() => {
     const workingSet = new Set(COLLEGE_WORKING_DAYS);
+    const specialDaysMap = new Map(); // date -> { date, dayType, name }
     const sorted = [...COLLEGE_WORKING_DAYS].sort();
     const minDate = sorted[0];
     const maxDate = sorted[sorted.length - 1];
@@ -48,6 +49,24 @@ const CollegeWorkingDays = (() => {
         return dateStr < minDate || dateStr > maxDate;
     }
 
+    /** returns special day info if configured for dateStr (Holiday | Examination), else null */
+    function getSpecialDay(dateStr) {
+        if (!dateStr) return null;
+        return specialDaysMap.get(dateStr) || null;
+    }
+
+    /** returns array of special days within [fromStr, toStr] range */
+    function getSpecialDaysInRange(fromStr, toStr) {
+        if (!fromStr || !toStr || fromStr > toStr) return [];
+        const result = [];
+        for (const [date, info] of specialDaysMap.entries()) {
+            if (date >= fromStr && date <= toStr) {
+                result.push(info);
+            }
+        }
+        return result.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
     /** counts only published working days (inclusive) between two YYYY-MM-DD strings */
     function countWorkingDays(fromStr, toStr) {
         if (!fromStr || !toStr || fromStr > toStr) return 0;
@@ -58,7 +77,7 @@ const CollegeWorkingDays = (() => {
         return count;
     }
 
-    /** Synchronizes working days with backend database overrides */
+    /** Synchronizes working days and special days with backend database overrides */
     async function syncWithBackend(apiBase) {
         try {
             const baseUrl = apiBase || window.API_BASE || '';
@@ -68,6 +87,28 @@ const CollegeWorkingDays = (() => {
                 if (data && Array.isArray(data.workingDays) && data.workingDays.length > 0) {
                     workingSet.clear();
                     data.workingDays.forEach(d => workingSet.add(d));
+                }
+                specialDaysMap.clear();
+                if (data && Array.isArray(data.specialDays)) {
+                    data.specialDays.forEach(s => {
+                        if (s && s.date) {
+                            specialDaysMap.set(s.date, {
+                                date: s.date,
+                                dayType: s.dayType || 'Holiday',
+                                name: s.name || ''
+                            });
+                        }
+                    });
+                } else if (data && Array.isArray(data.overrides)) {
+                    data.overrides.forEach(o => {
+                        if (o && o.date && (o.dayType || o.name || !o.isWorking)) {
+                            specialDaysMap.set(o.date, {
+                                date: o.date,
+                                dayType: o.dayType || (o.isWorking ? 'Working' : 'Holiday'),
+                                name: o.name || (o.isWorking ? 'Working Day' : 'Holiday')
+                            });
+                        }
+                    });
                 }
             }
         } catch (err) {
@@ -83,10 +124,13 @@ const CollegeWorkingDays = (() => {
     return {
         list: COLLEGE_WORKING_DAYS,
         workingSet,
+        specialDaysMap,
         minDate,
         maxDate,
         isWorkingDay,
         isOutsideCalendar,
+        getSpecialDay,
+        getSpecialDaysInRange,
         countWorkingDays,
         syncWithBackend
     };

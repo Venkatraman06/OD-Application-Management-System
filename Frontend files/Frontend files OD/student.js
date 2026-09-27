@@ -493,17 +493,69 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (daysEl) {
                 daysEl.value = buildDaysText(d, startTimeEl?.value, endTimeEl?.value);
             }
+            // Warn if any special days (Holiday/Examination) fall in the range
+            if (!_specialDayWarningAcknowledged) {
+                checkAndWarnSpecialDays(fromVal, toVal);
+            }
         } else {
             if (daysEl) daysEl.value = '';
         }
     }
+    // ── Special-day warning for OD date range ──
+    let _specialDayWarningAcknowledged = false;
+    function checkAndWarnSpecialDays(fromVal, toVal) {
+        if (!fromVal || !toVal) return;
+        if (typeof CollegeWorkingDays === 'undefined' || !CollegeWorkingDays.getSpecialDaysInRange) return;
+        const specials = CollegeWorkingDays.getSpecialDaysInRange(fromVal, toVal);
+        if (!specials || specials.length === 0) return;
+
+        // Build list HTML
+        const listItems = specials.map(s => {
+            const label = s.dayType === 'Holiday' ? '🟠 Holiday' : '🟢 Examination';
+            return `<li>${label}: <strong>${s.name || ''}</strong> (${s.date})</li>`;
+        }).join('');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'special-day-warning-overlay';
+        overlay.innerHTML = `
+            <div class="special-day-warning-modal">
+                <h4>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    Special Days in Selected Range
+                </h4>
+                <p>Your selected date range includes the following special days:</p>
+                <ul>${listItems}</ul>
+                <p style="font-size:0.82rem;color:#94a3b8">You can edit your dates or confirm to continue anyway.</p>
+                <div class="sdw-actions">
+                    <button class="sdw-btn-edit" id="sdwEditBtn">Edit Dates</button>
+                    <button class="sdw-btn-confirm" id="sdwConfirmBtn">Confirm Anyway</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        document.getElementById('sdwEditBtn').onclick = () => {
+            document.body.removeChild(overlay);
+            // Clear dates so user must re-select
+            if (fromEl) { fromEl.value = ''; }
+            if (toEl)   { toEl.value = ''; }
+            if (daysEl) { daysEl.value = ''; }
+            _specialDayWarningAcknowledged = false;
+        };
+        document.getElementById('sdwConfirmBtn').onclick = () => {
+            document.body.removeChild(overlay);
+            _specialDayWarningAcknowledged = true;
+        };
+    }
+
     if (fromEl) {
-        fromEl.addEventListener('change', () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays); });
-        fromEl.addEventListener('input',  () => { guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays); });
+        fromEl.addEventListener('change', () => { _specialDayWarningAcknowledged = false; guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays); });
+        fromEl.addEventListener('input',  () => { _specialDayWarningAcknowledged = false; guardWeekendInput(fromEl, 'fromDate-error', 'From Date', calcDays); });
     }
     if (toEl) {
-        toEl.addEventListener('change', () => { guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays); });
-        toEl.addEventListener('input',  () => { guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays); });
+        toEl.addEventListener('change', () => { _specialDayWarningAcknowledged = false; guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays); });
+        toEl.addEventListener('input',  () => { _specialDayWarningAcknowledged = false; guardWeekendInput(toEl, 'toDate-error', 'To Date', calcDays); });
     }
     if (startTimeEl) startTimeEl.addEventListener('change', () => { calcDays(); validateTimes(); });
     if (endTimeEl)   endTimeEl.addEventListener('change',   () => { calcDays(); validateTimes(); });

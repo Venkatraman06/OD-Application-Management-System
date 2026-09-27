@@ -178,9 +178,34 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var overrides = db.WorkingDayOverrides.ToList();
+
+        try
+        {
+            if (isPostgreSql)
+            {
+                db.Database.ExecuteSqlRaw(@"
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""DayType"" text;
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Name"" text;
+                ");
+            }
+            else
+            {
+                db.Database.ExecuteSqlRaw(@"
+                    IF COL_LENGTH('WorkingDayOverrides', 'DayType') IS NULL
+                        ALTER TABLE [WorkingDayOverrides] ADD [DayType] nvarchar(max) NULL;
+                    IF COL_LENGTH('WorkingDayOverrides', 'Name') IS NULL
+                        ALTER TABLE [WorkingDayOverrides] ADD [Name] nvarchar(max) NULL;
+                ");
+            }
+        }
+        catch (Exception colEx)
+        {
+            Console.WriteLine($"[Startup] WorkingDayOverrides schema check: {colEx.Message}");
+        }
+
+        var overrides = db.WorkingDayOverrides.AsNoTracking().ToList();
         WorkingDaysCalendar.LoadOverrides(
-            overrides.Select(o => (o.Date, o.IsWorking)));
+            overrides.Select(o => (o.Date, o.IsWorking, o.DayType, o.Name)));
     }
     catch (Exception ex)
     {

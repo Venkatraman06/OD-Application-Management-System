@@ -1232,3 +1232,29 @@ input:focus-visible {
 .od-cert-warning-item {
     margin-bottom: 3px;
 }
+/* OD Special-Day Warning Modal */
+.special-day-warning-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10100;
+}
+.special-day-warning-modal {
+    background: #1e293b;
+    border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 16px;
+    padding: 24px 26px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.special-day-warning-modal h4 {
+    margin: 0 0 10px; color: #fca5a5; font-size: 1rem;
+    display: flex; align-items: center; gap: 8px;
+}
+.special-day-warning-modal p { margin: 0 0 12px; font-size: 0.875rem; color: #cbd5e1; line-height: 1.55; }
+.special-day-warning-modal ul { margin: 0 0 16px 18px; padding: 0; font-size: 0.82rem; color: #fcd34d; }
+.special-day-warning-modal .sdw-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.special-day-warning-modal .sdw-btn-edit { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; cursor: pointer; font-size: 0.875rem; }
+.special-day-warning-modal .sdw-btn-confirm { padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.25); color: #fca5a5; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+.special-day-warning-modal .sdw-btn-confirm:hover { background: rgba(239,68,68,0.4); }

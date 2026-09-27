@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace OnlineOD.Models
 {
@@ -11,6 +11,8 @@ namespace OnlineOD.Models
         [Key]
         public string Date { get; set; } = string.Empty;
         public bool IsWorking { get; set; }
+        public string? DayType { get; set; } // "Holiday" | "Examination"
+        public string? Name { get; set; }    // e.g. "Pongal", "Semester Examination"
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
     }
 }

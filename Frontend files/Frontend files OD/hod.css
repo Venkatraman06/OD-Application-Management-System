@@ -2826,6 +2826,71 @@ body {
 .calendar-legend .dot.has-od      { background: var(--primary-500, #6366f1); }
 .calendar-legend .dot.non-working { background: rgba(239,68,68,0.35); }
 .calendar-legend .dot.outside     { background: transparent; border: 1px dashed rgba(255,255,255,0.2); }
+.calendar-legend .dot.cal-holiday-dot     { background: rgba(249,115,22,0.8); }
+.calendar-legend .dot.cal-examination-dot { background: rgba(16,185,129,0.8); }
+
+/* Calendar: Holiday cell (orange) */
+.calendar-day.cal-holiday {
+    background: rgba(249,115,22,0.13) !important;
+    border-color: rgba(249,115,22,0.4) !important;
+    color: #fed7aa !important;
+}
+.calendar-day.cal-holiday:hover {
+    background: rgba(249,115,22,0.22) !important;
+    border-color: rgba(249,115,22,0.6) !important;
+}
+/* Calendar: Examination cell (green) */
+.calendar-day.cal-examination {
+    background: rgba(16,185,129,0.12) !important;
+    border-color: rgba(16,185,129,0.35) !important;
+    color: #6ee7b7 !important;
+}
+.calendar-day.cal-examination:hover {
+    background: rgba(16,185,129,0.2) !important;
+    border-color: rgba(16,185,129,0.55) !important;
+}
+.calendar-day .cal-special-label {
+    font-size: 0.52rem;
+    line-height: 1.1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.85;
+    margin-top: 1px;
+}
+/* OD Special-Day Warning Modal */
+.special-day-warning-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10100;
+}
+.special-day-warning-modal {
+    background: var(--surface-800, #1e293b);
+    border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 16px;
+    padding: 24px 26px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.special-day-warning-modal h4 {
+    margin: 0 0 10px;
+    color: #fca5a5;
+    font-size: 1rem;
+    display: flex; align-items: center; gap: 8px;
+}
+.special-day-warning-modal p { margin: 0 0 12px; font-size: 0.875rem; color: #cbd5e1; line-height: 1.55; }
+.special-day-warning-modal ul { margin: 0 0 16px 18px; padding: 0; font-size: 0.82rem; color: #fcd34d; }
+.special-day-warning-modal .sdw-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.special-day-warning-modal .sdw-btn-edit { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; cursor: pointer; font-size: 0.875rem; }
+.special-day-warning-modal .sdw-btn-confirm { padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.25); color: #fca5a5; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+.special-day-warning-modal .sdw-btn-confirm:hover { background: rgba(239,68,68,0.4); }
+[data-theme="light"] .calendar-legend .dot.cal-holiday-dot     { background: #f97316; }
+[data-theme="light"] .calendar-legend .dot.cal-examination-dot { background: #10b981; }
+[data-theme="light"] .calendar-day.cal-holiday { background: #fff7ed !important; border-color: #fdba74 !important; color: #c2410c !important; }
+[data-theme="light"] .calendar-day.cal-examination { background: #f0fdf4 !important; border-color: #6ee7b7 !important; color: #065f46 !important; }
 
 .calendar-weekday-row {
     display: grid;

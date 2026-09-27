@@ -928,6 +928,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (analyticsView) analyticsView.style.display = 'none';
             if (calendarView) calendarView.style.display = 'none';
             if (studentsView) studentsView.style.display = 'block';
+            // Hide the section-title refresh btn — students card has its own refresh
+            const mainRefreshBtn = document.getElementById('refreshBtn');
+            if (mainRefreshBtn) mainRefreshBtn.style.display = 'none';
             setEl('sectionCount', '');
             if (staffSubtabOdHistory && staffSubtabOdHistory.classList.contains('active')) {
                 loadStaffOdHistory();
@@ -936,6 +939,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             return;
         }
+        // Restore refresh btn for all non-students tabs
+        const mainRefreshBtn = document.getElementById('refreshBtn');
+        if (mainRefreshBtn) mainRefreshBtn.style.display = '';
         if (studentsView) studentsView.style.display = 'none';
 
         if (filter === 'calendar') {
@@ -1896,7 +1902,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function isEffectiveWorkingDay(dateStr) {
         if (Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr)) {
-            return calendarOverrides[dateStr];
+            const v = calendarOverrides[dateStr];
+            return typeof v === 'object' ? v.isWorking : v;
         }
         return typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.isWorkingDay(dateStr);
     }
@@ -1909,8 +1916,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await res.json();
                 calendarOverrides = {};
                 (data.overrides || []).forEach(o => {
-                    calendarOverrides[o.date] = o.isWorking;
+                    calendarOverrides[o.date] = { isWorking: o.isWorking, dayType: o.dayType || null, name: o.name || null };
                 });
+                // Sync special days into CollegeWorkingDays
+                if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
+                    CollegeWorkingDays.specialDaysMap.clear();
+                    (data.specialDays || []).forEach(s => {
+                        if (s && s.date) {
+                            CollegeWorkingDays.specialDaysMap.set(s.date, { date: s.date, dayType: s.dayType || 'Holiday', name: s.name || '' });
+                        }
+                    });
+                }
             }
         } catch (err) {
             console.error('loadCalendarOverrides error:', err);
@@ -2005,22 +2021,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isWorking = isEffectiveWorkingDay(dateStr);
             const wasEdited = Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr);
 
+            // Check for special day (Holiday / Examination)
+            const specialDay = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
+                ? CollegeWorkingDays.getSpecialDay(dateStr)
+                : null;
+            const isHoliday     = specialDay && specialDay.dayType === 'Holiday';
+            const isExamination = specialDay && specialDay.dayType === 'Examination';
+            const specialName   = specialDay ? (specialDay.name || '') : '';
+
             if (!isWorking) {
-                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}" data-date="${dateStr}" title="${wasEdited ? 'Marked non-working' : 'Holiday / non-working day'}">
+                const tooltipText = isHoliday
+                    ? `Holiday: ${specialName}`
+                    : wasEdited ? 'Marked non-working' : 'Holiday / non-working day';
+                const extraClass = isHoliday ? ' cal-holiday' : '';
+                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}" data-date="${dateStr}" title="${tooltipText}">
                             <span class="cal-day-num">${day}</span>
+                            ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
                             ${wasEdited ? '<span class="cal-edit-dot" title="Edited day"></span>' : ''}
                          </div>`;
                 continue;
             }
 
+            const examinationClass = isExamination ? ' cal-examination' : '';
             const covering = odsCoveringDate(dateStr);
             const appliedCount  = covering.length;
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
+            const dayTitle = isExamination ? `Examination: ${specialName}` : dateStr;
 
-            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}" data-date="${dateStr}" title="${dateStr}">
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}" data-date="${dateStr}" title="${dayTitle}">
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
                         <span class="cal-day-num">${day}</span>
+                        ${isExamination && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
                         ${wasEdited ? '<span class="cal-edit-dot" title="Edited day"></span>' : ''}
                         ${hasActivity ? `<span class="cal-day-counts">
                             <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
@@ -2064,19 +2096,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             form.onsubmit = async (e) => {
                 e.preventDefault();
                 const fromDate = document.getElementById('addCalFromDate')?.value;
-                const toDate = document.getElementById('addCalToDate')?.value;
-                const isWorking = document.getElementById('addCalIsWorking')?.value === 'true';
+                const toDate   = document.getElementById('addCalToDate')?.value;
+                const dayType  = document.getElementById('addCalDayType')?.value;
+                const name     = document.getElementById('addCalName')?.value?.trim();
 
                 if (!fromDate || !toDate) {
-                    showToast('error', 'Please select both From Date and To Date.');
+                    showToast('error', 'Please select both From Date and End Date.');
+                    return;
+                }
+                if (toDate < fromDate) {
+                    showToast('error', 'End Date must be on or after From Date.');
+                    return;
+                }
+                if (!name) {
+                    showToast('error', 'Please enter a name for this calendar entry.');
                     return;
                 }
 
                 try {
-                    const res = await fetch(`${API_BASE}/api/WorkingDay/AddCalendar`, {
+                    const res = await fetch(`${API_BASE}/api/WorkingDay/EditCalendar`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fromDate, toDate, isWorking })
+                        body: JSON.stringify({ fromDate, toDate, dayType, name })
                     });
 
                     if (!res.ok) {
@@ -2084,7 +2125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         throw new Error(errData.message || 'Failed to update calendar');
                     }
 
-                    showToast('success', `Calendar updated successfully for ${fromDate} to ${toDate}.`);
+                    showToast('success', `Calendar updated: ${name} (${fromDate} – ${toDate}).`);
                     close();
 
                     if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
@@ -2095,7 +2136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await loadCalendarOverrides();
                     renderCalendarMonth();
                 } catch (err) {
-                    console.error('Add Calendar error:', err);
+                    console.error('Edit Calendar error:', err);
                     showToast('error', err.message || 'Failed to update calendar');
                 }
             };
