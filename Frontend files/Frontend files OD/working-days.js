@@ -216,12 +216,13 @@ const CollegeWorkingDays = (() => {
 /* ── Circular Analog Clock Time Picker Component ── */
 const AnalogClockPicker = (() => {
     let overlay = null;
-    let mode = 'hours';
+    let mode = 'hours'; // 'hours' or 'mins'
     let selectedHour = 9;
     let selectedMin = 0;
     let ampm = 'AM';
     let activeInput = null;
     let activeCallback = null;
+    let isDragging = false;
 
     function ensureHTML() {
         if (overlay) return;
@@ -231,15 +232,21 @@ const AnalogClockPicker = (() => {
         div.id = 'clockPickerOverlay';
         div.style.display = 'none';
         div.innerHTML = `
-            <div class="clock-picker-modal">
+            <div class="clock-picker-modal" role="dialog" aria-modal="true" aria-label="Select Time">
                 <div class="clock-picker-header">
-                    <span class="clock-picker-title">🕒 Time Picker</span>
-                    <button class="clock-picker-close" id="clockPickerCloseBtn" type="button">&times;</button>
+                    <span class="clock-picker-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="vertical-align: -3px; margin-right: 4px;">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Select Time
+                    </span>
+                    <button class="clock-picker-close" id="clockPickerCloseBtn" type="button" aria-label="Close time picker">&times;</button>
                 </div>
                 <div class="clock-picker-time-display">
-                    <span class="clock-time-val clock-time-hour active" id="clockValHour">09</span>
+                    <span class="clock-time-val clock-time-hour active" id="clockValHour" title="Select Hours">09</span>
                     <span class="clock-time-colon">:</span>
-                    <span class="clock-time-val clock-time-min" id="clockValMin">00</span>
+                    <span class="clock-time-val clock-time-min" id="clockValMin" title="Select Minutes">00</span>
                     <div class="clock-ampm-wrap">
                         <button class="clock-ampm-btn active" id="clockBtnAM" type="button">AM</button>
                         <button class="clock-ampm-btn" id="clockBtnPM" type="button">PM</button>
@@ -256,6 +263,12 @@ const AnalogClockPicker = (() => {
                             <div class="clock-hand-pin"></div>
                         </div>
                     </div>
+                </div>
+                <div class="clock-quick-presets">
+                    <button type="button" class="clock-preset-btn" data-time="09:00" data-ampm="AM">9:00 AM</button>
+                    <button type="button" class="clock-preset-btn" data-time="10:00" data-ampm="AM">10:00 AM</button>
+                    <button type="button" class="clock-preset-btn" data-time="01:30" data-ampm="PM">1:30 PM</button>
+                    <button type="button" class="clock-preset-btn" data-time="04:30" data-ampm="PM">4:30 PM</button>
                 </div>
                 <div class="clock-picker-actions">
                     <button class="clock-btn-clear" id="clockBtnClear" type="button">Clear</button>
@@ -285,18 +298,53 @@ const AnalogClockPicker = (() => {
         document.getElementById('clockBtnAM')?.addEventListener('click', () => setAmPm('AM'));
         document.getElementById('clockBtnPM')?.addEventListener('click', () => setAmPm('PM'));
 
+        // Preset buttons
+        overlay.querySelectorAll('.clock-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const t = btn.dataset.time;
+                const ap = btn.dataset.ampm;
+                if (t && ap) {
+                    const [h, m] = t.split(':').map(Number);
+                    selectedHour = h;
+                    selectedMin = m;
+                    ampm = ap;
+                    setAmPm(ampm);
+                    updateDisplay();
+                    updateHand(false);
+                    updateActiveNumber();
+                }
+            });
+        });
+
+        // Close on backdrop click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+
         const face = document.getElementById('clockFace');
         if (face) {
             face.addEventListener('pointerdown', (e) => {
+                isDragging = true;
                 try { face.setPointerCapture(e.pointerId); } catch (_) {}
-                handleFaceInteraction(e);
+                handlePointerEvent(e, false);
             });
             face.addEventListener('pointermove', (e) => {
-                if (e.buttons === 1 || e.pointerType === 'touch') {
-                    handleFaceInteraction(e);
+                if (isDragging) {
+                    handlePointerEvent(e, true);
                 }
             });
             face.addEventListener('pointerup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                try { face.releasePointerCapture(e.pointerId); } catch (_) {}
+                handlePointerEvent(e, false);
+                if (mode === 'hours') {
+                    // Smooth auto-transition to minutes
+                    setTimeout(() => setMode('mins'), 220);
+                }
+            });
+            face.addEventListener('pointercancel', (e) => {
+                isDragging = false;
                 try { face.releasePointerCapture(e.pointerId); } catch (_) {}
             });
         }
@@ -314,21 +362,20 @@ const AnalogClockPicker = (() => {
         document.getElementById('clockValMin')?.classList.toggle('active', mode === 'mins');
         document.getElementById('clockModeHoursBtn')?.classList.toggle('active', mode === 'hours');
         document.getElementById('clockModeMinsBtn')?.classList.toggle('active', mode === 'mins');
-        renderFace();
+        buildFaceNumbers();
+        updateHand(true);
+        updateDisplay();
     }
 
-    function renderFace() {
+    function buildFaceNumbers() {
         const face = document.getElementById('clockFace');
-        const hand = document.getElementById('clockHand');
-        if (!face || !hand) return;
+        if (!face) return;
 
         face.querySelectorAll('.clock-number').forEach(el => el.remove());
 
-        const cx = face.clientWidth / 2;
-        const cy = face.clientHeight / 2;
-        const radius = Math.round(cx * 0.70);
-
-        hand.style.height = `${radius}px`;
+        const cx = 103;
+        const cy = 103;
+        const radius = 72;
 
         if (mode === 'hours') {
             for (let h = 1; h <= 12; h++) {
@@ -338,19 +385,12 @@ const AnalogClockPicker = (() => {
 
                 const num = document.createElement('div');
                 num.className = `clock-number ${selectedHour === h ? 'active' : ''}`;
+                num.dataset.val = h;
                 num.style.left = `${x}px`;
                 num.style.top = `${y}px`;
                 num.textContent = h;
-                num.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    selectedHour = h;
-                    renderFace();
-                    setTimeout(() => setMode('mins'), 150);
-                });
                 face.appendChild(num);
             }
-            const deg = (selectedHour % 12) * 30;
-            hand.style.transform = `rotate(${deg}deg)`;
         } else {
             for (let m = 0; m < 60; m += 5) {
                 const angle = (m * 6 - 90) * (Math.PI / 180);
@@ -359,24 +399,40 @@ const AnalogClockPicker = (() => {
 
                 const num = document.createElement('div');
                 num.className = `clock-number ${Math.round(selectedMin / 5) * 5 === m ? 'active' : ''}`;
+                num.dataset.val = m;
                 num.style.left = `${x}px`;
                 num.style.top = `${y}px`;
                 num.textContent = String(m).padStart(2, '0');
-                num.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    selectedMin = m;
-                    renderFace();
-                });
                 face.appendChild(num);
             }
+        }
+    }
+
+    function updateActiveNumber() {
+        const face = document.getElementById('clockFace');
+        if (!face) return;
+        const targetVal = mode === 'hours' ? selectedHour : Math.round(selectedMin / 5) * 5;
+        face.querySelectorAll('.clock-number').forEach(el => {
+            el.classList.toggle('active', Number(el.dataset.val) === targetVal);
+        });
+    }
+
+    function updateHand(animate) {
+        const hand = document.getElementById('clockHand');
+        if (!hand) return;
+
+        hand.style.transition = animate ? 'transform 0.18s cubic-bezier(0.4, 0, 0.2, 1)' : 'none';
+
+        if (mode === 'hours') {
+            const deg = (selectedHour % 12) * 30;
+            hand.style.transform = `rotate(${deg}deg)`;
+        } else {
             const deg = selectedMin * 6;
             hand.style.transform = `rotate(${deg}deg)`;
         }
-
-        updateDisplay();
     }
 
-    function handleFaceInteraction(e) {
+    function handlePointerEvent(e, isMove) {
         const face = document.getElementById('clockFace');
         if (!face) return;
         const rect = face.getBoundingClientRect();
@@ -391,13 +447,21 @@ const AnalogClockPicker = (() => {
         if (mode === 'hours') {
             let h = Math.round(angle / 30);
             if (h === 0) h = 12;
-            selectedHour = h;
-            renderFace();
+            if (h !== selectedHour) {
+                selectedHour = h;
+                updateActiveNumber();
+                updateDisplay();
+            }
+            updateHand(!isMove);
         } else {
             let m = Math.round(angle / 6);
             if (m === 60) m = 0;
-            selectedMin = m;
-            renderFace();
+            if (m !== selectedMin) {
+                selectedMin = m;
+                updateActiveNumber();
+                updateDisplay();
+            }
+            updateHand(!isMove);
         }
     }
 
@@ -414,15 +478,28 @@ const AnalogClockPicker = (() => {
         activeCallback = callback;
 
         if (inputEl && inputEl.value) {
-            const parts = inputEl.value.split(':');
+            const cleanVal = inputEl.value.trim().toUpperCase();
+            const isPM = cleanVal.includes('PM');
+            const isAM = cleanVal.includes('AM');
+            const numPart = cleanVal.replace(/[^\d:]/g, '');
+            const parts = numPart.split(':');
+
             if (parts.length === 2) {
                 let h = parseInt(parts[0], 10);
                 const m = parseInt(parts[1], 10);
                 if (!isNaN(h) && !isNaN(m)) {
-                    ampm = h >= 12 ? 'PM' : 'AM';
-                    h = h % 12 || 12;
+                    if (isPM) {
+                        ampm = 'PM';
+                        h = h % 12 || 12;
+                    } else if (isAM) {
+                        ampm = 'AM';
+                        h = h % 12 || 12;
+                    } else {
+                        ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12 || 12;
+                    }
                     selectedHour = h;
-                    selectedMin = m;
+                    selectedMin = m % 60;
                 }
             }
         } else {
@@ -438,6 +515,7 @@ const AnalogClockPicker = (() => {
 
     function close() {
         if (overlay) overlay.style.display = 'none';
+        isDragging = false;
         activeInput = null;
         activeCallback = null;
     }

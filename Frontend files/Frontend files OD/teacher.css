@@ -2799,13 +2799,14 @@ body {
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 20px;
-    width: 310px;
+    width: 320px;
     max-width: 95vw;
     padding: 20px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     text-align: center;
     color: #f8fafc;
     user-select: none;
+    box-sizing: border-box;
 }
 [data-theme="light"] .clock-picker-modal {
     background: #ffffff !important;
@@ -2831,6 +2832,7 @@ body {
     cursor: pointer;
     color: inherit;
     line-height: 1;
+    padding: 0;
 }
 .clock-picker-time-display {
     display: flex;
@@ -2840,7 +2842,7 @@ body {
     background: rgba(15, 23, 42, 0.6);
     border-radius: 12px;
     padding: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 [data-theme="light"] .clock-picker-time-display { background: #f1f5f9 !important; }
 .clock-time-val {
@@ -2888,7 +2890,7 @@ body {
     display: flex;
     justify-content: center;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 .clock-mode-btn {
     padding: 6px 16px;
@@ -2909,16 +2911,18 @@ body {
 .clock-face-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 .clock-face {
     position: relative;
     width: 206px;
     height: 206px;
     border-radius: 50%;
-    background: rgba(15, 23, 42, 0.8);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.12);
     touch-action: none;
+    box-sizing: border-box;
+    cursor: pointer;
 }
 [data-theme="light"] .clock-face {
     background: #f8fafc !important;
@@ -2936,11 +2940,13 @@ body {
     color: #cbd5e1;
     transform: translate(-50%, -50%);
     cursor: pointer;
+    pointer-events: none;
+    user-select: none;
 }
 [data-theme="light"] .clock-number { color: #334155; }
 .clock-number.active {
-    background: #3b82f6;
     color: #ffffff !important;
+    font-weight: 700;
 }
 .clock-center-dot {
     position: absolute;
@@ -2951,7 +2957,7 @@ body {
     border-radius: 50%;
     background: #3b82f6;
     transform: translate(-50%, -50%);
-    z-index: 3;
+    z-index: 5;
     pointer-events: none;
 }
 .clock-hand {
@@ -2961,11 +2967,10 @@ body {
     width: 2px;
     height: 72px;
     background: #3b82f6;
-    transform-origin: bottom center;
+    transform-origin: 50% 100%;
     transform: rotate(0deg);
     pointer-events: none;
-    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 2;
+    z-index: 3;
 }
 .clock-hand-pin {
     position: absolute;
@@ -2974,8 +2979,44 @@ body {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: rgba(59, 130, 246, 0.3);
-    border: 2px solid #3b82f6;
+    background: #3b82f6;
+    box-sizing: border-box;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    z-index: -1;
+}
+/* Quick Presets */
+.clock-quick-presets {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.clock-preset-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: #cbd5e1;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.clock-preset-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+[data-theme="light"] .clock-preset-btn {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+}
+[data-theme="light"] .clock-preset-btn:hover {
+    background: #eef2ff;
+    border-color: #4f46e5;
+    color: #4f46e5;
 }
 .clock-picker-actions {
     display: flex;
@@ -2999,10 +3040,12 @@ body {
     font-weight: 600;
     border: none;
     background: #3b82f6;
-    color: #fff;
+    color: #ffffff;
     border-radius: 8px;
     cursor: pointer;
+    transition: background 0.2s;
 }
+.clock-btn-ok:hover { background: #2563eb; }
 
 /* ============================================
    Internal Sub-tabs (Students -> All Students / OD History)
