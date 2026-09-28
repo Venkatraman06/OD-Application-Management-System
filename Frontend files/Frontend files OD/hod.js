@@ -66,13 +66,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // so we fetch the full student list once and use it to resolve each
     // member's name/class for the certificate details table.
     let studentLookup = {};
+    let allStudentsData = [];
     async function loadStudentLookup() {
         try {
             const res = await fetch(`${API_BASE}/api/Student?_=${Date.now()}`, { cache: 'no-store' });
             if (!res.ok) return;
             const students = await res.json();
+            allStudentsData = Array.isArray(students) ? students : [];
             studentLookup = {};
-            students.forEach(s => {
+            allStudentsData.forEach(s => {
                 const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
                 if (reg) studentLookup[reg] = {
                     name: s.name || s.Name || '',
@@ -1614,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (calendarODs === null && !calendarLoading) {
             calendarLoading = true;
             const grid = document.getElementById('calendarGrid');
-            if (grid) grid.innerHTML = '<div class="dd-empty">Loading OD data...</div>';
+            if (grid) grid.innerHTML = '<div class="dd-empty">Loading calendar data...</div>';
             try {
                 const res = await fetch(`${API_BASE}/api/OdApply?_=${Date.now()}`, { cache: 'no-store' });
                 const all = res.ok ? await res.json() : [];
@@ -1623,9 +1625,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 console.error('loadCalendarData error:', err);
                 calendarODs = [];
-                showToast('error', 'Failed to load calendar data');
+            } finally {
+                calendarLoading = false;
             }
-            calendarLoading = false;
         }
 
         initHodCalendarFilters();

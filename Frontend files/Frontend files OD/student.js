@@ -195,7 +195,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('registerNumber', regNo);
             localStorage.setItem('userDept',       dept);
             localStorage.setItem('userSection',    sect);
+            localStorage.setItem('userYear',       yr ? yr.toString() : '');
+            localStorage.setItem('userCourse',     s.course || s.Course || 'B.Sc Computer Science');
             if (email) localStorage.setItem('userEmail', email);
+
+            if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                await CollegeWorkingDays.syncWithBackend(API_BASE, dept, yr, sect, s.course || s.Course);
+            }
 
             checkSoloMissingCertificates();
             checkGroupMissingCertificates();
@@ -509,7 +515,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     function checkAndWarnSpecialDays(fromVal, toVal, fromInput, toInput, daysInput, onConfirm, onEdit) {
         if (!fromVal || !toVal) return;
         if (typeof CollegeWorkingDays === 'undefined' || !CollegeWorkingDays.getSpecialDaysInRange) return;
-        const specials = CollegeWorkingDays.getSpecialDaysInRange(fromVal, toVal);
+        const myDept = (localStorage.getItem('userDept') || '').trim();
+        const myYear = (localStorage.getItem('userYear') || '').trim();
+        const mySec  = (localStorage.getItem('userSection') || '').trim();
+        const specials = CollegeWorkingDays.getSpecialDaysInRange(fromVal, toVal, myDept, myYear, mySec);
         if (!specials || specials.length === 0) return;
 
         // Remove any existing warning overlay
@@ -527,15 +536,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const [y, m, d] = s.date.split('-');
             const formattedDate = `${d}-${m}-${y}`;
             const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
-            const fieldLabel = s.dayType === 'Holiday' ? 'Event' : 'Examination';
+            const fieldLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
 
             bodyContent = `
-                <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text-primary, #f8fafc);">
+                <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text-primary, #f8fafc);">
                     ${formattedDate} is marked as a ${typeLabel}.
-                </div>
-                <div style="font-size: 0.9rem; margin-bottom: 16px; color: var(--text-secondary, #94a3b8);">
+                </p>
+                <p style="font-size: 0.9rem; margin-bottom: 16px; color: var(--text-secondary, #94a3b8);">
                     <strong>${fieldLabel}:</strong> ${escHtml(s.name || typeLabel)}
-                </div>
+                </p>
                 <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #cbd5e1);">
                     Do you want to include this date in your OD?
                 </p>
@@ -545,14 +554,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const listItems = specials.map(s => {
                 const [y, m, d] = s.date.split('-');
                 const formattedDate = `${d}-${m}-${y}`;
-                const badge = s.dayType === 'Holiday' ? '🟠 Holiday' : '🟢 Examination';
-                return `<li style="margin-bottom: 6px;"><strong>${formattedDate}</strong> — ${badge} — ${escHtml(s.name || s.dayType)}</li>`;
+                const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
+                return `<li style="margin-bottom: 6px;"><strong>${formattedDate}</strong> — ${typeLabel} — ${escHtml(s.name || s.dayType)}</li>`;
             }).join('');
 
             bodyContent = `
-                <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary, #f8fafc);">
+                <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary, #f8fafc);">
                     Selected OD range contains special days:
-                </div>
+                </p>
                 <ul style="text-align: left; margin-bottom: 16px; padding-left: 20px; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary, #cbd5e1);">${listItems}</ul>
                 <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #cbd5e1);">
                     Do you want to include these dates?
@@ -563,7 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         overlay.innerHTML = `
             <div class="special-day-warning-modal" style="max-width: 440px; text-align: center; padding: 24px; border-radius: 16px;">
-                <h4 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.15rem; font-weight: 700; margin-bottom: 14px; color: #f59e0b;">
+                <h4 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.15rem; font-weight: 700; margin-bottom: 14px; color: #ef4444;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -915,6 +924,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('error', 'Please provide both Start Time and End Time, or leave both empty.'); return;
         }
 
+        const myDept = (localStorage.getItem('userDept') || '').trim();
+        const myYear = (localStorage.getItem('userYear') || '').trim();
+        const mySec  = (localStorage.getItem('userSection') || '').trim();
+        const specials = (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysInRange)
+            ? CollegeWorkingDays.getSpecialDaysInRange(fromDate, toDate, myDept, myYear, mySec)
+            : [];
+
+        if (specials.length > 0 && !_specialDayWarningAcknowledged) {
+            checkAndWarnSpecialDays(fromDate, toDate, fromEl, toEl, daysEl, () => {
+                _specialDayWarningAcknowledged = true;
+            }, () => {
+                _specialDayWarningAcknowledged = false;
+            });
+            return;
+        }
+
         const days = countWorkingDays(fromDate, toDate);
         if (days <= 0) {
             showToast('error', 'Selected range contains no working days'); return;
@@ -1052,6 +1077,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const regNumbers = [...window.groupMemberList];
+
+        const myDept = (localStorage.getItem('userDept') || '').trim();
+        const myYear = (localStorage.getItem('userYear') || '').trim();
+        const mySec  = (localStorage.getItem('userSection') || '').trim();
+        const specials = (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysInRange)
+            ? CollegeWorkingDays.getSpecialDaysInRange(fromDate, toDate, myDept, myYear, mySec)
+            : [];
+
+        if (specials.length > 0 && !_groupSpecialDayWarningAcknowledged) {
+            checkAndWarnSpecialDays(fromDate, toDate, groupFromEl, groupToEl, groupDaysEl, () => {
+                _groupSpecialDayWarningAcknowledged = true;
+            }, () => {
+                _groupSpecialDayWarningAcknowledged = false;
+            });
+            return;
+        }
 
         const days = countWorkingDays(fromDate, toDate);
         if (days <= 0) {
@@ -2363,7 +2404,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let calKeys = [];
         let calIdx = 0;
-        let loaded = false;
 
         function buildKeys() {
             if (calKeys.length || typeof CollegeWorkingDays === 'undefined') return;
@@ -2381,15 +2421,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 calIdx = idx >= 0 ? idx : 0;
             }
 
-            if (!loaded) {
-                const myDept = (dept || localStorage.getItem('userDept') || '').trim();
-                const myYear = (studentYear || localStorage.getItem('userYear') || '').trim();
-                const mySec = (studentSection || localStorage.getItem('userSection') || '').trim();
+            const myDept = (localStorage.getItem('userDept') || '').trim();
+            const myYear = (localStorage.getItem('userYear') || '').trim();
+            const mySec  = (localStorage.getItem('userSection') || '').trim();
+            const myCourse = (localStorage.getItem('userCourse') || '').trim();
 
-                if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                    await CollegeWorkingDays.syncWithBackend(API_BASE, myDept, myYear, mySec);
-                }
-                loaded = true;
+            if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                await CollegeWorkingDays.syncWithBackend(API_BASE, myDept, myYear, mySec, myCourse);
             }
 
             renderMonth();
@@ -2414,24 +2452,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             let html = '';
             for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
 
+            const myDept = (localStorage.getItem('userDept') || '').trim();
+            const myYear = (localStorage.getItem('userYear') || '').trim();
+            const mySec  = (localStorage.getItem('userSection') || '').trim();
+
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
                 const isWorking = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr) : true;
-                const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr) : null;
+                const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr, myDept, myYear, mySec) : null;
                 const isHoliday = special && special.dayType === 'Holiday';
                 const isExam = special && special.dayType === 'Examination';
-                const specialName = special ? special.name : '';
+                const specialName = special ? (special.name || special.dayType) : '';
 
                 const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
 
                 if (!isWorking || isHoliday) {
-                    const tooltip = isHoliday ? `Holiday: ${specialName} (${formattedDate})` : `Non-working day (${formattedDate})`;
+                    const tooltip = isHoliday ? `${formattedDate}\nHoliday\n${specialName}` : `Non-working day (${formattedDate})`;
                     html += `<div class="calendar-day non-working${isHoliday ? ' cal-holiday' : ''}" title="${escHtml(tooltip)}">
                         <span>${day}</span>
                         ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
                     </div>`;
                 } else {
-                    const tooltip = isExam ? `Examination: ${specialName} (${formattedDate})` : `Working day (${formattedDate})`;
+                    const tooltip = isExam ? `${formattedDate}\nExamination\n${specialName}` : `Working day (${formattedDate})`;
                     html += `<div class="calendar-day working${isExam ? ' cal-examination' : ''}" title="${escHtml(tooltip)}">
                         <span>${day}</span>
                         ${isExam && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}

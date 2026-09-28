@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
@@ -32,7 +32,7 @@ namespace OnlineOD.Controllers
 
             if (!string.IsNullOrEmpty(cleanDept))
             {
-                overridesQuery = overridesQuery.Where(o => o.Department == null || o.Department == cleanDept || o.Department.Contains(cleanDept) || cleanDept.Contains(o.Department));
+                overridesQuery = overridesQuery.Where(o => o.Department == null || o.Department == "" || o.Department == cleanDept || o.Department.Contains(cleanDept) || cleanDept.Contains(o.Department));
             }
             if (cleanYear.HasValue)
             {
@@ -47,7 +47,19 @@ namespace OnlineOD.Controllers
                 .OrderBy(o => o.Date)
                 .ToListAsync();
 
-            var specialDays = WorkingDaysCalendar.GetSpecialDays(cleanDept, cleanYear, cleanSec);
+            var specialDays = overrides
+                .Where(o => !string.IsNullOrEmpty(o.DayType) || !string.IsNullOrEmpty(o.Name) || !o.IsWorking)
+                .Select(o => new SpecialDayItem
+                {
+                    Id = o.Id,
+                    Date = o.Date,
+                    DayType = o.DayType ?? (o.IsWorking ? "Working" : "Holiday"),
+                    Name = o.Name ?? (o.IsWorking ? "Working Day" : "Holiday"),
+                    Department = o.Department,
+                    Course = o.Course,
+                    Year = o.Year,
+                    Section = o.Section
+                }).ToList();
 
             return Ok(new
             {
@@ -61,7 +73,7 @@ namespace OnlineOD.Controllers
 
         // GET /api/WorkingDay/CheckSpecialDays?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&dept=...&year=...&section=...
         [HttpGet("CheckSpecialDays")]
-        public IActionResult CheckSpecialDays([FromQuery] string? fromDate, [FromQuery] string? toDate,
+        public async Task<IActionResult> CheckSpecialDays([FromQuery] string? fromDate, [FromQuery] string? toDate,
             [FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section)
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
@@ -71,7 +83,40 @@ namespace OnlineOD.Controllers
             var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
             var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
 
-            var list = WorkingDaysCalendar.GetSpecialDaysInRange(fromDate, toDate, cleanDept, cleanYear, cleanSec);
+            var q = _context.WorkingDayOverrides.AsNoTracking()
+                .Where(o => string.Compare(o.Date, fromDate) >= 0 && string.Compare(o.Date, toDate) <= 0);
+
+            if (!string.IsNullOrEmpty(cleanDept))
+            {
+                q = q.Where(o => o.Department == null || o.Department == "" || o.Department == cleanDept || o.Department.Contains(cleanDept) || cleanDept.Contains(o.Department));
+            }
+            if (cleanYear.HasValue)
+            {
+                q = q.Where(o => o.Year == null || o.Year == 0 || o.Year == cleanYear.Value);
+            }
+            if (!string.IsNullOrEmpty(cleanSec))
+            {
+                q = q.Where(o => o.Section == null || o.Section == "" || o.Section == "All" || o.Section == cleanSec);
+            }
+
+            var dbOverrides = await q.OrderBy(o => o.Date).ToListAsync();
+            var list = dbOverrides.Select(o => new SpecialDayItem
+            {
+                Id = o.Id,
+                Date = o.Date,
+                DayType = o.DayType ?? (o.IsWorking ? "Working" : "Holiday"),
+                Name = o.Name ?? (o.IsWorking ? "Working Day" : "Holiday"),
+                Department = o.Department,
+                Course = o.Course,
+                Year = o.Year,
+                Section = o.Section
+            }).ToList();
+
+            if (list.Count == 0)
+            {
+                list = WorkingDaysCalendar.GetSpecialDaysInRange(fromDate, toDate, cleanDept, cleanYear, cleanSec);
+            }
+
             return Ok(new
             {
                 hasSpecialDays = list.Count > 0,
@@ -186,6 +231,23 @@ namespace OnlineOD.Controllers
             var cleanSec = string.IsNullOrWhiteSpace(dto.Section) || dto.Section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : dto.Section.Trim();
             var cleanYear = (dto.Year.HasValue && dto.Year.Value > 0) ? dto.Year.Value : (int?)null;
 
+            // If an original name or date was provided during edit, remove prior range if changed
+            if (!string.IsNullOrWhiteSpace(dto.OriginalName) && (!string.Equals(dto.OriginalName, name, StringComparison.OrdinalIgnoreCase) ||
+                (dto.OriginalFromDate != null && dto.OriginalFromDate != dto.FromDate) ||
+                (dto.OriginalToDate != null && dto.OriginalToDate != dto.ToDate)))
+            {
+                var oldRecords = await _context.WorkingDayOverrides.Where(o =>
+                    o.Name == dto.OriginalName &&
+                    (cleanDept == null || o.Department == cleanDept) &&
+                    (cleanYear == null || o.Year == cleanYear) &&
+                    (cleanSec == null || o.Section == cleanSec)).ToListAsync();
+
+                if (oldRecords.Count > 0)
+                {
+                    _context.WorkingDayOverrides.RemoveRange(oldRecords);
+                }
+            }
+
             var curr = start.Date;
             var recordsToApply = new List<WorkingDayOverride>();
 
@@ -255,6 +317,79 @@ namespace OnlineOD.Controllers
                 isWorking
             });
         }
+
+        // POST /api/WorkingDay/DeleteCalendar
+        // Deletes a configured Holiday / Examination entry (or range) and resets the dates
+        [HttpPost("DeleteCalendar")]
+        public async Task<IActionResult> DeleteCalendar([FromBody] DeleteCalendarDto dto)
+        {
+            if (dto == null)
+                return BadRequest(new { message = "Delete payload is required." });
+
+            var query = _context.WorkingDayOverrides.AsQueryable();
+
+            if (dto.Id.HasValue && dto.Id.Value > 0)
+            {
+                query = query.Where(o => o.Id == dto.Id.Value);
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(dto.FromDate) && !string.IsNullOrWhiteSpace(dto.ToDate))
+                {
+                    query = query.Where(o => string.Compare(o.Date, dto.FromDate) >= 0 && string.Compare(o.Date, dto.ToDate) <= 0);
+                }
+                else if (!string.IsNullOrWhiteSpace(dto.Date))
+                {
+                    query = query.Where(o => o.Date == dto.Date);
+                }
+
+                if (!string.IsNullOrWhiteSpace(dto.Name))
+                {
+                    var cleanName = dto.Name.Trim();
+                    query = query.Where(o => o.Name == cleanName);
+                }
+
+                if (!string.IsNullOrWhiteSpace(dto.DayType))
+                {
+                    var cleanType = dto.DayType.Trim();
+                    query = query.Where(o => o.DayType == cleanType);
+                }
+
+                if (!string.IsNullOrWhiteSpace(dto.Department))
+                {
+                    var cleanDept = dto.Department.Trim();
+                    query = query.Where(o => o.Department == cleanDept || o.Department == null || o.Department == "");
+                }
+
+                if (dto.Year.HasValue && dto.Year.Value > 0)
+                {
+                    query = query.Where(o => o.Year == dto.Year.Value || o.Year == null || o.Year == 0);
+                }
+
+                if (!string.IsNullOrWhiteSpace(dto.Section) && !dto.Section.Equals("All", StringComparison.OrdinalIgnoreCase))
+                {
+                    var cleanSec = dto.Section.Trim();
+                    query = query.Where(o => o.Section == cleanSec || o.Section == null || o.Section == "" || o.Section == "All");
+                }
+            }
+
+            var toRemove = await query.ToListAsync();
+            if (toRemove.Count > 0)
+            {
+                _context.WorkingDayOverrides.RemoveRange(toRemove);
+                await _context.SaveChangesAsync();
+
+                // Reload all remaining overrides into live WorkingDaysCalendar
+                var allRemaining = await _context.WorkingDayOverrides.AsNoTracking().ToListAsync();
+                WorkingDaysCalendar.LoadOverrides(allRemaining);
+            }
+
+            return Ok(new
+            {
+                message = $"Successfully deleted {toRemove.Count} calendar record(s).",
+                deletedCount = toRemove.Count
+            });
+        }
     }
 
     public class EditWorkingDayDto
@@ -279,5 +414,22 @@ namespace OnlineOD.Controllers
         public int? Year { get; set; }
         public string? Section { get; set; }
         public bool? IsWorking { get; set; }
+        public string? OriginalName { get; set; }
+        public string? OriginalFromDate { get; set; }
+        public string? OriginalToDate { get; set; }
+    }
+
+    public class DeleteCalendarDto
+    {
+        public int? Id { get; set; }
+        public string? Date { get; set; }
+        public string? FromDate { get; set; }
+        public string? ToDate { get; set; }
+        public string? DayType { get; set; }
+        public string? Name { get; set; }
+        public string? Department { get; set; }
+        public string? Course { get; set; }
+        public int? Year { get; set; }
+        public string? Section { get; set; }
     }
 }

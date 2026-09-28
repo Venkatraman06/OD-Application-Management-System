@@ -40,6 +40,8 @@ const CollegeWorkingDays = (() => {
     /** true if dateStr (YYYY-MM-DD) is a published college working day */
     function isWorkingDay(dateStr) {
         if (!dateStr) return false;
+        const list = specialDaysMap.get(dateStr);
+        if (list && list.some(s => s.dayType === 'Holiday')) return false;
         return workingSet.has(dateStr);
     }
 
@@ -49,12 +51,19 @@ const CollegeWorkingDays = (() => {
         return dateStr < minDate || dateStr > maxDate;
     }
 
-    /** returns primary special day info if configured for dateStr (Holiday | Examination), else null */
-    function getSpecialDay(dateStr) {
+    /** returns primary special day info if configured for dateStr (Holiday | Examination), optionally matching scope */
+    function getSpecialDay(dateStr, dept, year, section) {
         if (!dateStr) return null;
         const list = specialDaysMap.get(dateStr);
         if (!list || list.length === 0) return null;
-        return list[0];
+        if (!dept && !year && !section) return list[0];
+        const match = list.find(s => {
+            if (dept && s.department && !s.department.toLowerCase().includes(dept.toLowerCase()) && !dept.toLowerCase().includes(s.department.toLowerCase())) return false;
+            if (year && s.year && s.year !== parseInt(year, 10)) return false;
+            if (section && section !== 'All' && s.section && s.section !== 'All' && s.section.toUpperCase() !== section.toUpperCase()) return false;
+            return true;
+        });
+        return match || list[0];
     }
 
     /** returns all special day entries for a specific date (e.g. multiple sections) */
@@ -63,17 +72,19 @@ const CollegeWorkingDays = (() => {
         return specialDaysMap.get(dateStr) || [];
     }
 
-    /** returns array of special days within [fromStr, toStr] range */
-    function getSpecialDaysInRange(fromStr, toStr) {
+    /** returns array of special days within [fromStr, toStr] range, optionally filtered by scope */
+    function getSpecialDaysInRange(fromStr, toStr, dept, year, section) {
         if (!fromStr || !toStr || fromStr > toStr) return [];
         const result = [];
         for (const [date, list] of specialDaysMap.entries()) {
             if (date >= fromStr && date <= toStr) {
-                if (Array.isArray(list)) {
-                    list.forEach(item => result.push(item));
-                } else if (list) {
-                    result.push(list);
-                }
+                const items = Array.isArray(list) ? list : (list ? [list] : []);
+                items.forEach(item => {
+                    if (dept && item.department && !item.department.toLowerCase().includes(dept.toLowerCase()) && !dept.toLowerCase().includes(item.department.toLowerCase())) return;
+                    if (year && item.year && item.year !== parseInt(year, 10)) return;
+                    if (section && section !== 'All' && item.section && item.section !== 'All' && item.section.toUpperCase() !== section.toUpperCase()) return;
+                    result.push(item);
+                });
             }
         }
         return result.sort((a, b) => a.date.localeCompare(b.date));

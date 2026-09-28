@@ -2109,6 +2109,226 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
     });
 
+    let editingOriginalData = null;
+
+    function openAddCalendarModalWithData(data) {
+        editingOriginalData = data || null;
+        const modal = document.getElementById('addCalendarModal');
+        const fromInput = document.getElementById('addCalFromDate');
+        const toInput   = document.getElementById('addCalToDate');
+        const typeInput = document.getElementById('addCalDayType');
+        const nameInput = document.getElementById('addCalName');
+
+        if (fromInput) fromInput.value = data?.fromDate || '';
+        if (toInput)   toInput.value   = data?.toDate   || '';
+        if (typeInput) typeInput.value = data?.dayType  || 'Holiday';
+        if (nameInput) nameInput.value = data?.name     || '';
+
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+    }
+
+    function isOdRowApproved(o) {
+        const fac = o.facultyStatus ?? o.FacultyStatus ?? 'Pending';
+        return fac === 'Approved';
+    }
+
+    const dayDetailOverlay = document.getElementById('dayDetailOverlay');
+    let dayDetailCurrentDate = null;
+
+    function openStaffDayDetail(dateStr) {
+        dayDetailCurrentDate = dateStr;
+        const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
+            ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section)
+            : null;
+        const isWorking = isEffectiveWorkingDay(dateStr);
+        const covering = odsCoveringDate(dateStr);
+        const applied  = covering.length;
+        const approved = covering.filter(isOdRowApproved).length;
+        const rejected = covering.filter(isOdRowRejected).length;
+        const pending  = applied - approved - rejected;
+
+        const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        setEl('dayDetailDate', dateLabel);
+
+        const statsEl = document.getElementById('dayDetailStats');
+        if (statsEl) {
+            if (special) {
+                const badgeCls = special.dayType === 'Holiday' ? 'rejected' : 'approved';
+                statsEl.innerHTML = `
+                    <span class="dd-pill ${badgeCls}">${escHtml(special.dayType)}: ${escHtml(special.name || special.dayType)}</span>
+                    ${covering.length ? `<span class="dd-pill applied">${applied} OD Applied</span>` : ''}
+                `;
+            } else {
+                statsEl.innerHTML = isWorking ? `
+                    <span class="dd-pill applied">${applied} Applied</span>
+                    <span class="dd-pill approved">${approved} Approved</span>
+                    <span class="dd-pill rejected">${rejected} Rejected</span>
+                    <span class="dd-pill pending">${Math.max(pending, 0)} Pending</span>
+                ` : `<span class="dd-pill rejected">Non-working Day</span>`;
+            }
+        }
+
+        const listEl = document.getElementById('dayDetailList');
+        if (listEl) {
+            if (!covering.length) {
+                listEl.innerHTML = special
+                    ? `<div class="dd-empty">This date is marked as <strong>${escHtml(special.dayType)} (${escHtml(special.name)})</strong>.</div>`
+                    : '<div class="dd-empty">No OD requests cover this date.</div>';
+            } else {
+                listEl.innerHTML = covering.map(o => {
+                    const event   = o.event ?? o.Event ?? 'OD';
+                    const student = o.studentName ?? o.StudentName ?? '';
+                    const reg     = o.registerNumber ?? o.RegisterNumber ?? '';
+                    const isGroup = o.isGroupOd ?? o.IsGroupOd ?? false;
+                    const groupName = o.groupName ?? o.GroupName ?? '';
+                    const rejected  = isOdRowRejected(o);
+                    const approved  = isOdRowApproved(o);
+                    const statusLabel = rejected ? 'Rejected' : approved ? 'Approved' : 'Pending';
+                    const statusColor = rejected ? '#ef4444' : approved ? '#10b981' : '#f59e0b';
+                    const who = isGroup ? `Group: ${groupName}` : `${student}${reg ? ' (' + reg + ')' : ''}`;
+                    return `
+                        <div class="dd-row">
+                            <div>
+                                <div class="dd-event">${escHtml(event)}</div>
+                                <div class="dd-sub">${escHtml(who)}</div>
+                            </div>
+                            <span style="font-weight:700;color:${statusColor}">${statusLabel}</span>
+                        </div>`;
+                }).join('');
+            }
+        }
+
+        const actionsEl = document.getElementById('dayDetailActions');
+        if (actionsEl) {
+            if (special) {
+                actionsEl.innerHTML = `
+                    <div style="display:flex; gap:10px; width:100%; justify-content:flex-end;">
+                        <button type="button" class="btn-primary" id="dayDetailEditSpecialBtn" style="padding:8px 16px; border-radius:8px;">
+                            ✏ Edit
+                        </button>
+                        <button type="button" class="btn-secondary" id="dayDetailDeleteSpecialBtn" style="padding:8px 16px; border-radius:8px; color:#ef4444; border-color:rgba(239,68,68,0.4);">
+                            🗑 Delete
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionsEl.innerHTML = `
+                    <button type="button" class="dd-cal-action-btn dd-add-btn" id="dayDetailAddSpecialBtn">
+                        + Add Holiday / Exam on this Date
+                    </button>
+                `;
+            }
+        }
+
+        dayDetailOverlay?.classList.add('active');
+    }
+
+    function closeStaffDayDetail() {
+        dayDetailOverlay?.classList.remove('active');
+    }
+
+    document.getElementById('dayDetailCloseBtn')?.addEventListener('click', closeStaffDayDetail);
+    dayDetailOverlay?.addEventListener('click', (e) => {
+        if (e.target === dayDetailOverlay) closeStaffDayDetail();
+    });
+
+    document.getElementById('calendarGrid')?.addEventListener('click', (e) => {
+        const cell = e.target.closest('.calendar-day[data-date]');
+        if (!cell) return;
+        const dateStr = cell.dataset.date;
+        openStaffDayDetail(dateStr);
+    });
+
+    document.getElementById('dayDetailActions')?.addEventListener('click', async (e) => {
+        const editBtn = e.target.closest('#dayDetailEditSpecialBtn');
+        const deleteBtn = e.target.closest('#dayDetailDeleteSpecialBtn');
+        const addBtn = e.target.closest('#dayDetailAddSpecialBtn');
+        if (!dayDetailCurrentDate) return;
+
+        if (editBtn) {
+            closeStaffDayDetail();
+            const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
+                ? CollegeWorkingDays.getSpecialDay(dayDetailCurrentDate, dept, year, section)
+                : null;
+            openAddCalendarModalWithData({
+                fromDate: special?.date || dayDetailCurrentDate,
+                toDate: special?.date || dayDetailCurrentDate,
+                dayType: special?.dayType || 'Holiday',
+                name: special?.name || '',
+                originalName: special?.name || '',
+                originalFromDate: special?.date || dayDetailCurrentDate,
+                originalToDate: special?.date || dayDetailCurrentDate
+            });
+            return;
+        }
+
+        if (deleteBtn) {
+            const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
+                ? CollegeWorkingDays.getSpecialDay(dayDetailCurrentDate, dept, year, section)
+                : null;
+            const entryName = special ? `${special.dayType}: ${special.name}` : dayDetailCurrentDate;
+            const ok = await showConfirmModal({
+                title: 'Delete Calendar Entry',
+                message: `Are you sure you want to delete this calendar entry?\n\n${entryName} (${dayDetailCurrentDate})`,
+                icon: '🗑',
+                confirmText: 'Delete Entry',
+                cancelText: 'Cancel',
+                isDanger: true
+            });
+            if (!ok) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/WorkingDay/DeleteCalendar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: dayDetailCurrentDate,
+                        name: special?.name || null,
+                        dayType: special?.dayType || null,
+                        department: dept || null,
+                        year: year ? parseInt(year, 10) : null,
+                        section: section || null
+                    })
+                });
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    showToast('error', errText || 'Failed to delete calendar entry');
+                    return;
+                }
+
+                showToast('success', 'Calendar entry deleted successfully.');
+                closeStaffDayDetail();
+
+                if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                    await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section);
+                }
+                calendarOverridesLoaded = false;
+                await loadCalendarOverrides();
+                renderCalendarMonth();
+            } catch (err) {
+                console.error('Delete calendar error:', err);
+                showToast('error', 'Network error deleting calendar entry');
+            }
+            return;
+        }
+
+        if (addBtn) {
+            closeStaffDayDetail();
+            openAddCalendarModalWithData({
+                fromDate: dayDetailCurrentDate,
+                toDate: dayDetailCurrentDate,
+                dayType: 'Holiday',
+                name: ''
+            });
+        }
+    });
+
     function initAddCalendarModal() {
         const openBtn = document.getElementById('openAddCalendarModalBtn');
         const modal = document.getElementById('addCalendarModal');
@@ -2119,10 +2339,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!openBtn || !modal) return;
 
         function open() {
+            editingOriginalData = null;
             modal.style.display = 'flex';
             modal.classList.add('active');
         }
         function close() {
+            editingOriginalData = null;
             modal.style.display = 'none';
             modal.classList.remove('active');
         }
@@ -2160,7 +2382,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     department: dept || 'Computer Science',
                     course: 'B.Sc Computer Science',
                     year: year ? parseInt(year, 10) : null,
-                    section: section || null
+                    section: section || null,
+                    originalName: editingOriginalData?.originalName || null,
+                    originalFromDate: editingOriginalData?.originalFromDate || null,
+                    originalToDate: editingOriginalData?.originalToDate || null
                 };
 
                 try {
