@@ -2815,3 +2815,330 @@ select.cert-text-input {
 [data-theme="light"] .special-day-warning-modal p {
     color: #334155 !important;
 }
+
+/* =========================================================
+   Issue 4 FIX: Mobile — calendar icon BELOW email card
+   On mobile the header-cal-btn must appear after details-grid.
+   Remove absolute positioning on small screens so it sits in
+   normal flow below .details-grid (email is the last card).
+   ========================================================= */
+@media (max-width: 768px) {
+    .header-cal-btn {
+        position: static !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        height: 42px !important;
+        margin-top: 14px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+}
+
+/* =========================================================
+   Issue 5 FIX: Student mobile calendar — prevent overflow
+   Cells must stay inside the 7-column grid and not escape.
+   ========================================================= */
+@media (max-width: 600px) {
+    .student-cal-modal {
+        padding: 16px 12px !important;
+    }
+    .student-cal-modal .calendar-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+        gap: 3px !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .student-cal-modal .calendar-day {
+        min-height: 38px !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        padding: 3px 1px !important;
+        font-size: 10px !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+    .student-cal-modal .calendar-day span:first-child {
+        font-size: 10px !important;
+        line-height: 1.1 !important;
+    }
+    .student-cal-modal .cal-special-label {
+        font-size: 6.5px !important;
+        padding: 0 1px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+        display: block !important;
+        box-sizing: border-box !important;
+    }
+    /* Calendar header (month navigation) */
+    .student-cal-modal h3,
+    .student-cal-modal h4 {
+        font-size: 0.92rem !important;
+    }
+}
+
+/* Ultra narrow phones — 360px and below */
+@media (max-width: 380px) {
+    .student-cal-modal .calendar-grid {
+        gap: 2px !important;
+    }
+    .student-cal-modal .calendar-day {
+        min-height: 32px !important;
+        font-size: 9px !important;
+        padding: 2px 0 !important;
+    }
+    .student-cal-modal .calendar-day span:first-child {
+        font-size: 9px !important;
+    }
+    .student-cal-modal .cal-special-label {
+        font-size: 6px !important;
+    }
+}
+
+/* =========================================================
+   Issue 2 FIX: Clock picker styles for student page
+   (teacher.css has these but student.css did not — the
+   AnalogClockPicker is used on student.html too).
+   ========================================================= */
+/* Overlay + modal shell */
+.clock-picker-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.clock-picker-modal {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    width: 310px;
+    max-width: 95vw;
+    padding: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    color: #f8fafc;
+    user-select: none;
+    box-sizing: border-box;
+}
+[data-theme="light"] .clock-picker-modal {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15) !important;
+}
+/* Header */
+.clock-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.clock-picker-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary, #3b82f6);
+}
+.clock-picker-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: inherit;
+    line-height: 1;
+    padding: 0;
+}
+/* Time display row */
+.clock-picker-time-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 14px;
+}
+[data-theme="light"] .clock-picker-time-display { background: #f1f5f9 !important; }
+.clock-time-val {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: monospace;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+.clock-time-val.active {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+}
+.clock-time-colon {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #64748b;
+}
+/* AM/PM */
+.clock-ampm-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 8px;
+}
+.clock-ampm-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 4px;
+    cursor: pointer;
+}
+[data-theme="light"] .clock-ampm-btn { border-color: #cbd5e1; color: #64748b; }
+.clock-ampm-btn.active {
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    border-color: #3b82f6 !important;
+}
+/* Mode toggle */
+.clock-mode-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.clock-mode-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+}
+[data-theme="light"] .clock-mode-btn { border-color: #cbd5e1; color: #475569; }
+.clock-mode-btn.active {
+    background: #3b82f6 !important;
+    color: #fff !important;
+    border-color: #3b82f6 !important;
+}
+/* Clock face */
+.clock-face-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+.clock-face {
+    position: relative;
+    width: 206px;
+    height: 206px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    touch-action: none;
+    flex-shrink: 0;
+}
+[data-theme="light"] .clock-face {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+.clock-number {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 50%;
+    color: #cbd5e1;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+[data-theme="light"] .clock-number { color: #334155; }
+.clock-number.active {
+    background: #3b82f6;
+    color: #ffffff !important;
+}
+.clock-center-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #3b82f6;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    pointer-events: none;
+}
+.clock-hand {
+    position: absolute;
+    bottom: 50%;
+    left: calc(50% - 1px);
+    width: 2px;
+    height: 72px;
+    background: #3b82f6;
+    transform-origin: bottom center;
+    transform: rotate(0deg);
+    pointer-events: none;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
+}
+.clock-hand-pin {
+    position: absolute;
+    top: -15px; left: -14px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.3);
+    border: 2px solid #3b82f6;
+}
+/* Actions */
+.clock-picker-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+.clock-btn-clear {
+    padding: 8px 16px;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: #94a3b8;
+    border-radius: 8px;
+    cursor: pointer;
+}
+[data-theme="light"] .clock-btn-clear { border-color: #cbd5e1; color: #64748b; }
+.clock-btn-ok {
+    flex: 1;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    background: #3b82f6;
+    color: #ffffff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.clock-btn-ok:hover { background: #2563eb; }
+/* Mobile clock size adjustment */
+@media (max-width: 400px) {
+    .clock-picker-modal {
+        padding: 16px 12px !important;
+        width: 290px !important;
+    }
+    .clock-face {
+        width: 180px !important;
+        height: 180px !important;
+    }
+}
