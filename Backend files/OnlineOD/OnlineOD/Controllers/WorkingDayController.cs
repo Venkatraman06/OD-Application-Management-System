@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
@@ -17,21 +17,37 @@ namespace OnlineOD.Controllers
             _context = context;
         }
 
-        // GET /api/WorkingDay
-        // Returns the current effective working-days list (seed calendar
-        // with any HOD overrides already applied), raw override rows,
-        // and any configured special days (Holidays / Examinations).
+        // GET /api/WorkingDay?dept=...&year=...&section=...&course=...
+        // Returns the current effective working-days list, override rows,
+        // and configured special days (Holidays / Examinations) scoped to user/role.
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section, [FromQuery] string? course)
         {
-            var overrides = await _context.WorkingDayOverrides
-                .AsNoTracking()
+            var cleanDept = string.IsNullOrWhiteSpace(dept) ? null : dept.Trim();
+            var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
+            var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
+            var cleanCourse = string.IsNullOrWhiteSpace(course) ? null : course.Trim();
+
+            var overridesQuery = _context.WorkingDayOverrides.AsNoTracking();
+
+            if (!string.IsNullOrEmpty(cleanDept))
+            {
+                overridesQuery = overridesQuery.Where(o => o.Department == null || o.Department == cleanDept || o.Department.Contains(cleanDept) || cleanDept.Contains(o.Department));
+            }
+            if (cleanYear.HasValue)
+            {
+                overridesQuery = overridesQuery.Where(o => o.Year == null || o.Year == 0 || o.Year == cleanYear.Value);
+            }
+            if (!string.IsNullOrEmpty(cleanSec))
+            {
+                overridesQuery = overridesQuery.Where(o => o.Section == null || o.Section == "" || o.Section == "All" || o.Section == cleanSec);
+            }
+
+            var overrides = await overridesQuery
                 .OrderBy(o => o.Date)
                 .ToListAsync();
 
-            var specialDays = WorkingDaysCalendar.SpecialDays.Values
-                .OrderBy(s => s.Date)
-                .ToList();
+            var specialDays = WorkingDaysCalendar.GetSpecialDays(cleanDept, cleanYear, cleanSec);
 
             return Ok(new
             {
@@ -43,14 +59,19 @@ namespace OnlineOD.Controllers
             });
         }
 
-        // GET /api/WorkingDay/CheckSpecialDays?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD
+        // GET /api/WorkingDay/CheckSpecialDays?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&dept=...&year=...&section=...
         [HttpGet("CheckSpecialDays")]
-        public IActionResult CheckSpecialDays([FromQuery] string? fromDate, [FromQuery] string? toDate)
+        public IActionResult CheckSpecialDays([FromQuery] string? fromDate, [FromQuery] string? toDate,
+            [FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section)
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
                 return BadRequest(new { message = "fromDate and toDate query parameters are required." });
 
-            var list = WorkingDaysCalendar.GetSpecialDaysInRange(fromDate, toDate);
+            var cleanDept = string.IsNullOrWhiteSpace(dept) ? null : dept.Trim();
+            var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
+            var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
+
+            var list = WorkingDaysCalendar.GetSpecialDaysInRange(fromDate, toDate, cleanDept, cleanYear, cleanSec);
             return Ok(new
             {
                 hasSpecialDays = list.Count > 0,
@@ -60,7 +81,7 @@ namespace OnlineOD.Controllers
         }
 
         // PUT /api/WorkingDay/{date}
-        // Body: { "isWorking": true|false, "dayType": "Holiday"|"Examination", "name": "..." }
+        // Body: { "isWorking": true|false, "dayType": "Holiday"|"Examination", "name": "...", "department": "...", "year": 1, "section": "A" }
         [HttpPut("{date}")]
         public async Task<IActionResult> EditDay(string date, [FromBody] EditWorkingDayDto dto)
         {
@@ -68,35 +89,56 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "Date is required." });
 
             bool isWorking = dto.IsWorking ?? (!string.Equals(dto.DayType, "Holiday", StringComparison.OrdinalIgnoreCase));
+            var cleanDept = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim();
+            var cleanCourse = string.IsNullOrWhiteSpace(dto.Course) ? null : dto.Course.Trim();
+            var cleanSec = string.IsNullOrWhiteSpace(dto.Section) || dto.Section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : dto.Section.Trim();
+            var cleanYear = (dto.Year.HasValue && dto.Year.Value > 0) ? dto.Year.Value : (int?)null;
 
-            if (!WorkingDaysCalendar.ApplyOverride(date, isWorking, dto.DayType, dto.Name))
-                return BadRequest(new { message = "Invalid date." });
+            if (!DateTime.TryParse(date, out var parsedDate))
+                return BadRequest(new { message = "Invalid date format." });
 
-            var normalized = DateTime.Parse(date).ToString("yyyy-MM-dd");
+            var normalized = parsedDate.ToString("yyyy-MM-dd");
 
-            var existing = await _context.WorkingDayOverrides.FindAsync(normalized);
+            var existing = await _context.WorkingDayOverrides.FirstOrDefaultAsync(o =>
+                o.Date == normalized &&
+                (cleanDept == null || o.Department == cleanDept) &&
+                (cleanYear == null || o.Year == cleanYear) &&
+                (cleanSec == null || o.Section == cleanSec) &&
+                (dto.Name == null || o.Name == dto.Name));
+
             if (existing == null)
             {
-                _context.WorkingDayOverrides.Add(new WorkingDayOverride
+                var record = new WorkingDayOverride
                 {
                     Date = normalized,
                     IsWorking = isWorking,
                     DayType = dto.DayType,
                     Name = dto.Name,
+                    Department = cleanDept,
+                    Course = cleanCourse,
+                    Year = cleanYear,
+                    Section = cleanSec,
                     UpdatedAt = DateTime.Now
-                });
+                };
+                _context.WorkingDayOverrides.Add(record);
+                await _context.SaveChangesAsync();
+                WorkingDaysCalendar.ApplyOverride(normalized, isWorking, dto.DayType, dto.Name, cleanDept, cleanCourse, cleanYear, cleanSec, record.Id);
             }
             else
             {
                 existing.IsWorking = isWorking;
                 existing.DayType = dto.DayType;
                 existing.Name = dto.Name;
+                existing.Department = cleanDept;
+                existing.Course = cleanCourse;
+                existing.Year = cleanYear;
+                existing.Section = cleanSec;
                 existing.UpdatedAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+                WorkingDaysCalendar.ApplyOverride(normalized, isWorking, dto.DayType, dto.Name, cleanDept, cleanCourse, cleanYear, cleanSec, existing.Id);
             }
 
-            await _context.SaveChangesAsync();
-
-            return Ok(new { date = normalized, isWorking = isWorking, dayType = dto.DayType, name = dto.Name });
+            return Ok(new { date = normalized, isWorking, dayType = dto.DayType, name = dto.Name });
         }
 
         // DELETE /api/WorkingDay/{date}
@@ -107,7 +149,7 @@ namespace OnlineOD.Controllers
         }
 
         // POST /api/WorkingDay/EditCalendar & POST /api/WorkingDay/AddCalendar (alias)
-        // Body: { "fromDate": "YYYY-MM-DD", "toDate": "YYYY-MM-DD", "dayType": "Holiday"|"Examination", "name": "Pongal" }
+        // Body: { "fromDate": "YYYY-MM-DD", "toDate": "YYYY-MM-DD", "dayType": "Holiday"|"Examination", "name": "Pongal", "department": "...", "year": 2, "section": "A" }
         [HttpPost("EditCalendar")]
         [HttpPost("AddCalendar")]
         public async Task<IActionResult> EditCalendar([FromBody] EditCalendarRangeDto dto)
@@ -125,7 +167,6 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "Day Type must be either 'Holiday' or 'Examination'." });
             }
 
-            // Capitalize properly
             dayType = dayType.Equals("Holiday", StringComparison.OrdinalIgnoreCase) ? "Holiday" : "Examination";
 
             if (string.IsNullOrWhiteSpace(dto.Name))
@@ -140,36 +181,66 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "End Date must be greater than or equal to From Date." });
 
             bool isWorking = dto.IsWorking ?? (!dayType.Equals("Holiday", StringComparison.OrdinalIgnoreCase));
+            var cleanDept = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim();
+            var cleanCourse = string.IsNullOrWhiteSpace(dto.Course) ? null : dto.Course.Trim();
+            var cleanSec = string.IsNullOrWhiteSpace(dto.Section) || dto.Section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : dto.Section.Trim();
+            var cleanYear = (dto.Year.HasValue && dto.Year.Value > 0) ? dto.Year.Value : (int?)null;
 
             var curr = start.Date;
+            var recordsToApply = new List<WorkingDayOverride>();
+
             while (curr <= end.Date)
             {
                 var dateStr = curr.ToString("yyyy-MM-dd");
-                WorkingDaysCalendar.ApplyOverride(dateStr, isWorking, dayType, name);
 
-                var existing = await _context.WorkingDayOverrides.FindAsync(dateStr);
+                var existing = await _context.WorkingDayOverrides.FirstOrDefaultAsync(o =>
+                    o.Date == dateStr &&
+                    (cleanDept == null || o.Department == cleanDept) &&
+                    (cleanYear == null || o.Year == cleanYear) &&
+                    (cleanSec == null || o.Section == cleanSec) &&
+                    o.Name == name);
+
                 if (existing == null)
                 {
-                    _context.WorkingDayOverrides.Add(new WorkingDayOverride
+                    var record = new WorkingDayOverride
                     {
                         Date = dateStr,
                         IsWorking = isWorking,
                         DayType = dayType,
                         Name = name,
+                        Department = cleanDept,
+                        Course = cleanCourse,
+                        Year = cleanYear,
+                        Section = cleanSec,
                         UpdatedAt = DateTime.Now
-                    });
+                    };
+                    _context.WorkingDayOverrides.Add(record);
+                    recordsToApply.Add(record);
                 }
                 else
                 {
                     existing.IsWorking = isWorking;
                     existing.DayType = dayType;
                     existing.Name = name;
+                    existing.Department = cleanDept;
+                    existing.Course = cleanCourse;
+                    existing.Year = cleanYear;
+                    existing.Section = cleanSec;
                     existing.UpdatedAt = DateTime.Now;
+                    recordsToApply.Add(existing);
                 }
                 curr = curr.AddDays(1);
             }
 
             await _context.SaveChangesAsync();
+
+            // Apply to live memory with assigned Ids
+            foreach (var rec in recordsToApply)
+            {
+                WorkingDaysCalendar.ApplyOverride(rec.Date, rec.IsWorking, rec.DayType, rec.Name,
+                    rec.Department, rec.Course, rec.Year, rec.Section, rec.Id);
+            }
+
             return Ok(new
             {
                 message = "Calendar updated successfully.",
@@ -177,6 +248,10 @@ namespace OnlineOD.Controllers
                 toDate = end.ToString("yyyy-MM-dd"),
                 dayType,
                 name,
+                department = cleanDept,
+                course = cleanCourse,
+                year = cleanYear,
+                section = cleanSec,
                 isWorking
             });
         }
@@ -187,6 +262,10 @@ namespace OnlineOD.Controllers
         public bool? IsWorking { get; set; }
         public string? DayType { get; set; }
         public string? Name { get; set; }
+        public string? Department { get; set; }
+        public string? Course { get; set; }
+        public int? Year { get; set; }
+        public string? Section { get; set; }
     }
 
     public class EditCalendarRangeDto
@@ -195,6 +274,10 @@ namespace OnlineOD.Controllers
         public string ToDate { get; set; } = string.Empty;
         public string DayType { get; set; } = "Holiday"; // "Holiday" | "Examination"
         public string Name { get; set; } = string.Empty;
+        public string? Department { get; set; }
+        public string? Course { get; set; }
+        public int? Year { get; set; }
+        public string? Section { get; set; }
         public bool? IsWorking { get; set; }
     }
 }

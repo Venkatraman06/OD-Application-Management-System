@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using OnlineOD.Models;
 
 namespace OnlineOD.Service
 {
@@ -12,11 +13,13 @@ namespace OnlineOD.Service
     /// working-days.js used on the student apply forms, so the rule is
     /// enforced even for requests that bypass the browser UI.
     ///
-    /// HOD-made edits/removals (via the calendar UI) are layered on top of
+    /// HOD/Staff-made edits (via the calendar UI) are layered on top of
     /// this seed via ApplyOverride() / LoadOverrides().
     /// </summary>
     public static class WorkingDaysCalendar
     {
+        private static readonly object _lock = new object();
+
         // Seed list: every Mon–Sat from today through Dec 31 of the current year.
         private static readonly HashSet<string> SeedWorkingDays = GenerateSeedWorkingDays();
 
@@ -37,35 +40,65 @@ namespace OnlineOD.Service
         private static readonly string SeedMinDate = SeedWorkingDays.Min();
         private static readonly string SeedMaxDate = SeedWorkingDays.Max();
 
-        // Live, mutable set — starts as a copy of the seed and is adjusted
-        // at startup (from DB overrides) and at runtime (when the HOD edits
-        // or removes a day from the calendar).
         public static HashSet<string> WorkingDays { get; private set; } = new HashSet<string>(SeedWorkingDays);
 
-        // Special days dictionary (Date -> (DayType, Name))
-        public static Dictionary<string, SpecialDayItem> SpecialDays { get; private set; } = new Dictionary<string, SpecialDayItem>(StringComparer.OrdinalIgnoreCase);
+        // Special days list (Holiday / Examination) with department, year, section scoping
+        private static readonly List<SpecialDayItem> _specialDaysList = new List<SpecialDayItem>();
+
+        public static IReadOnlyList<SpecialDayItem> AllSpecialDays
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _specialDaysList.ToList();
+                }
+            }
+        }
 
         public static string MinDate => WorkingDays.Count > 0 ? WorkingDays.Min() : SeedMinDate;
         public static string MaxDate => WorkingDays.Count > 0 ? WorkingDays.Max() : SeedMaxDate;
 
-        /// <summary>Applies a batch of HOD-made overrides on top of the seed list — called once at app startup.</summary>
+        /// <summary>Applies a batch of calendar overrides on top of the seed list — called once at app startup.</summary>
+        public static void LoadOverrides(IEnumerable<WorkingDayOverride> overrides)
+        {
+            lock (_lock)
+            {
+                WorkingDays = new HashSet<string>(SeedWorkingDays);
+                _specialDaysList.Clear();
+
+                foreach (var o in overrides)
+                {
+                    ApplyOverrideInternal(o.Date, o.IsWorking, o.DayType, o.Name, o.Department, o.Course, o.Year, o.Section, o.Id);
+                }
+            }
+        }
+
         public static void LoadOverrides(IEnumerable<(string Date, bool IsWorking, string? DayType, string? Name)> overrides)
         {
-            foreach (var o in overrides)
-                ApplyOverride(o.Date, o.IsWorking, o.DayType, o.Name);
+            lock (_lock)
+            {
+                WorkingDays = new HashSet<string>(SeedWorkingDays);
+                _specialDaysList.Clear();
+
+                foreach (var o in overrides)
+                {
+                    ApplyOverrideInternal(o.Date, o.IsWorking, o.DayType, o.Name, null, null, null, null, 0);
+                }
+            }
         }
 
-        public static void LoadOverrides(IEnumerable<(string Date, bool IsWorking)> overrides)
+        public static bool ApplyOverride(string dateStr, bool isWorking, string? dayType = null, string? name = null,
+            string? department = null, string? course = null, int? year = null, string? section = null, int id = 0)
         {
-            foreach (var o in overrides)
-                ApplyOverride(o.Date, o.IsWorking, null, null);
+            lock (_lock)
+            {
+                return ApplyOverrideInternal(dateStr, isWorking, dayType, name, department, course, year, section, id);
+            }
         }
 
-        /// <summary>
-        /// HOD edits a single date: true = mark/keep it a working day
-        /// (add to calendar), false = remove it from the calendar (holiday).
-        /// </summary>
-        public static bool ApplyOverride(string dateStr, bool isWorking, string? dayType = null, string? name = null)
+        private static bool ApplyOverrideInternal(string dateStr, bool isWorking, string? dayType = null, string? name = null,
+            string? department = null, string? course = null, int? year = null, string? section = null, int id = 0)
         {
             var normalized = Normalize(dateStr);
             if (normalized == null) return false;
@@ -75,33 +108,111 @@ namespace OnlineOD.Service
 
             if (!string.IsNullOrWhiteSpace(dayType))
             {
-                SpecialDays[normalized] = new SpecialDayItem
+                var cleanDept = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+                var cleanCourse = string.IsNullOrWhiteSpace(course) ? null : course.Trim();
+                var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
+                var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
+                var cleanName = name?.Trim() ?? string.Empty;
+                var cleanType = dayType.Trim();
+
+                // Check if matching item already in list to update or add
+                var existing = _specialDaysList.FirstOrDefault(s =>
+                    (id > 0 && s.Id == id) ||
+                    (s.Date == normalized &&
+                     string.Equals(s.Department ?? "", cleanDept ?? "", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(s.Course ?? "", cleanCourse ?? "", StringComparison.OrdinalIgnoreCase) &&
+                     s.Year == cleanYear &&
+                     string.Equals(s.Section ?? "", cleanSec ?? "", StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(s.Name, cleanName, StringComparison.OrdinalIgnoreCase)));
+
+                if (existing != null)
                 {
-                    Date = normalized,
-                    DayType = dayType.Trim(),
-                    Name = name?.Trim() ?? string.Empty
-                };
+                    existing.DayType = cleanType;
+                    existing.Name = cleanName;
+                    existing.Department = cleanDept;
+                    existing.Course = cleanCourse;
+                    existing.Year = cleanYear;
+                    existing.Section = cleanSec;
+                    if (id > 0) existing.Id = id;
+                }
+                else
+                {
+                    _specialDaysList.Add(new SpecialDayItem
+                    {
+                        Id = id,
+                        Date = normalized,
+                        DayType = cleanType,
+                        Name = cleanName,
+                        Department = cleanDept,
+                        Course = cleanCourse,
+                        Year = cleanYear,
+                        Section = cleanSec
+                    });
+                }
             }
             else
             {
-                SpecialDays.Remove(normalized);
+                _specialDaysList.RemoveAll(s => s.Date == normalized && (id == 0 || s.Id == id));
             }
 
             return true;
         }
 
-        public static List<SpecialDayItem> GetSpecialDaysInRange(string? fromStr, string? toStr)
+        private static bool MatchesScope(SpecialDayItem item, string? dept, int? year, string? section)
+        {
+            if (!string.IsNullOrWhiteSpace(dept) && !string.IsNullOrWhiteSpace(item.Department))
+            {
+                if (!string.Equals(item.Department, dept, StringComparison.OrdinalIgnoreCase) &&
+                    !item.Department.Contains(dept, StringComparison.OrdinalIgnoreCase) &&
+                    !dept.Contains(item.Department, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            if (year.HasValue && year.Value > 0 && item.Year.HasValue && item.Year.Value > 0)
+            {
+                if (item.Year.Value != year.Value)
+                    return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(section) && !string.IsNullOrWhiteSpace(item.Section) &&
+                !item.Section.Equals("All", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(item.Section, section, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public static List<SpecialDayItem> GetSpecialDays(string? dept = null, int? year = null, string? section = null)
+        {
+            lock (_lock)
+            {
+                return _specialDaysList
+                    .Where(s => MatchesScope(s, dept, year, section))
+                    .OrderBy(s => s.Date)
+                    .ToList();
+            }
+        }
+
+        public static List<SpecialDayItem> GetSpecialDaysInRange(string? fromStr, string? toStr, string? dept = null, int? year = null, string? section = null)
         {
             var from = Normalize(fromStr);
             var to = Normalize(toStr);
             if (from == null || to == null || string.Compare(from, to, StringComparison.Ordinal) > 0)
                 return new List<SpecialDayItem>();
 
-            return SpecialDays.Values
-                .Where(s => string.Compare(s.Date, from, StringComparison.Ordinal) >= 0 &&
-                            string.Compare(s.Date, to, StringComparison.Ordinal) <= 0)
-                .OrderBy(s => s.Date)
-                .ToList();
+            lock (_lock)
+            {
+                return _specialDaysList
+                    .Where(s => string.Compare(s.Date, from, StringComparison.Ordinal) >= 0 &&
+                                string.Compare(s.Date, to, StringComparison.Ordinal) <= 0 &&
+                                MatchesScope(s, dept, year, section))
+                    .OrderBy(s => s.Date)
+                    .ToList();
+            }
         }
 
         /// <summary>True if the given date string (any parseable format, compared as yyyy-MM-dd) is a published working day.</summary>
@@ -140,10 +251,11 @@ namespace OnlineOD.Service
                 return $"FromDate is outside the published college working-days calendar ({MinDate} to {MaxDate}).";
             if (string.Compare(to, MinDate, StringComparison.Ordinal) < 0 || string.Compare(to, MaxDate, StringComparison.Ordinal) > 0)
                 return $"ToDate is outside the published college working-days calendar ({MinDate} to {MaxDate}).";
-            if (!IsWorkingDay(from))
-                return "FromDate is not a college working day (holiday/weekend).";
-            if (!IsWorkingDay(to))
-                return "ToDate is not a college working day (holiday/weekend).";
+
+            if (DateTime.TryParse(from, out var dtFrom) && dtFrom.DayOfWeek == DayOfWeek.Sunday)
+                return "FromDate cannot be Sunday.";
+            if (DateTime.TryParse(to, out var dtTo) && dtTo.DayOfWeek == DayOfWeek.Sunday)
+                return "ToDate cannot be Sunday.";
 
             return null;
         }
@@ -159,8 +271,13 @@ namespace OnlineOD.Service
 
     public class SpecialDayItem
     {
+        public int Id { get; set; }
         public string Date { get; set; } = string.Empty;
         public string DayType { get; set; } = "Holiday"; // "Holiday" | "Examination"
         public string Name { get; set; } = string.Empty;
+        public string? Department { get; set; }
+        public string? Course { get; set; }
+        public int? Year { get; set; }
+        public string? Section { get; set; }
     }
 }

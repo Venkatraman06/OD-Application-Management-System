@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 document.addEventListener('DOMContentLoaded', async () => {
     const hodId = localStorage.getItem('hodId');
     const dept  = localStorage.getItem('userDept');
@@ -1474,18 +1474,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Working-Days Calendar (HOD) ──
-    // Loads every OD in this HOD's department (any status) once, then lets
-    // the HOD browse the published college working-days calendar month by
-    // month. Clicking a working day shows how many ODs cover that date and
-    // how many of those were rejected (by faculty or HOD).
     let calendarODs = null;      // department-scoped OD list, loaded once
     let calendarLoading = false;
     let calMonthIndex = 0;       // index into calMonthKeys
     let calMonthKeys = [];       // e.g. ['2025-12', '2026-01', ...]
-    let calendarOverrides = {};  // { 'yyyy-MM-dd': true|false } — HOD edits, loaded from backend
+    let calendarOverrides = {};  // { 'yyyy-MM-dd': { isWorking, dayType, name } }
     let calendarOverridesLoaded = false;
+    let selectedCalYear = '';
+    let selectedCalSection = '';
+    let calFiltersInitialized = false;
 
-    /** Effective working-day status for a date: HOD override wins over the published default. */
     function isEffectiveWorkingDay(dateStr) {
         if (Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr)) {
             const v = calendarOverrides[dateStr];
@@ -1497,20 +1495,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadCalendarOverrides() {
         if (calendarOverridesLoaded) return;
         try {
-            const res = await fetch(`${API_BASE}/api/WorkingDay?_=${Date.now()}`, { cache: 'no-store' });
+            const myDept = (dept || '').trim();
+            const res = await fetch(`${API_BASE}/api/WorkingDay?dept=${encodeURIComponent(myDept)}&_=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 calendarOverrides = {};
                 (data.overrides || []).forEach(o => {
                     calendarOverrides[o.date] = { isWorking: o.isWorking, dayType: o.dayType || null, name: o.name || null };
                 });
-                // Also update CollegeWorkingDays special days map
                 if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
                     CollegeWorkingDays.specialDaysMap.clear();
                     const specialDays = data.specialDays || [];
                     specialDays.forEach(s => {
                         if (s && s.date) {
-                            CollegeWorkingDays.specialDaysMap.set(s.date, { date: s.date, dayType: s.dayType || 'Holiday', name: s.name || '' });
+                            if (!CollegeWorkingDays.specialDaysMap.has(s.date)) {
+                                CollegeWorkingDays.specialDaysMap.set(s.date, []);
+                            }
+                            CollegeWorkingDays.specialDaysMap.get(s.date).push({
+                                id: s.id || 0,
+                                date: s.date,
+                                dayType: s.dayType || 'Holiday',
+                                name: s.name || '',
+                                department: s.department || null,
+                                course: s.course || null,
+                                year: s.year || null,
+                                section: s.section || null
+                            });
                         }
                     });
                 }
@@ -1528,6 +1538,64 @@ document.addEventListener('DOMContentLoaded', async () => {
         calMonthKeys = [...seen].sort();
     }
 
+    function initHodCalendarFilters() {
+        if (calFiltersInitialized) return;
+        const yearSelect = document.getElementById('calFilterYear');
+        const sectionSelect = document.getElementById('calFilterSection');
+
+        if (yearSelect && sectionSelect) {
+            const myDept = (dept || '').trim().toLowerCase();
+            const yearsSet = new Set();
+            const sectionsSet = new Set();
+
+            if (Array.isArray(allStudentsData) && allStudentsData.length > 0) {
+                allStudentsData.forEach(s => {
+                    const sDept = (s.department || s.Department || '').trim().toLowerCase();
+                    if (!myDept || sDept === myDept) {
+                        const y = s.year || s.Year;
+                        if (y) yearsSet.add(parseInt(y, 10));
+                        const sec = (s.section || s.Section || '').trim();
+                        if (sec) sectionsSet.add(sec.toUpperCase());
+                    }
+                });
+            }
+
+            if (Array.isArray(calendarODs)) {
+                calendarODs.forEach(o => {
+                    const y = o.year || o.Year;
+                    if (y) yearsSet.add(parseInt(y, 10));
+                    const sec = (o.section || o.Section || '').trim();
+                    if (sec) sectionsSet.add(sec.toUpperCase());
+                });
+            }
+
+            // Fallbacks if sets empty
+            if (yearsSet.size === 0) [1, 2, 3].forEach(y => yearsSet.add(y));
+            if (sectionsSet.size === 0) ['A', 'B', 'C'].forEach(s => sectionsSet.add(s));
+
+            const sortedYears = [...yearsSet].sort((a,b) => a - b);
+            const sortedSections = [...sectionsSet].sort();
+
+            yearSelect.innerHTML = '<option value="">All Years</option>' +
+                sortedYears.map(y => `<option value="${y}">${y}${getOrdinal(y)} Year</option>`).join('');
+
+            sectionSelect.innerHTML = '<option value="">All Sections</option>' +
+                sortedSections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+
+            yearSelect.addEventListener('change', () => {
+                selectedCalYear = yearSelect.value;
+                renderCalendarMonth();
+            });
+
+            sectionSelect.addEventListener('change', () => {
+                selectedCalSection = sectionSelect.value;
+                renderCalendarMonth();
+            });
+
+            calFiltersInitialized = true;
+        }
+    }
+
     async function loadCalendarData() {
         buildCalMonthKeys();
         if (!calMonthKeys.length) {
@@ -1536,7 +1604,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         if (calMonthIndex === 0 && calMonthKeys.length) {
-            // Default to the month containing today, if it's in range; else first month.
             const todayKey = new Date().toISOString().slice(0, 7);
             const idx = calMonthKeys.indexOf(todayKey);
             calMonthIndex = idx >= 0 ? idx : 0;
@@ -1561,17 +1628,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             calendarLoading = false;
         }
 
+        initHodCalendarFilters();
         renderCalendarMonth();
     }
 
-    /** Every OD (row) whose FromDate..ToDate range covers dateStr. */
+    /** Every OD (row) whose FromDate..ToDate range covers dateStr and matches active filters. */
     function odsCoveringDate(dateStr) {
         if (!calendarODs) return [];
         return calendarODs.filter(o => {
             const from = o.fromDate ?? o.FromDate ?? '';
             const to   = o.toDate   ?? o.ToDate   ?? '';
             if (!from || !to) return false;
-            return dateStr >= from && dateStr <= to;
+            if (dateStr < from || dateStr > to) return false;
+
+            // Apply Year & Section filter
+            if (selectedCalYear) {
+                const oYear = String(o.year ?? o.Year ?? '');
+                if (oYear && oYear !== String(selectedCalYear)) return false;
+            }
+            if (selectedCalSection) {
+                const oSec = (o.section ?? o.Section ?? '').trim().toUpperCase();
+                if (oSec && oSec !== selectedCalSection.toUpperCase()) return false;
+            }
+            return true;
         });
     }
 
@@ -1614,46 +1693,94 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
             const isWorking = isEffectiveWorkingDay(dateStr);
-            const overrideEntry = calendarOverrides[dateStr];
             const wasEdited = Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr);
 
-            // Check for special day (Holiday/Examination)
-            const specialDay = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(dateStr)
-                : null;
-            const isHoliday = specialDay && specialDay.dayType === 'Holiday';
-            const isExamination = specialDay && specialDay.dayType === 'Examination';
-            const specialName = specialDay ? specialDay.name : '';
+            // Get all special day entries for this date
+            const allDateSpecials = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysForDate
+                ? CollegeWorkingDays.getSpecialDaysForDate(dateStr)
+                : [];
 
-            if (!isWorking) {
-                const tooltipText = isHoliday
-                    ? `Holiday: ${specialName}`
-                    : wasEdited
-                        ? 'Marked non-working by HOD'
-                        : 'Holiday / non-working day';
-                const extraClass = isHoliday ? ' cal-holiday' : '';
-                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}" data-date="${dateStr}" title="${tooltipText}">
+            // Filter special days by active HOD filters (year and section)
+            const specials = allDateSpecials.filter(s => {
+                if (selectedCalYear && s.year && s.year !== parseInt(selectedCalYear, 10)) return false;
+                if (selectedCalSection && s.section && s.section !== 'All' && s.section.toUpperCase() !== selectedCalSection.toUpperCase()) return false;
+                return true;
+            });
+
+            const hasHoliday = specials.some(s => s.dayType === 'Holiday');
+            const hasExam = specials.some(s => s.dayType === 'Examination');
+            const primarySpecial = specials[0] || null;
+            const primaryName = primarySpecial ? primarySpecial.name : '';
+
+            // Format date for display: DD-MM-YYYY
+            const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
+
+            // Build multi-entry hover tooltip content
+            let tooltipPlain = formattedDate;
+            let tooltipHtml = '';
+
+            if (specials.length > 0) {
+                const plainLines = [formattedDate, ''];
+                specials.forEach(s => {
+                    const sCourse = s.course || s.department || dept || 'Computer Science';
+                    const sYearText = s.year ? `${s.year}${getOrdinal(s.year)} Year` : 'All Years';
+                    const sSecText = s.section && s.section !== 'All' ? `Section ${s.section}` : 'All Sections';
+                    plainLines.push(`${s.dayType} — ${s.name}`);
+                    plainLines.push(`${sCourse} — ${sYearText} — ${sSecText}`);
+                    plainLines.push('');
+                });
+                tooltipPlain = plainLines.join('\n').trim();
+
+                tooltipHtml = `
+                    <div class="cal-tt-header">${formattedDate}</div>
+                    <div class="cal-tt-body">
+                        ${specials.map(s => {
+                            const badgeCls = s.dayType === 'Holiday' ? 'cal-tt-holiday' : 'cal-tt-exam';
+                            const sCourse = s.course || s.department || dept || 'Computer Science';
+                            const sYearText = s.year ? `${s.year}${getOrdinal(s.year)} Year` : 'All Years';
+                            const sSecText = s.section && s.section !== 'All' ? `Section ${s.section}` : 'All Sections';
+                            return `
+                                <div class="cal-tt-entry">
+                                    <div class="cal-tt-title-row">
+                                        <span class="cal-tt-badge ${badgeCls}">${s.dayType}</span>
+                                        <strong>${escHtml(s.name)}</strong>
+                                    </div>
+                                    <div class="cal-tt-sub">${escHtml(sCourse)} &bull; ${sYearText} &bull; ${sSecText}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
+            if (!isWorking || hasHoliday) {
+                const extraClass = hasHoliday ? ' cal-holiday' : '';
+                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}"
+                            data-date="${dateStr}"
+                            ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}
+                            title="${escHtml(tooltipPlain)}">
                             <span class="cal-day-num">${day}</span>
-                            ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
+                            ${hasHoliday && primaryName ? `<span class="cal-special-label">${escHtml(primaryName)}</span>` : ''}
                             ${wasEdited ? '<span class="cal-edit-dot" title="Edited by HOD"></span>' : ''}
                          </div>`;
                 continue;
             }
 
             // Working day — check for examination
-            const examinationClass = isExamination ? ' cal-examination' : '';
+            const examinationClass = hasExam ? ' cal-examination' : '';
             const covering = odsCoveringDate(dateStr);
             const appliedCount  = covering.length;
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
-            const dayTitle = isExamination
-                ? `Examination: ${specialName}`
-                : dateStr;
+            const dayTitle = specials.length > 0 ? tooltipPlain : dateStr;
 
-            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}" data-date="${dateStr}" title="${dayTitle}">
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}"
+                        data-date="${dateStr}"
+                        ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}
+                        title="${escHtml(dayTitle)}">
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
                         <span class="cal-day-num">${day}</span>
-                        ${isExamination && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
+                        ${hasExam && primaryName ? `<span class="cal-special-label">${escHtml(primaryName)}</span>` : ''}
                         ${wasEdited ? '<span class="cal-edit-dot" title="Edited by HOD"></span>' : ''}
                         ${hasActivity ? `<span class="cal-day-counts">
                             <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
@@ -1662,8 +1789,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         grid.innerHTML = html;
+        attachCalendarHoverTooltips(grid);
     }
 
+    function attachCalendarHoverTooltips(container) {
+        const tooltipEl = document.getElementById('calHoverTooltip');
+        if (!tooltipEl || !container) return;
+
+        container.querySelectorAll('.calendar-day[data-tooltip]').forEach(cell => {
+            const raw = cell.getAttribute('data-tooltip');
+            if (!raw) return;
+            const rawHtml = decodeURIComponent(raw);
+
+            cell.addEventListener('mouseenter', (e) => {
+                tooltipEl.innerHTML = rawHtml;
+                tooltipEl.style.display = 'block';
+                positionTooltip(e, tooltipEl);
+            });
+
+            cell.addEventListener('mousemove', (e) => {
+                positionTooltip(e, tooltipEl);
+            });
+
+            cell.addEventListener('mouseleave', () => {
+                tooltipEl.style.display = 'none';
+            });
+        });
+    }
+
+    function positionTooltip(e, el) {
+        const offset = 14;
+        let left = e.clientX + offset;
+        let top = e.clientY + offset;
+
+        const rect = el.getBoundingClientRect();
+        if (left + rect.width > window.innerWidth - 12) {
+            left = e.clientX - rect.width - offset;
+        }
+        if (top + rect.height > window.innerHeight - 12) {
+            top = e.clientY - rect.height - offset;
+        }
+        el.style.left = `${Math.max(8, left)}px`;
+        el.style.top = `${Math.max(8, top)}px`;
+    }
 
     document.getElementById('calendarPrevBtn')?.addEventListener('click', () => {
         if (calMonthIndex > 0) { calMonthIndex--; renderCalendarMonth(); }
@@ -1701,6 +1869,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const toDate = document.getElementById('addCalToDate')?.value;
                 const dayType = document.getElementById('addCalDayType')?.value;
                 const name = document.getElementById('addCalName')?.value?.trim();
+                const yearVal = document.getElementById('addCalYear')?.value;
+                const secVal = document.getElementById('addCalSection')?.value;
 
                 if (!fromDate || !toDate) {
                     showToast('error', 'Please select both From Date and End Date.');
@@ -1719,11 +1889,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
+                const payload = {
+                    fromDate,
+                    toDate,
+                    dayType,
+                    name,
+                    department: dept || 'Computer Science',
+                    course: 'B.Sc Computer Science',
+                    year: yearVal ? parseInt(yearVal, 10) : null,
+                    section: secVal || null
+                };
+
                 try {
                     const res = await fetch(`${API_BASE}/api/WorkingDay/EditCalendar`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fromDate, toDate, dayType, name })
+                        body: JSON.stringify(payload)
                     });
 
                     if (!res.ok) {
@@ -1733,9 +1914,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     showToast('success', `Calendar updated: ${name} (${fromDate} – ${toDate}).`);
                     close();
+                    form.reset();
 
                     if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                        await CollegeWorkingDays.syncWithBackend(API_BASE);
+                        await CollegeWorkingDays.syncWithBackend(API_BASE, dept);
                     }
 
                     calendarOverridesLoaded = false;
@@ -1745,7 +1927,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error('Edit Calendar error:', err);
                     showToast('error', err.message || 'Failed to update calendar');
                 }
-
             };
         }
     }

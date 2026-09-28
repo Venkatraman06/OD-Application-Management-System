@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    OD Application - Teacher Dashboard Styles
    ============================================ */
 
@@ -3667,4 +3667,85 @@ input:checked + .switch-slider:before {
 [data-theme="light"] .od-count-rejected {
     background: #fef2f2 !important;
     color: #991b1b !important;
+}
+
+/* ── Edit Calendar Form Modal Card (Light + Dark Theme) ── */
+.edit-cal-card {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    color: #f8fafc;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    text-align: left;
+}
+.edit-cal-card h3 {
+    color: #f8fafc;
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+.edit-cal-card .input-group {
+    margin-bottom: 14px;
+}
+.edit-cal-card label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #cbd5e1;
+}
+.edit-cal-card input[type="text"],
+.edit-cal-card input[type="date"],
+.edit-cal-card select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #f8fafc;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    color-scheme: dark;
+}
+.edit-cal-card input[type="text"]:focus,
+.edit-cal-card input[type="date"]:focus,
+.edit-cal-card select:focus {
+    border-color: var(--primary-500, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+.edit-cal-card input::placeholder {
+    color: #64748b;
+}
+[data-theme="light"] .edit-cal-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12) !important;
+}
+[data-theme="light"] .edit-cal-card h3 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .edit-cal-card label {
+    color: #334155 !important;
+}
+[data-theme="light"] .edit-cal-card input[type="text"],
+[data-theme="light"] .edit-cal-card input[type="date"],
+[data-theme="light"] .edit-cal-card select {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    color-scheme: light !important;
+}
+[data-theme="light"] .edit-cal-card input::placeholder {
+    color: #94a3b8 !important;
+}
+[data-theme="light"] .edit-cal-card input:focus,
+[data-theme="light"] .edit-cal-card select:focus {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
 }

@@ -1,18 +1,20 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace OnlineOD.Models
 {
-    // A single HOD-made edit to the published working-days calendar.
-    // Date is stored as "yyyy-MM-dd". IsWorking = false means the HOD
-    // removed that date from the calendar (marked it a holiday);
-    // IsWorking = true means the HOD added/restored it as a working day.
+    // A single calendar override / special day (Holiday / Examination) edit.
     public class WorkingDayOverride
     {
         [Key]
+        public int Id { get; set; }
         public string Date { get; set; } = string.Empty;
         public bool IsWorking { get; set; }
         public string? DayType { get; set; } // "Holiday" | "Examination"
         public string? Name { get; set; }    // e.g. "Pongal", "Semester Examination"
+        public string? Department { get; set; } // e.g. "Computer Science"
+        public string? Course { get; set; }     // e.g. "B.Sc Computer Science"
+        public int? Year { get; set; }          // e.g. 1, 2, 3
+        public string? Section { get; set; }    // e.g. "A", "B", "C" or null (all)
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
     }
 }

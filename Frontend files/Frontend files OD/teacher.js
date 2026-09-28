@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const facultyId = localStorage.getItem('facultyId');
@@ -1911,7 +1911,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadCalendarOverrides() {
         if (calendarOverridesLoaded) return;
         try {
-            const res = await fetch(`${API_BASE}/api/WorkingDay?_=${Date.now()}`, { cache: 'no-store' });
+            const myDept = (dept || '').trim();
+            const myYear = (year || '').trim();
+            const mySec = (section || '').trim();
+            const params = new URLSearchParams();
+            params.append('_', Date.now().toString());
+            if (myDept) params.append('dept', myDept);
+            if (myYear) params.append('year', myYear);
+            if (mySec) params.append('section', mySec);
+
+            const res = await fetch(`${API_BASE}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 calendarOverrides = {};
@@ -1923,7 +1932,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     CollegeWorkingDays.specialDaysMap.clear();
                     (data.specialDays || []).forEach(s => {
                         if (s && s.date) {
-                            CollegeWorkingDays.specialDaysMap.set(s.date, { date: s.date, dayType: s.dayType || 'Holiday', name: s.name || '' });
+                            if (!CollegeWorkingDays.specialDaysMap.has(s.date)) {
+                                CollegeWorkingDays.specialDaysMap.set(s.date, []);
+                            }
+                            CollegeWorkingDays.specialDaysMap.get(s.date).push({
+                                id: s.id || 0,
+                                date: s.date,
+                                dayType: s.dayType || 'Holiday',
+                                name: s.name || '',
+                                department: s.department || null,
+                                course: s.course || null,
+                                year: s.year || null,
+                                section: s.section || null
+                            });
                         }
                     });
                 }
@@ -1964,7 +1985,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const res = await fetch(`${API_BASE}/api/OdApply?_=${Date.now()}`, { cache: 'no-store' });
                 const all = res.ok ? await res.json() : [];
                 const myDept = (dept || '').trim().toLowerCase();
-                calendarODs = myDept ? all.filter(o => ((o.department ?? o.Department ?? '').trim().toLowerCase()) === myDept) : all;
+                const mySec = (section || '').trim().toLowerCase();
+                const myYear = (year || '').trim();
+
+                // Staff Calendar Scoping: only show ODs relevant to this staff's assigned dept, year, section
+                calendarODs = all.filter(o => {
+                    const oDept = ((o.department ?? o.Department ?? '').trim().toLowerCase());
+                    if (myDept && oDept !== myDept) return false;
+
+                    const oSec = ((o.section ?? o.Section ?? '').trim().toLowerCase());
+                    if (mySec && oSec && oSec !== mySec) return false;
+
+                    const oYear = String(o.year ?? o.Year ?? '').trim();
+                    if (myYear && oYear && oYear !== myYear) return false;
+
+                    return true;
+                });
             } catch (err) {
                 console.error('loadCalendarData error:', err);
                 calendarODs = [];
@@ -2001,17 +2037,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const monthKey = calMonthKeys[calMonthIndex];
         const [yearStr, monStr] = monthKey.split('-');
-        const year = parseInt(yearStr, 10);
+        const yearNum = parseInt(yearStr, 10);
         const month = parseInt(monStr, 10) - 1;
 
         if (label) {
-            label.textContent = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            label.textContent = new Date(yearNum, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         }
         if (prevBtn) prevBtn.disabled = calMonthIndex <= 0;
         if (nextBtn) nextBtn.disabled = calMonthIndex >= calMonthKeys.length - 1;
 
-        const firstDow = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDow = new Date(yearNum, month, 1).getDay();
+        const daysInMonth = new Date(yearNum, month + 1, 0).getDate();
 
         let html = '';
         for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
@@ -2029,12 +2065,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isExamination = specialDay && specialDay.dayType === 'Examination';
             const specialName   = specialDay ? (specialDay.name || '') : '';
 
-            if (!isWorking) {
+            // Format date: DD-MM-YYYY
+            const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
+
+            if (!isWorking || isHoliday) {
                 const tooltipText = isHoliday
-                    ? `Holiday: ${specialName}`
+                    ? `Holiday: ${specialName} (${formattedDate})`
                     : wasEdited ? 'Marked non-working' : 'Holiday / non-working day';
                 const extraClass = isHoliday ? ' cal-holiday' : '';
-                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}" data-date="${dateStr}" title="${tooltipText}">
+                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}" data-date="${dateStr}" title="${escHtml(tooltipText)}">
                             <span class="cal-day-num">${day}</span>
                             ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
                             ${wasEdited ? '<span class="cal-edit-dot" title="Edited day"></span>' : ''}
@@ -2047,9 +2086,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const appliedCount  = covering.length;
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
-            const dayTitle = isExamination ? `Examination: ${specialName}` : dateStr;
+            const dayTitle = isExamination ? `Examination: ${specialName} (${formattedDate})` : dateStr;
 
-            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}" data-date="${dateStr}" title="${dayTitle}">
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}" data-date="${dateStr}" title="${escHtml(dayTitle)}">
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
                         <span class="cal-day-num">${day}</span>
                         ${isExamination && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
@@ -2113,11 +2152,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
+                const payload = {
+                    fromDate,
+                    toDate,
+                    dayType,
+                    name,
+                    department: dept || 'Computer Science',
+                    course: 'B.Sc Computer Science',
+                    year: year ? parseInt(year, 10) : null,
+                    section: section || null
+                };
+
                 try {
                     const res = await fetch(`${API_BASE}/api/WorkingDay/EditCalendar`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fromDate, toDate, dayType, name })
+                        body: JSON.stringify(payload)
                     });
 
                     if (!res.ok) {
@@ -2127,9 +2177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     showToast('success', `Calendar updated: ${name} (${fromDate} – ${toDate}).`);
                     close();
+                    form.reset();
 
                     if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                        await CollegeWorkingDays.syncWithBackend(API_BASE);
+                        await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section);
                     }
 
                     calendarOverridesLoaded = false;

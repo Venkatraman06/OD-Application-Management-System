@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    OD Application - Student Dashboard Styles
    ============================================ */
 
@@ -148,6 +148,7 @@ body {
    Student Header
    ============================================ */
 .student-header {
+    position: relative;
     background: rgba(30, 41, 59, 0.5);
     backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.06);
@@ -156,6 +157,7 @@ body {
     margin-bottom: 20px;
     animation: cardSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
+
 
 @keyframes cardSlide {
     from {
@@ -2593,4 +2595,167 @@ select.cert-text-input {
 }
 [data-theme="light"] #saturdayModalTitle {
     color: #92400e !important;
-}
+}
+
+/* ── Student Header Calendar Icon Button ── */
+.header-cal-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 24px;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md, 12px);
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: var(--primary-400, #818cf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.header-cal-btn:hover {
+    background: var(--primary-500, #6366f1);
+    color: #ffffff;
+    border-color: var(--primary-500, #6366f1);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+[data-theme="light"] .header-cal-btn {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+    color: #4f46e5 !important;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12) !important;
+}
+[data-theme="light"] .header-cal-btn:hover {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+}
+
+/* ── Student Academic Calendar Modal ── */
+.student-cal-modal {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-xl, 24px);
+    padding: 24px;
+    color: #f8fafc;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+}
+.student-cal-modal .calendar-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.student-cal-modal .calendar-nav-btn:hover {
+    background: var(--primary-500, #6366f1);
+    color: #fff;
+    border-color: var(--primary-500, #6366f1);
+}
+.student-cal-modal .calendar-day {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: default;
+    transition: all 0.2s;
+}
+.student-cal-modal .calendar-day.empty {
+    background: transparent;
+    border-color: transparent;
+}
+.student-cal-modal .calendar-day.working {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #34d399;
+}
+.student-cal-modal .calendar-day.non-working {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+}
+.student-cal-modal .calendar-day.cal-holiday {
+    background: rgba(249, 115, 22, 0.18) !important;
+    border-color: rgba(249, 115, 22, 0.5) !important;
+    color: #fb923c !important;
+}
+.student-cal-modal .calendar-day.cal-examination {
+    background: rgba(16, 185, 129, 0.18) !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+    color: #34d399 !important;
+}
+.student-cal-modal .cal-special-label {
+    font-size: 8.5px;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.student-cal-modal .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+.student-cal-modal .dot.working { background: #34d399; }
+.student-cal-modal .dot.non-working { background: #f87171; }
+.student-cal-modal .dot.cal-holiday-dot { background: #f97316; }
+.student-cal-modal .dot.cal-examination-dot { background: #10b981; }
+
+[data-theme="light"] .student-cal-modal {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12) !important;
+}
+[data-theme="light"] .student-cal-modal h3,
+[data-theme="light"] .student-cal-modal h4 {
+    color: #0f172a !important;
+}
+[data-theme="light"] .student-cal-modal .calendar-nav-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+}
+[data-theme="light"] .student-cal-modal .calendar-nav-btn:hover {
+    background: #4f46e5 !important;
+    color: #fff !important;
+}
+[data-theme="light"] .student-cal-modal .calendar-day.working {
+    background: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+    color: #065f46 !important;
+}
+[data-theme="light"] .student-cal-modal .calendar-day.non-working {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #991b1b !important;
+}
+[data-theme="light"] .student-cal-modal .calendar-day.cal-holiday {
+    background: #fff7ed !important;
+    border-color: #fdba74 !important;
+    color: #c2410c !important;
+}
+[data-theme="light"] .student-cal-modal .calendar-day.cal-examination {
+    background: #f0fdf4 !important;
+    border-color: #86efac !important;
+    color: #166534 !important;
+}

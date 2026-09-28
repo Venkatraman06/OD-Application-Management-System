@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -98,6 +98,14 @@
                     </div>
                 </div>
             </div>
+            <button type="button" class="header-cal-btn" id="openStudentCalendarBtn" title="View Academic Calendar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            </button>
         </header>
 
         <nav class="tab-nav" id="tabNav">
@@ -920,6 +928,49 @@
                     Yes, Include Date
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Student Academic Calendar Modal -->
+    <div class="modal-overlay" id="studentCalendarModalOverlay" style="display:none; z-index: 10050;">
+        <div class="modal student-cal-modal" id="studentCalendarModal" style="max-width: 600px; width: 92%; padding: 24px; text-align: left; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    Academic Calendar
+                </h3>
+                <button type="button" id="closeStudentCalendarModalBtn" class="modal-close-btn" style="background: transparent; border: none; font-size: 22px; cursor: pointer; color: inherit; line-height: 1;">&times;</button>
+            </div>
+            <div class="calendar-header-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <div class="calendar-nav-group" style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="calendar-nav-btn" id="studentCalPrevBtn" title="Previous month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                    </button>
+                    <h4 id="studentCalMonthLabel" style="margin: 0; font-size: 1rem; font-weight: 600;">Month Year</h4>
+                    <button type="button" class="calendar-nav-btn" id="studentCalNextBtn" title="Next month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="calendar-legend" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 0.78rem;">
+                <span><i class="dot working"></i> Working day</span>
+                <span><i class="dot non-working"></i> Non-working</span>
+                <span><i class="dot cal-holiday-dot"></i> Holiday</span>
+                <span><i class="dot cal-examination-dot"></i> Examination</span>
+            </div>
+            <div class="calendar-weekday-row" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.72rem; font-weight: 600; margin-bottom: 8px; opacity: 0.75;">
+                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="calendar-grid" id="studentCalendarGrid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;"></div>
         </div>
     </div>
 

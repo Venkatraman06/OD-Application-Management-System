@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 
 // Register number → student name lookup, used to show real names next to
 // register numbers in the Group Members list (group OD data only ever
@@ -495,57 +495,106 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             // Warn if any special days (Holiday/Examination) fall in the range
             if (!_specialDayWarningAcknowledged) {
-                checkAndWarnSpecialDays(fromVal, toVal);
+                checkAndWarnSpecialDays(fromVal, toVal, fromEl, toEl, daysEl, () => { _specialDayWarningAcknowledged = true; }, () => { _specialDayWarningAcknowledged = false; });
             }
         } else {
             if (daysEl) daysEl.value = '';
         }
     }
-    // ── Special-day warning for OD date range ──
+
+    // ── Special-day warning for OD date range (Solo & Group) ──
     let _specialDayWarningAcknowledged = false;
-    function checkAndWarnSpecialDays(fromVal, toVal) {
+    let _groupSpecialDayWarningAcknowledged = false;
+
+    function checkAndWarnSpecialDays(fromVal, toVal, fromInput, toInput, daysInput, onConfirm, onEdit) {
         if (!fromVal || !toVal) return;
         if (typeof CollegeWorkingDays === 'undefined' || !CollegeWorkingDays.getSpecialDaysInRange) return;
         const specials = CollegeWorkingDays.getSpecialDaysInRange(fromVal, toVal);
         if (!specials || specials.length === 0) return;
 
-        // Build list HTML
-        const listItems = specials.map(s => {
-            const label = s.dayType === 'Holiday' ? '🟠 Holiday' : '🟢 Examination';
-            return `<li>${label}: <strong>${s.name || ''}</strong> (${s.date})</li>`;
-        }).join('');
+        // Remove any existing warning overlay
+        document.querySelectorAll('.special-day-warning-overlay').forEach(el => el.remove());
 
         const overlay = document.createElement('div');
         overlay.className = 'special-day-warning-overlay';
+        overlay.style.zIndex = '10100';
+
+        let bodyContent = '';
+        let btnConfirmText = 'Include Date';
+
+        if (specials.length === 1) {
+            const s = specials[0];
+            const [y, m, d] = s.date.split('-');
+            const formattedDate = `${d}-${m}-${y}`;
+            const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
+            const fieldLabel = s.dayType === 'Holiday' ? 'Event' : 'Examination';
+
+            bodyContent = `
+                <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text-primary, #f8fafc);">
+                    ${formattedDate} is marked as a ${typeLabel}.
+                </div>
+                <div style="font-size: 0.9rem; margin-bottom: 16px; color: var(--text-secondary, #94a3b8);">
+                    <strong>${fieldLabel}:</strong> ${escHtml(s.name || typeLabel)}
+                </div>
+                <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #cbd5e1);">
+                    Do you want to include this date in your OD?
+                </p>
+            `;
+            btnConfirmText = 'Include Date';
+        } else {
+            const listItems = specials.map(s => {
+                const [y, m, d] = s.date.split('-');
+                const formattedDate = `${d}-${m}-${y}`;
+                const badge = s.dayType === 'Holiday' ? '🟠 Holiday' : '🟢 Examination';
+                return `<li style="margin-bottom: 6px;"><strong>${formattedDate}</strong> — ${badge} — ${escHtml(s.name || s.dayType)}</li>`;
+            }).join('');
+
+            bodyContent = `
+                <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary, #f8fafc);">
+                    Selected OD range contains special days:
+                </div>
+                <ul style="text-align: left; margin-bottom: 16px; padding-left: 20px; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary, #cbd5e1);">${listItems}</ul>
+                <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #cbd5e1);">
+                    Do you want to include these dates?
+                </p>
+            `;
+            btnConfirmText = 'Include Dates';
+        }
+
         overlay.innerHTML = `
-            <div class="special-day-warning-modal">
-                <h4>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <div class="special-day-warning-modal" style="max-width: 440px; text-align: center; padding: 24px; border-radius: 16px;">
+                <h4 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.15rem; font-weight: 700; margin-bottom: 14px; color: #f59e0b;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    Special Days in Selected Range
+                    ⚠ Invalid OD Date
                 </h4>
-                <p>Your selected date range includes the following special days:</p>
-                <ul>${listItems}</ul>
-                <p style="font-size:0.82rem;color:#94a3b8">You can edit your dates or confirm to continue anyway.</p>
-                <div class="sdw-actions">
-                    <button class="sdw-btn-edit" id="sdwEditBtn">Edit Dates</button>
-                    <button class="sdw-btn-confirm" id="sdwConfirmBtn">Confirm Anyway</button>
+                ${bodyContent}
+                <div class="sdw-actions" style="display: flex; gap: 10px; justify-content: center;">
+                    <button type="button" class="btn-primary sdw-btn-confirm" id="sdwIncludeBtn" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        ${btnConfirmText}
+                    </button>
+                    <button type="button" class="btn-secondary sdw-btn-edit" id="sdwEditBtn" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Edit Dates
+                    </button>
                 </div>
             </div>`;
+
         document.body.appendChild(overlay);
-        document.getElementById('sdwEditBtn').onclick = () => {
-            document.body.removeChild(overlay);
-            // Clear dates so user must re-select
-            if (fromEl) { fromEl.value = ''; }
-            if (toEl)   { toEl.value = ''; }
-            if (daysEl) { daysEl.value = ''; }
-            _specialDayWarningAcknowledged = false;
+
+        document.getElementById('sdwIncludeBtn').onclick = () => {
+            overlay.remove();
+            if (typeof onConfirm === 'function') onConfirm();
         };
-        document.getElementById('sdwConfirmBtn').onclick = () => {
-            document.body.removeChild(overlay);
-            _specialDayWarningAcknowledged = true;
+
+        document.getElementById('sdwEditBtn').onclick = () => {
+            overlay.remove();
+            if (fromInput) fromInput.value = '';
+            if (toInput) toInput.value = '';
+            if (daysInput) daysInput.value = '';
+            if (typeof onEdit === 'function') onEdit();
+            if (fromInput) fromInput.focus();
         };
     }
 
@@ -621,17 +670,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (groupDaysEl) {
                 groupDaysEl.value = buildDaysText(d, grpStartTimeEl?.value, grpEndTimeEl?.value);
             }
+            if (!_groupSpecialDayWarningAcknowledged) {
+                checkAndWarnSpecialDays(fromVal, toVal, groupFromEl, groupToEl, groupDaysEl, () => { _groupSpecialDayWarningAcknowledged = true; }, () => { _groupSpecialDayWarningAcknowledged = false; });
+            }
         } else {
             if (groupDaysEl) groupDaysEl.value = '';
         }
     }
     if (groupFromEl) {
-        groupFromEl.addEventListener('change', () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays); });
-        groupFromEl.addEventListener('input',  () => { guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays); });
+        groupFromEl.addEventListener('change', () => { _groupSpecialDayWarningAcknowledged = false; guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays); });
+        groupFromEl.addEventListener('input',  () => { _groupSpecialDayWarningAcknowledged = false; guardWeekendInput(groupFromEl, 'groupFromDate-error', 'From Date', calcGroupDays); });
     }
     if (groupToEl) {
-        groupToEl.addEventListener('change', () => { guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays); });
-        groupToEl.addEventListener('input',  () => { guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays); });
+        groupToEl.addEventListener('change', () => { _groupSpecialDayWarningAcknowledged = false; guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays); });
+        groupToEl.addEventListener('input',  () => { _groupSpecialDayWarningAcknowledged = false; guardWeekendInput(groupToEl, 'groupToDate-error', 'To Date', calcGroupDays); });
     }
     if (grpStartTimeEl) grpStartTimeEl.addEventListener('change', () => { calcGroupDays(); validateGroupTimes(); });
     if (grpEndTimeEl)   grpEndTimeEl.addEventListener('change',   () => { calcGroupDays(); validateGroupTimes(); });
@@ -2296,6 +2348,124 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         window.location.href = 'index.html';
     });
+
+    // ── Student Academic Calendar Modal ──
+    function initStudentAcademicCalendar() {
+        const openBtn = document.getElementById('openStudentCalendarBtn');
+        const modal = document.getElementById('studentCalendarModalOverlay');
+        const closeBtn = document.getElementById('closeStudentCalendarModalBtn');
+        const grid = document.getElementById('studentCalendarGrid');
+        const label = document.getElementById('studentCalMonthLabel');
+        const prevBtn = document.getElementById('studentCalPrevBtn');
+        const nextBtn = document.getElementById('studentCalNextBtn');
+
+        if (!openBtn || !modal) return;
+
+        let calKeys = [];
+        let calIdx = 0;
+        let loaded = false;
+
+        function buildKeys() {
+            if (calKeys.length || typeof CollegeWorkingDays === 'undefined') return;
+            const seen = new Set();
+            CollegeWorkingDays.list.forEach(d => seen.add(d.slice(0, 7)));
+            calKeys = [...seen].sort();
+        }
+
+        async function loadData() {
+            buildKeys();
+            if (!calKeys.length) return;
+            if (calIdx === 0 && calKeys.length) {
+                const todayKey = new Date().toISOString().slice(0, 7);
+                const idx = calKeys.indexOf(todayKey);
+                calIdx = idx >= 0 ? idx : 0;
+            }
+
+            if (!loaded) {
+                const myDept = (dept || localStorage.getItem('userDept') || '').trim();
+                const myYear = (studentYear || localStorage.getItem('userYear') || '').trim();
+                const mySec = (studentSection || localStorage.getItem('userSection') || '').trim();
+
+                if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                    await CollegeWorkingDays.syncWithBackend(API_BASE, myDept, myYear, mySec);
+                }
+                loaded = true;
+            }
+
+            renderMonth();
+        }
+
+        function renderMonth() {
+            if (!grid || !calKeys.length) return;
+            const monthKey = calKeys[calIdx];
+            const [yearStr, monStr] = monthKey.split('-');
+            const yearNum = parseInt(yearStr, 10);
+            const monthNum = parseInt(monStr, 10) - 1;
+
+            if (label) {
+                label.textContent = new Date(yearNum, monthNum, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            }
+            if (prevBtn) prevBtn.disabled = calIdx <= 0;
+            if (nextBtn) nextBtn.disabled = calIdx >= calKeys.length - 1;
+
+            const firstDow = new Date(yearNum, monthNum, 1).getDay();
+            const daysInMonth = new Date(yearNum, monthNum + 1, 0).getDate();
+
+            let html = '';
+            for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
+                const isWorking = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr) : true;
+                const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr) : null;
+                const isHoliday = special && special.dayType === 'Holiday';
+                const isExam = special && special.dayType === 'Examination';
+                const specialName = special ? special.name : '';
+
+                const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
+
+                if (!isWorking || isHoliday) {
+                    const tooltip = isHoliday ? `Holiday: ${specialName} (${formattedDate})` : `Non-working day (${formattedDate})`;
+                    html += `<div class="calendar-day non-working${isHoliday ? ' cal-holiday' : ''}" title="${escHtml(tooltip)}">
+                        <span>${day}</span>
+                        ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
+                    </div>`;
+                } else {
+                    const tooltip = isExam ? `Examination: ${specialName} (${formattedDate})` : `Working day (${formattedDate})`;
+                    html += `<div class="calendar-day working${isExam ? ' cal-examination' : ''}" title="${escHtml(tooltip)}">
+                        <span>${day}</span>
+                        ${isExam && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
+                    </div>`;
+                }
+            }
+            grid.innerHTML = html;
+        }
+
+        openBtn.addEventListener('click', () => {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            loadData();
+        });
+
+        function close() {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) close();
+        });
+
+        if (prevBtn) prevBtn.addEventListener('click', () => {
+            if (calIdx > 0) { calIdx--; renderMonth(); }
+        });
+        if (nextBtn) nextBtn.addEventListener('click', () => {
+            if (calIdx < calKeys.length - 1) { calIdx++; renderMonth(); }
+        });
+    }
+
+    initStudentAcademicCalendar();
 
     // Attach Circular Analog Clock Picker to time inputs
     if (typeof AnalogClockPicker !== 'undefined') {

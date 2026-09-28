@@ -1,4 +1,4 @@
-/**
+﻿/**
  * College Working-Days Calendar
  * ------------------------------
  * Enabled for the full current year (2026): every Mon–Sat date from
@@ -32,7 +32,7 @@ const COLLEGE_WORKING_DAYS = generateWorkingDays();
 
 const CollegeWorkingDays = (() => {
     const workingSet = new Set(COLLEGE_WORKING_DAYS);
-    const specialDaysMap = new Map(); // date -> { date, dayType, name }
+    const specialDaysMap = new Map(); // date -> Array of { id, date, dayType, name, department, course, year, section }
     const sorted = [...COLLEGE_WORKING_DAYS].sort();
     const minDate = sorted[0];
     const maxDate = sorted[sorted.length - 1];
@@ -49,19 +49,31 @@ const CollegeWorkingDays = (() => {
         return dateStr < minDate || dateStr > maxDate;
     }
 
-    /** returns special day info if configured for dateStr (Holiday | Examination), else null */
+    /** returns primary special day info if configured for dateStr (Holiday | Examination), else null */
     function getSpecialDay(dateStr) {
         if (!dateStr) return null;
-        return specialDaysMap.get(dateStr) || null;
+        const list = specialDaysMap.get(dateStr);
+        if (!list || list.length === 0) return null;
+        return list[0];
+    }
+
+    /** returns all special day entries for a specific date (e.g. multiple sections) */
+    function getSpecialDaysForDate(dateStr) {
+        if (!dateStr) return [];
+        return specialDaysMap.get(dateStr) || [];
     }
 
     /** returns array of special days within [fromStr, toStr] range */
     function getSpecialDaysInRange(fromStr, toStr) {
         if (!fromStr || !toStr || fromStr > toStr) return [];
         const result = [];
-        for (const [date, info] of specialDaysMap.entries()) {
+        for (const [date, list] of specialDaysMap.entries()) {
             if (date >= fromStr && date <= toStr) {
-                result.push(info);
+                if (Array.isArray(list)) {
+                    list.forEach(item => result.push(item));
+                } else if (list) {
+                    result.push(list);
+                }
             }
         }
         return result.sort((a, b) => a.date.localeCompare(b.date));
@@ -78,10 +90,17 @@ const CollegeWorkingDays = (() => {
     }
 
     /** Synchronizes working days and special days with backend database overrides */
-    async function syncWithBackend(apiBase) {
+    async function syncWithBackend(apiBase, dept, year, section, course) {
         try {
             const baseUrl = apiBase || window.API_BASE || '';
-            const res = await fetch(`${baseUrl}/api/WorkingDay?_=${Date.now()}`, { cache: 'no-store' });
+            const params = new URLSearchParams();
+            params.append('_', Date.now().toString());
+            if (dept) params.append('dept', dept);
+            if (year) params.append('year', year.toString());
+            if (section && section !== 'All') params.append('section', section);
+            if (course && course !== 'All') params.append('course', course);
+
+            const res = await fetch(`${baseUrl}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 if (data && Array.isArray(data.workingDays) && data.workingDays.length > 0) {
@@ -92,20 +111,36 @@ const CollegeWorkingDays = (() => {
                 if (data && Array.isArray(data.specialDays)) {
                     data.specialDays.forEach(s => {
                         if (s && s.date) {
-                            specialDaysMap.set(s.date, {
+                            if (!specialDaysMap.has(s.date)) {
+                                specialDaysMap.set(s.date, []);
+                            }
+                            specialDaysMap.get(s.date).push({
+                                id: s.id || 0,
                                 date: s.date,
                                 dayType: s.dayType || 'Holiday',
-                                name: s.name || ''
+                                name: s.name || '',
+                                department: s.department || null,
+                                course: s.course || null,
+                                year: s.year || null,
+                                section: s.section || null
                             });
                         }
                     });
                 } else if (data && Array.isArray(data.overrides)) {
                     data.overrides.forEach(o => {
                         if (o && o.date && (o.dayType || o.name || !o.isWorking)) {
-                            specialDaysMap.set(o.date, {
+                            if (!specialDaysMap.has(o.date)) {
+                                specialDaysMap.set(o.date, []);
+                            }
+                            specialDaysMap.get(o.date).push({
+                                id: o.id || 0,
                                 date: o.date,
                                 dayType: o.dayType || (o.isWorking ? 'Working' : 'Holiday'),
-                                name: o.name || (o.isWorking ? 'Working Day' : 'Holiday')
+                                name: o.name || (o.isWorking ? 'Working Day' : 'Holiday'),
+                                department: o.department || null,
+                                course: o.course || null,
+                                year: o.year || null,
+                                section: o.section || null
                             });
                         }
                     });
@@ -130,6 +165,7 @@ const CollegeWorkingDays = (() => {
         isWorkingDay,
         isOutsideCalendar,
         getSpecialDay,
+        getSpecialDaysForDate,
         getSpecialDaysInRange,
         countWorkingDays,
         syncWithBackend

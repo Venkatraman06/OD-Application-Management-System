@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using OnlineOD.Data;
 using OnlineOD.Service;
@@ -184,17 +184,40 @@ using (var scope = app.Services.CreateScope())
             if (isPostgreSql)
             {
                 db.Database.ExecuteSqlRaw(@"
+                    ALTER TABLE ""WorkingDayOverrides"" DROP CONSTRAINT IF EXISTS ""PK_WorkingDayOverrides"";
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Id"" serial PRIMARY KEY;
                     ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""DayType"" text;
                     ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Name"" text;
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Department"" text;
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Course"" text;
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Year"" integer;
+                    ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Section"" text;
                 ");
             }
             else
             {
                 db.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT * FROM sys.key_constraints WHERE name = 'PK_WorkingDayOverrides')
+                    BEGIN
+                        ALTER TABLE [WorkingDayOverrides] DROP CONSTRAINT [PK_WorkingDayOverrides];
+                    END
+                    IF COL_LENGTH('WorkingDayOverrides', 'Id') IS NULL
+                    BEGIN
+                        ALTER TABLE [WorkingDayOverrides] ADD [Id] int IDENTITY(1,1) NOT NULL;
+                        ALTER TABLE [WorkingDayOverrides] ADD CONSTRAINT [PK_WorkingDayOverrides] PRIMARY KEY ([Id]);
+                    END
                     IF COL_LENGTH('WorkingDayOverrides', 'DayType') IS NULL
                         ALTER TABLE [WorkingDayOverrides] ADD [DayType] nvarchar(max) NULL;
                     IF COL_LENGTH('WorkingDayOverrides', 'Name') IS NULL
                         ALTER TABLE [WorkingDayOverrides] ADD [Name] nvarchar(max) NULL;
+                    IF COL_LENGTH('WorkingDayOverrides', 'Department') IS NULL
+                        ALTER TABLE [WorkingDayOverrides] ADD [Department] nvarchar(max) NULL;
+                    IF COL_LENGTH('WorkingDayOverrides', 'Course') IS NULL
+                        ALTER TABLE [WorkingDayOverrides] ADD [Course] nvarchar(max) NULL;
+                    IF COL_LENGTH('WorkingDayOverrides', 'Year') IS NULL
+                        ALTER TABLE [WorkingDayOverrides] ADD [Year] int NULL;
+                    IF COL_LENGTH('WorkingDayOverrides', 'Section') IS NULL
+                        ALTER TABLE [WorkingDayOverrides] ADD [Section] nvarchar(max) NULL;
                 ");
             }
         }
@@ -204,8 +227,7 @@ using (var scope = app.Services.CreateScope())
         }
 
         var overrides = db.WorkingDayOverrides.AsNoTracking().ToList();
-        WorkingDaysCalendar.LoadOverrides(
-            overrides.Select(o => (o.Date, o.IsWorking, o.DayType, o.Name)));
+        WorkingDaysCalendar.LoadOverrides(overrides);
     }
     catch (Exception ex)
     {
