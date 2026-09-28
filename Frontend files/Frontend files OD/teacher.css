@@ -2893,7 +2893,7 @@ body {
     margin-bottom: 12px;
 }
 .clock-mode-btn {
-    padding: 6px 16px;
+    padding: 6px 14px;
     font-size: 12px;
     font-weight: 600;
     border-radius: 20px;
@@ -2901,12 +2901,14 @@ body {
     background: transparent;
     color: #94a3b8;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 [data-theme="light"] .clock-mode-btn { border-color: #cbd5e1; color: #475569; }
 .clock-mode-btn.active {
     background: #3b82f6 !important;
     color: #fff !important;
     border-color: #3b82f6 !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 .clock-face-container {
     display: flex;
@@ -2928,11 +2930,12 @@ body {
     background: #f8fafc !important;
     border-color: #e2e8f0 !important;
 }
+/* Crucial: clock-number has z-index: 10 so it stays ABOVE the clock hand and pin */
 .clock-number {
     position: absolute;
-    width: 30px;
-    height: 30px;
-    line-height: 30px;
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
     text-align: center;
     font-size: 13px;
     font-weight: 600;
@@ -2942,11 +2945,20 @@ body {
     cursor: pointer;
     pointer-events: none;
     user-select: none;
+    z-index: 10;
+    transition: color 0.15s ease;
 }
-[data-theme="light"] .clock-number { color: #334155; }
+[data-theme="light"] .clock-number { color: #1e293b !important; }
 .clock-number.active {
     color: #ffffff !important;
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 14px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    z-index: 15;
+}
+[data-theme="light"] .clock-number.active {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .clock-center-dot {
     position: absolute;
@@ -2957,7 +2969,7 @@ body {
     border-radius: 50%;
     background: #3b82f6;
     transform: translate(-50%, -50%);
-    z-index: 5;
+    z-index: 12;
     pointer-events: none;
 }
 .clock-hand {
@@ -2970,19 +2982,20 @@ body {
     transform-origin: 50% 100%;
     transform: rotate(0deg);
     pointer-events: none;
-    z-index: 3;
+    z-index: 2;
 }
 .clock-hand-pin {
     position: absolute;
-    top: -15px;
-    left: -14px;
-    width: 30px;
-    height: 30px;
+    top: -16px;
+    left: -15px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: #3b82f6;
+    background: #2563eb;
+    border: 2px solid #60a5fa;
     box-sizing: border-box;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    z-index: -1;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.6);
+    z-index: 1;
 }
 /* Quick Presets */
 .clock-quick-presets {

@@ -244,17 +244,17 @@ const AnalogClockPicker = (() => {
                     <button class="clock-picker-close" id="clockPickerCloseBtn" type="button" aria-label="Close time picker">&times;</button>
                 </div>
                 <div class="clock-picker-time-display">
-                    <span class="clock-time-val clock-time-hour active" id="clockValHour" title="Select Hours">09</span>
+                    <span class="clock-time-val clock-time-hour active" id="clockValHour" title="Click to change Hour">09</span>
                     <span class="clock-time-colon">:</span>
-                    <span class="clock-time-val clock-time-min" id="clockValMin" title="Select Minutes">00</span>
+                    <span class="clock-time-val clock-time-min" id="clockValMin" title="Click to change Minutes">00</span>
                     <div class="clock-ampm-wrap">
                         <button class="clock-ampm-btn active" id="clockBtnAM" type="button">AM</button>
                         <button class="clock-ampm-btn" id="clockBtnPM" type="button">PM</button>
                     </div>
                 </div>
                 <div class="clock-mode-toggle">
-                    <button class="clock-mode-btn active" id="clockModeHoursBtn" type="button">Hours</button>
-                    <button class="clock-mode-btn" id="clockModeMinsBtn" type="button">Minutes</button>
+                    <button class="clock-mode-btn active" id="clockModeHoursBtn" type="button">Step 1: Hour</button>
+                    <button class="clock-mode-btn" id="clockModeMinsBtn" type="button">Step 2: Minute</button>
                 </div>
                 <div class="clock-face-container">
                     <div class="clock-face" id="clockFace">
@@ -339,8 +339,8 @@ const AnalogClockPicker = (() => {
                 try { face.releasePointerCapture(e.pointerId); } catch (_) {}
                 handlePointerEvent(e, false);
                 if (mode === 'hours') {
-                    // Smooth auto-transition to minutes
-                    setTimeout(() => setMode('mins'), 220);
+                    // Smooth auto-transition from Hour to Minute on the SAME single clock
+                    setTimeout(() => setMode('mins'), 200);
                 }
             });
             face.addEventListener('pointercancel', (e) => {
