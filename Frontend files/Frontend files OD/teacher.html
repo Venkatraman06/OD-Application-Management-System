@@ -589,15 +589,16 @@
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Confirmation Modal -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal" id="confirmModal">
+    <div class="modal-overlay" id="modalOverlay" style="display:none; z-index:10050;">
+        <div class="modal confirm-modal-card" id="confirmModal">
+            <button class="modal-close" id="modalCloseBtn" type="button" aria-label="Close modal">&times;</button>
             <div class="modal-icon" id="modalIcon"></div>
             <h3 id="modalTitle">Confirm Action</h3>
             <p id="modalMessage">Are you sure you want to proceed?</p>
             <div class="modal-details" id="modalDetails"></div>
             <div class="modal-actions">
-                <button class="modal-btn cancel" id="modalCancel">Cancel</button>
-                <button class="modal-btn confirm" id="modalConfirm">Confirm</button>
+                <button type="button" class="modal-btn cancel" id="modalCancel">Cancel</button>
+                <button type="button" class="modal-btn confirm" id="modalConfirm">Confirm</button>
             </div>
         </div>
     </div>
@@ -731,9 +732,9 @@
     <div id="calHoverTooltip" class="cal-hover-tooltip" style="display:none;"></div>
 
     <!-- Calendar Day-Detail Modal -->
-    <div class="modal-overlay" id="dayDetailOverlay">
-        <div class="modal" id="dayDetailModal">
-            <button class="modal-close" id="dayDetailCloseBtn" type="button">&times;</button>
+    <div class="modal-overlay" id="dayDetailOverlay" style="display:none; z-index:9990;">
+        <div class="modal day-detail-card" id="dayDetailModal">
+            <button class="modal-close" id="dayDetailCloseBtn" type="button" aria-label="Close modal">&times;</button>
             <h3 id="dayDetailDate">Date</h3>
             <div class="day-detail-stats" id="dayDetailStats"></div>
             <div class="day-detail-list" id="dayDetailList"></div>
@@ -741,40 +742,40 @@
         </div>
     </div>
     <!-- Edit Calendar Range Modal -->
-    <div class="modal-overlay" id="addCalendarModal" style="display:none; z-index:9999;">
-        <div class="modal edit-cal-card" style="max-width: 500px; text-align: left; padding: 26px; border-radius: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;">
-                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                    Edit Calendar
+    <div class="modal-overlay" id="addCalendarModal" style="display:none; z-index:10000;">
+        <div class="modal edit-cal-modal-card" id="addCalendarCard">
+            <button type="button" id="closeAddCalendarModalBtn" class="modal-close" aria-label="Close modal">&times;</button>
+            <div class="edit-cal-header">
+                <h3 class="edit-cal-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    <span>Edit Calendar</span>
                 </h3>
-                <button type="button" id="closeAddCalendarModalBtn" class="modal-close-btn" style="background: transparent; border: none; font-size: 20px; cursor: pointer; color: inherit;">&times;</button>
             </div>
-            <form id="addCalendarForm">
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <form id="addCalendarForm" class="edit-cal-form">
+                <div class="edit-cal-row">
                     <div class="input-group">
-                        <label>From Date <span class="required">*</span></label>
+                        <label for="addCalFromDate">From Date <span class="required">*</span></label>
                         <input type="date" id="addCalFromDate" required />
                     </div>
                     <div class="input-group">
-                        <label>End Date <span class="required">*</span></label>
+                        <label for="addCalToDate">End Date <span class="required">*</span></label>
                         <input type="date" id="addCalToDate" required />
                     </div>
                 </div>
-                <div class="input-group" style="margin-bottom: 14px;">
-                    <label>Day Type <span class="required">*</span></label>
+                <div class="input-group">
+                    <label for="addCalDayType">Day Type <span class="required">*</span></label>
                     <select id="addCalDayType" required>
                         <option value="Holiday">Holiday</option>
                         <option value="Examination">Examination</option>
                     </select>
                 </div>
-                <div class="input-group" style="margin-bottom: 20px;">
-                    <label>Name <span class="required">*</span> <span style="font-weight:400;color:var(--surface-400,#94a3b8);font-size:11px">(e.g. Pongal, Semester Exam)</span></label>
+                <div class="input-group">
+                    <label for="addCalName">Name <span class="required">*</span> <span class="edit-cal-subtext">(e.g. Pongal, Semester Exam)</span></label>
                     <input type="text" id="addCalName" required placeholder="Enter holiday or examination name" />
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                    <button type="button" id="cancelAddCalendarBtn" class="btn-secondary" style="padding: 9px 18px; border-radius: 8px;">Cancel</button>
-                    <button type="submit" class="btn-primary" style="padding: 9px 20px; border-radius: 8px; font-weight: 600;">Save Calendar</button>
+                <div class="edit-cal-actions">
+                    <button type="button" id="cancelAddCalendarBtn" class="btn-secondary edit-cal-btn-cancel">Cancel</button>
+                    <button type="submit" class="btn-primary edit-cal-btn-save">Save Calendar</button>
                 </div>
             </form>
         </div>
@@ -805,9 +806,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="working-days.js?v=20260829"></script>
-    <script src="store.js?v=20260810"></script>
+    <script src="working-days.js?v=20260928"></script>
+    <script src="store.js?v=20260928"></script>
     <script src="theme.js"></script>
-    <script src="teacher.js?v=20260821"></script>
+    <script src="teacher.js?v=20260928"></script>
 </body>
 </html>

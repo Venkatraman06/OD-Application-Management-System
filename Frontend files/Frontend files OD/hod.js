@@ -1,4 +1,18 @@
 const API_BASE = 'https://od-application-backend.onrender.com';
+
+function getOrdinal(n) {
+    const num = parseInt(n, 10) || 0;
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = num % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s ?? '';
+    return d.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const hodId = localStorage.getItem('hodId');
     const dept  = localStorage.getItem('userDept');

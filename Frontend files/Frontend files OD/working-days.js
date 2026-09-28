@@ -28,6 +28,29 @@ function generateWorkingDays() {
   return days;
 }
 
+function getOrdinal(n) {
+  const num = parseInt(n, 10) || 0;
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = num % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+function escHtml(s) {
+  if (typeof document !== 'undefined') {
+    const d = document.createElement('div');
+    d.textContent = s ?? '';
+    return d.innerHTML;
+  }
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+if (typeof window !== 'undefined') {
+  window.getOrdinal = getOrdinal;
+  window.escHtml = escHtml;
+}
+
 const COLLEGE_WORKING_DAYS = generateWorkingDays();
 
 const CollegeWorkingDays = (() => {
@@ -103,7 +126,10 @@ const CollegeWorkingDays = (() => {
     /** Synchronizes working days and special days with backend database overrides */
     async function syncWithBackend(apiBase, dept, year, section, course) {
         try {
-            const baseUrl = apiBase || window.API_BASE || '';
+            const defaultBackend = 'https://od-application-backend.onrender.com';
+            const baseUrl = apiBase || (typeof window !== 'undefined' && window.API_BASE ? window.API_BASE : (typeof API_BASE !== 'undefined' ? API_BASE : defaultBackend));
+            if (!baseUrl) return;
+
             const params = new URLSearchParams();
             params.append('_', Date.now().toString());
             if (dept) params.append('dept', dept);

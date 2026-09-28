@@ -29,6 +29,12 @@ function escapeHtml(str) {
     }[c]));
 }
 
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s ?? '';
+    return d.innerHTML;
+}
+
 function populateCollegesForEvent(eventName, selectId) {
     const sel = document.getElementById(selectId);
     if (!sel) return;
@@ -528,46 +534,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         overlay.className = 'special-day-warning-overlay';
         overlay.style.zIndex = '10100';
 
-        const listContent = specials.map(s => {
+        const isMulti = specials.length > 1;
+        const headerTitle = isMulti ? 'Special Dates Detected' : 'Special Date Detected';
+
+        let listHtml = '';
+        if (isMulti) {
+            listHtml = `
+                <div style="margin: 12px 0 16px; display: flex; flex-direction: column; gap: 8px; text-align: left;">
+                    ${specials.map(s => {
+                        const [y, m, d] = s.date.split('-');
+                        const formattedDate = `${d}-${m}-${y}`;
+                        const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
+                        const nameLabel = s.name || s.dayType;
+                        const badgeColor = s.dayType === 'Holiday' ? '#f97316' : '#10b981';
+                        return `
+                            <div style="padding: 10px 14px; background: rgba(255,255,255,0.04); border-radius: 8px; border-left: 3px solid ${badgeColor};">
+                                <div style="font-size: 0.92rem; font-weight: 700; color: var(--text-primary, #f8fafc);">
+                                    ${formattedDate} — <span style="color:${badgeColor}">${escHtml(typeLabel)}</span> — <span>${escHtml(nameLabel)}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } else {
+            const s = specials[0];
             const [y, m, d] = s.date.split('-');
             const formattedDate = `${d}-${m}-${y}`;
             const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
             const nameLabel = s.name || s.dayType;
-            return `
-                <div style="margin-bottom: 12px; padding: 8px 12px; background: rgba(239,68,68,0.08); border-radius: 8px; border-left: 3px solid #ef4444;">
-                    <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary, #f8fafc);">
-                        ${formattedDate} — ${typeLabel}
+            const typeColor = s.dayType === 'Holiday' ? '#f97316' : '#10b981';
+
+            listHtml = `
+                <div style="margin: 14px 0 18px; padding: 16px; background: rgba(239,68,68,0.06); border-radius: 12px; border: 1px solid rgba(239,68,68,0.2); text-align: center;">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary, #f8fafc); margin-bottom: 4px;">
+                        ${formattedDate}
                     </div>
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #f59e0b; margin-top: 2px;">
+                    <div style="font-size: 0.95rem; font-weight: 600; color: ${typeColor}; margin-bottom: 4px;">
+                        ${escHtml(typeLabel)}
+                    </div>
+                    <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary, #f8fafc);">
                         ${escHtml(nameLabel)}
                     </div>
                 </div>
             `;
-        }).join('');
-
-        const bodyContent = `
-            <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary, #cbd5e1);">
-                This OD includes a special date:
-            </p>
-            <div style="margin: 10px 0 16px;">
-                ${listContent}
-            </div>
-            <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #94a3b8);">
-                Please choose:
-            </p>
-        `;
+        }
 
         overlay.innerHTML = `
             <div class="special-day-warning-modal" style="max-width: 440px; text-align: center; padding: 24px; border-radius: 16px;">
-                <h4 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.15rem; font-weight: 700; margin-bottom: 14px; color: #ef4444;">
+                <h4 style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: #ef4444;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    Special Date Included
+                    ${headerTitle}
                 </h4>
-                ${bodyContent}
-                <div class="sdw-actions" style="display: flex; gap: 10px; justify-content: center;">
+                ${listHtml}
+                <div class="sdw-actions" style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
                     <button type="button" class="btn-primary sdw-btn-confirm" id="sdwIncludeBtn" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                         Include Date(s)
                     </button>

@@ -1704,10 +1704,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (cancelBtn) cancelBtn.textContent = cancelText;
 
+            const onOverlayClick = (e) => {
+                if (e.target === overlay) {
+                    onCancel();
+                }
+            };
+
+            const closeBtn = document.getElementById('modalCloseBtn');
+
             const cleanup = () => {
                 overlay.classList.remove('active');
+                overlay.style.display = 'none';
                 confirmBtn.removeEventListener('click', onConfirm);
                 cancelBtn.removeEventListener('click', onCancel);
+                overlay.removeEventListener('click', onOverlayClick);
+                if (closeBtn) closeBtn.removeEventListener('click', onCancel);
             };
 
             const onConfirm = () => { cleanup(); resolve(true); };
@@ -1715,7 +1726,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             confirmBtn.addEventListener('click', onConfirm);
             cancelBtn.addEventListener('click', onCancel);
+            overlay.addEventListener('click', onOverlayClick);
+            if (closeBtn) closeBtn.addEventListener('click', onCancel);
 
+            overlay.style.display = 'flex';
             overlay.classList.add('active');
         });
     }
@@ -2114,6 +2128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let editingOriginalData = null;
 
     function openAddCalendarModalWithData(data) {
+        closeStaffDayDetail();
         editingOriginalData = data || null;
         const modal = document.getElementById('addCalendarModal');
         const fromInput = document.getElementById('addCalFromDate');
@@ -2209,12 +2224,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (actionsEl) {
             if (special) {
                 actionsEl.innerHTML = `
-                    <div style="display:flex; gap:10px; width:100%; justify-content:flex-end;">
-                        <button type="button" class="btn-primary" id="dayDetailEditSpecialBtn" style="padding:8px 16px; border-radius:8px;">
+                    <div class="day-detail-action-group">
+                        <button type="button" class="day-detail-btn edit-btn" id="dayDetailEditSpecialBtn">
                             ✏ Edit
                         </button>
-                        <button type="button" class="btn-secondary" id="dayDetailDeleteSpecialBtn" style="padding:8px 16px; border-radius:8px; color:#ef4444; border-color:rgba(239,68,68,0.4);">
+                        <button type="button" class="day-detail-btn delete-btn" id="dayDetailDeleteSpecialBtn">
                             🗑 Delete
+                        </button>
+                        <button type="button" class="day-detail-btn close-btn" id="dayDetailCloseSpecialBtn">
+                            Close
                         </button>
                     </div>
                 `;
@@ -2227,21 +2245,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        dayDetailOverlay?.classList.add('active');
+        if (dayDetailOverlay) {
+            dayDetailOverlay.style.display = 'flex';
+            dayDetailOverlay.classList.add('active');
+        }
     }
 
     function closeStaffDayDetail() {
-        dayDetailOverlay?.classList.remove('active');
+        if (dayDetailOverlay) {
+            dayDetailOverlay.classList.remove('active');
+            dayDetailOverlay.style.display = 'none';
+        }
     }
 
-    document.getElementById('dayDetailCloseBtn')?.addEventListener('click', closeStaffDayDetail);
+    document.getElementById('dayDetailCloseBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeStaffDayDetail();
+    });
     dayDetailOverlay?.addEventListener('click', (e) => {
-        if (e.target === dayDetailOverlay) closeStaffDayDetail();
+        if (e.target === dayDetailOverlay) {
+            e.stopPropagation();
+            closeStaffDayDetail();
+        }
     });
 
     document.getElementById('calendarGrid')?.addEventListener('click', (e) => {
         const cell = e.target.closest('.calendar-day[data-date]');
         if (!cell) return;
+        e.stopPropagation();
         const dateStr = cell.dataset.date;
         openStaffDayDetail(dateStr);
     });
@@ -2280,17 +2311,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('dayDetailActions')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const editBtn = e.target.closest('#dayDetailEditSpecialBtn');
         const deleteBtn = e.target.closest('#dayDetailDeleteSpecialBtn');
+        const closeActionBtn = e.target.closest('#dayDetailCloseSpecialBtn');
         const addBtn = e.target.closest('#dayDetailAddSpecialBtn');
         if (!dayDetailCurrentDate) return;
 
+        if (closeActionBtn) {
+            e.preventDefault();
+            closeStaffDayDetail();
+            return;
+        }
+
         if (editBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
             closeStaffDayDetail();
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(dayDetailCurrentDate, dept, year, section)
+                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
                 : null;
-            const rangeInfo = findSpecialDayRange(dayDetailCurrentDate, special, dept, year, section);
+            const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
             openAddCalendarModalWithData({
                 fromDate: rangeInfo.fromDate,
                 toDate: rangeInfo.toDate,
@@ -2304,14 +2345,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (deleteBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(dayDetailCurrentDate, dept, year, section)
+                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
                 : null;
-            const rangeInfo = findSpecialDayRange(dayDetailCurrentDate, special, dept, year, section);
+            const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
             const rangeLabel = rangeInfo.fromDate === rangeInfo.toDate
                 ? rangeInfo.fromDate
                 : `From ${rangeInfo.fromDate} to ${rangeInfo.toDate}`;
-            const entryTitle = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : dayDetailCurrentDate;
+            const entryTitle = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : curDate;
+
+            closeStaffDayDetail();
+
             const ok = await showConfirmModal({
                 title: 'Delete Calendar Entry',
                 message: `Are you sure you want to delete this calendar entry?\n\n${entryTitle}\n(${rangeLabel})`,
@@ -2329,7 +2375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: JSON.stringify({
                         fromDate: rangeInfo.fromDate,
                         toDate: rangeInfo.toDate,
-                        date: dayDetailCurrentDate,
+                        date: curDate,
                         name: rangeInfo.name || null,
                         dayType: rangeInfo.dayType || null,
                         department: dept || null,
@@ -2345,7 +2391,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 showToast('success', 'Calendar entry deleted successfully.');
-                closeStaffDayDetail();
 
                 if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
                     const staffCourse = (localStorage.getItem('userCourse') || '').trim() || null;
@@ -2362,13 +2407,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (addBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
             closeStaffDayDetail();
             openAddCalendarModalWithData({
-                fromDate: dayDetailCurrentDate,
-                toDate: dayDetailCurrentDate,
+                fromDate: curDate,
+                toDate: curDate,
                 dayType: 'Holiday',
                 name: ''
             });
+            return;
         }
     });
 
@@ -2379,9 +2427,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cancelBtn = document.getElementById('cancelAddCalendarBtn');
         const form = document.getElementById('addCalendarForm');
 
-        if (!openBtn || !modal) return;
+        if (!modal) return;
 
         function open() {
+            closeStaffDayDetail();
             editingOriginalData = null;
             modal.style.display = 'flex';
             modal.classList.add('active');
@@ -2392,9 +2441,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             modal.classList.remove('active');
         }
 
-        openBtn.onclick = open;
-        if (closeBtn) closeBtn.onclick = close;
-        if (cancelBtn) cancelBtn.onclick = close;
+        if (openBtn) openBtn.onclick = (e) => { e.stopPropagation(); open(); };
+        if (closeBtn) closeBtn.onclick = (e) => { e.stopPropagation(); close(); };
+        if (cancelBtn) cancelBtn.onclick = (e) => { e.stopPropagation(); close(); };
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                e.stopPropagation();
+                close();
+            }
+        });
 
         if (form) {
             form.onsubmit = async (e) => {
