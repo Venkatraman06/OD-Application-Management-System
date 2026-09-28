@@ -1,4 +1,4 @@
-/**
+﻿/**
  * College Working-Days Calendar
  * ------------------------------
  * Enabled for the full current year (2026): every Mon–Sat date from
@@ -163,7 +163,8 @@ const CollegeWorkingDays = (() => {
                             department: s.department || null,
                             course: s.course || null,
                             year: s.year || null,
-                            section: s.section || null
+                            section: s.section || null,
+                            addedBy: s.addedBy || s.AddedBy || null
                         });
                     }
                 });
@@ -180,7 +181,8 @@ const CollegeWorkingDays = (() => {
                             department: o.department || null,
                             course: o.course || null,
                             year: o.year || null,
-                            section: o.section || null
+                            section: o.section || null,
+                            addedBy: o.addedBy || o.AddedBy || null
                         });
                     }
                 });

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
@@ -47,18 +47,33 @@ namespace OnlineOD.Controllers
                 .OrderBy(o => o.Date)
                 .ToListAsync();
 
+            var staffList = await _context.Staffs.AsNoTracking().Where(s => s.IsActive).ToListAsync();
+
             var specialDays = overrides
                 .Where(o => !string.IsNullOrEmpty(o.DayType) || !string.IsNullOrEmpty(o.Name) || !o.IsWorking)
-                .Select(o => new SpecialDayItem
+                .Select(o =>
                 {
-                    Id = o.Id,
-                    Date = o.Date,
-                    DayType = o.DayType ?? (o.IsWorking ? "Working" : "Holiday"),
-                    Name = o.Name ?? (o.IsWorking ? "Working Day" : "Holiday"),
-                    Department = o.Department,
-                    Course = o.Course,
-                    Year = o.Year,
-                    Section = o.Section
+                    var matchedStaff = staffList.FirstOrDefault(s =>
+                        (!string.IsNullOrEmpty(o.Department) && (s.Department == o.Department || s.Department.Contains(o.Department) || o.Department.Contains(s.Department))) &&
+                        (!o.Year.HasValue || o.Year == 0 || s.Year == o.Year) &&
+                        (string.IsNullOrEmpty(o.Section) || o.Section == "All" || s.Section == o.Section)
+                    );
+                    if (matchedStaff == null && !string.IsNullOrEmpty(o.Department))
+                    {
+                        matchedStaff = staffList.FirstOrDefault(s => s.Department == o.Department || s.Department.Contains(o.Department) || o.Department.Contains(s.Department));
+                    }
+                    return new SpecialDayItem
+                    {
+                        Id = o.Id,
+                        Date = o.Date,
+                        DayType = o.DayType ?? (o.IsWorking ? "Working" : "Holiday"),
+                        Name = o.Name ?? (o.IsWorking ? "Working Day" : "Holiday"),
+                        Department = o.Department,
+                        Course = o.Course,
+                        Year = o.Year,
+                        Section = o.Section,
+                        AddedBy = matchedStaff?.Name ?? "Staff"
+                    };
                 }).ToList();
 
             return Ok(new
@@ -100,16 +115,30 @@ namespace OnlineOD.Controllers
             }
 
             var dbOverrides = await q.OrderBy(o => o.Date).ToListAsync();
-            var list = dbOverrides.Select(o => new SpecialDayItem
+            var staffListCheck = await _context.Staffs.AsNoTracking().Where(s => s.IsActive).ToListAsync();
+            var list = dbOverrides.Select(o =>
             {
-                Id = o.Id,
-                Date = o.Date,
-                DayType = o.DayType ?? (o.IsWorking ? "Working" : "Holiday"),
-                Name = o.Name ?? (o.IsWorking ? "Working Day" : "Holiday"),
-                Department = o.Department,
-                Course = o.Course,
-                Year = o.Year,
-                Section = o.Section
+                var matchedStaff = staffListCheck.FirstOrDefault(s =>
+                    (!string.IsNullOrEmpty(o.Department) && (s.Department == o.Department || s.Department.Contains(o.Department) || o.Department.Contains(s.Department))) &&
+                    (!o.Year.HasValue || o.Year == 0 || s.Year == o.Year) &&
+                    (string.IsNullOrEmpty(o.Section) || o.Section == "All" || s.Section == o.Section)
+                );
+                if (matchedStaff == null && !string.IsNullOrEmpty(o.Department))
+                {
+                    matchedStaff = staffListCheck.FirstOrDefault(s => s.Department == o.Department || s.Department.Contains(o.Department) || o.Department.Contains(s.Department));
+                }
+                return new SpecialDayItem
+                {
+                    Id = o.Id,
+                    Date = o.Date,
+                    DayType = o.DayType ?? (o.IsWorking ? "Working" : "Holiday"),
+                    Name = o.Name ?? (o.IsWorking ? "Working Day" : "Holiday"),
+                    Department = o.Department,
+                    Course = o.Course,
+                    Year = o.Year,
+                    Section = o.Section,
+                    AddedBy = matchedStaff?.Name ?? "Staff"
+                };
             }).ToList();
 
             if (list.Count == 0)
@@ -296,11 +325,22 @@ namespace OnlineOD.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Apply to live memory with assigned Ids
+            var creatorName = !string.IsNullOrWhiteSpace(dto.AddedBy) ? dto.AddedBy.Trim() : (!string.IsNullOrWhiteSpace(dto.StaffName) ? dto.StaffName.Trim() : null);
+            if (string.IsNullOrWhiteSpace(creatorName))
+            {
+                var staffMatch = await _context.Staffs.AsNoTracking().FirstOrDefaultAsync(s =>
+                    s.IsActive &&
+                    (!string.IsNullOrEmpty(cleanDept) && (s.Department == cleanDept || s.Department.Contains(cleanDept) || cleanDept.Contains(s.Department))) &&
+                    (!cleanYear.HasValue || s.Year == cleanYear.Value) &&
+                    (string.IsNullOrEmpty(cleanSec) || s.Section == cleanSec));
+                creatorName = staffMatch?.Name ?? "Staff";
+            }
+
+            // Apply to live memory with assigned Ids and creator name
             foreach (var rec in recordsToApply)
             {
                 WorkingDaysCalendar.ApplyOverride(rec.Date, rec.IsWorking, rec.DayType, rec.Name,
-                    rec.Department, rec.Course, rec.Year, rec.Section, rec.Id);
+                    rec.Department, rec.Course, rec.Year, rec.Section, rec.Id, creatorName);
             }
 
             return Ok(new
@@ -417,6 +457,8 @@ namespace OnlineOD.Controllers
         public string? OriginalName { get; set; }
         public string? OriginalFromDate { get; set; }
         public string? OriginalToDate { get; set; }
+        public string? AddedBy { get; set; }
+        public string? StaffName { get; set; }
     }
 
     public class DeleteCalendarDto

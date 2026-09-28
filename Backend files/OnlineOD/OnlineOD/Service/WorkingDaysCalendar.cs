@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using OnlineOD.Models;
@@ -7,9 +7,9 @@ namespace OnlineOD.Service
 {
     /// <summary>
     /// College working-days calendar. Seeded dynamically for the current
-    /// year: every Mon–Sat date from today through Dec 31 is enabled as a
+    /// year: every Monï¿½Sat date from today through Dec 31 is enabled as a
     /// working day (Sundays excluded). OD applications are only permitted
-    /// on the dates that appear here — this is the server-side twin of the
+    /// on the dates that appear here ï¿½ this is the server-side twin of the
     /// working-days.js used on the student apply forms, so the rule is
     /// enforced even for requests that bypass the browser UI.
     ///
@@ -20,7 +20,7 @@ namespace OnlineOD.Service
     {
         private static readonly object _lock = new object();
 
-        // Seed list: every Mon–Sat from today through Dec 31 of the current year.
+        // Seed list: every Monï¿½Sat from today through Dec 31 of the current year.
         private static readonly HashSet<string> SeedWorkingDays = GenerateSeedWorkingDays();
 
         private static HashSet<string> GenerateSeedWorkingDays()
@@ -59,7 +59,7 @@ namespace OnlineOD.Service
         public static string MinDate => WorkingDays.Count > 0 ? WorkingDays.Min() : SeedMinDate;
         public static string MaxDate => WorkingDays.Count > 0 ? WorkingDays.Max() : SeedMaxDate;
 
-        /// <summary>Applies a batch of calendar overrides on top of the seed list — called once at app startup.</summary>
+        /// <summary>Applies a batch of calendar overrides on top of the seed list ï¿½ called once at app startup.</summary>
         public static void LoadOverrides(IEnumerable<WorkingDayOverride> overrides)
         {
             lock (_lock)
@@ -89,16 +89,16 @@ namespace OnlineOD.Service
         }
 
         public static bool ApplyOverride(string dateStr, bool isWorking, string? dayType = null, string? name = null,
-            string? department = null, string? course = null, int? year = null, string? section = null, int id = 0)
+            string? department = null, string? course = null, int? year = null, string? section = null, int id = 0, string? addedBy = null)
         {
             lock (_lock)
             {
-                return ApplyOverrideInternal(dateStr, isWorking, dayType, name, department, course, year, section, id);
+                return ApplyOverrideInternal(dateStr, isWorking, dayType, name, department, course, year, section, id, addedBy);
             }
         }
 
         private static bool ApplyOverrideInternal(string dateStr, bool isWorking, string? dayType = null, string? name = null,
-            string? department = null, string? course = null, int? year = null, string? section = null, int id = 0)
+            string? department = null, string? course = null, int? year = null, string? section = null, int id = 0, string? addedBy = null)
         {
             var normalized = Normalize(dateStr);
             if (normalized == null) return false;
@@ -133,6 +133,7 @@ namespace OnlineOD.Service
                     existing.Course = cleanCourse;
                     existing.Year = cleanYear;
                     existing.Section = cleanSec;
+                    if (!string.IsNullOrWhiteSpace(addedBy)) existing.AddedBy = addedBy;
                     if (id > 0) existing.Id = id;
                 }
                 else
@@ -146,7 +147,8 @@ namespace OnlineOD.Service
                         Department = cleanDept,
                         Course = cleanCourse,
                         Year = cleanYear,
-                        Section = cleanSec
+                        Section = cleanSec,
+                        AddedBy = addedBy
                     });
                 }
             }
@@ -279,5 +281,6 @@ namespace OnlineOD.Service
         public string? Course { get; set; }
         public int? Year { get; set; }
         public string? Section { get; set; }
+        public string? AddedBy { get; set; }
     }
 }

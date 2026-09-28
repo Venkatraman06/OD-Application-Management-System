@@ -2588,7 +2588,10 @@ select.cert-text-input {
 
 /* ── Saturday / Non-working day confirm modal message ── */
 .saturday-modal-msg {
-    color: #94a3b8;
+    color: #cbd5e1;
+    white-space: pre-line;
+    line-height: 1.55;
+    font-size: 0.92rem;
 }
 [data-theme="light"] .saturday-modal-msg {
     color: #78350f !important;
@@ -2660,20 +2663,31 @@ select.cert-text-input {
     color: #fff;
     border-color: var(--primary-500, #6366f1);
 }
+.student-cal-modal .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
 .student-cal-modal .calendar-day {
-    aspect-ratio: 1;
+    min-width: 0;
+    min-height: 52px;
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     position: relative;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 12.5px;
+    font-weight: 600;
     cursor: default;
     transition: all 0.2s;
+    overflow: hidden;
+    padding: 5px 2px;
+    box-sizing: border-box;
 }
 .student-cal-modal .calendar-day.empty {
     background: transparent;
@@ -2699,14 +2713,25 @@ select.cert-text-input {
     border-color: rgba(16, 185, 129, 0.5) !important;
     color: #34d399 !important;
 }
+.student-cal-modal .calendar-day span:first-child {
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
 .student-cal-modal .cal-special-label {
-    font-size: 8.5px;
-    max-width: 90%;
+    font-size: 8px;
+    font-weight: 600;
+    width: 100%;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    line-height: 1.1;
-    margin-top: 2px;
+    line-height: 1.15;
+    margin-top: 1px;
+    text-align: center;
+    padding: 1px 2px;
+    border-radius: 3px;
+    box-sizing: border-box;
+    display: block;
 }
 .student-cal-modal .dot {
     display: inline-block;

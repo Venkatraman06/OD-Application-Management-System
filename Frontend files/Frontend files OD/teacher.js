@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const facultyId = localStorage.getItem('facultyId');
@@ -1691,11 +1691,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
+            const detailsEl = document.getElementById('modalDetails');
+            if (detailsEl) {
+                detailsEl.innerHTML = '';
+                detailsEl.style.display = 'none';
+            }
+
             if (titleEl) titleEl.textContent = title;
             if (msgEl)   msgEl.textContent   = message;
             if (iconEl)  {
-                iconEl.textContent = icon;
-                iconEl.className = 'modal-icon ' + (isDanger ? 'icon-danger' : (isSuccess ? 'icon-success' : ''));
+                if (icon) {
+                    iconEl.textContent = icon;
+                    iconEl.className = 'modal-icon ' + (isDanger ? 'icon-danger' : (isSuccess ? 'icon-success' : ''));
+                    iconEl.style.display = 'flex';
+                } else {
+                    iconEl.textContent = '';
+                    iconEl.className = 'modal-icon';
+                    iconEl.style.display = 'none';
+                }
             }
             if (confirmBtn) {
                 confirmBtn.textContent = confirmText;
@@ -2226,10 +2239,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actionsEl.innerHTML = `
                     <div class="day-detail-action-group">
                         <button type="button" class="day-detail-btn edit-btn" id="dayDetailEditSpecialBtn">
-                            ✏ Edit
+                            Edit
                         </button>
                         <button type="button" class="day-detail-btn delete-btn" id="dayDetailDeleteSpecialBtn">
-                            🗑 Delete
+                            Delete
                         </button>
                         <button type="button" class="day-detail-btn close-btn" id="dayDetailCloseSpecialBtn">
                             Close
@@ -2239,7 +2252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 actionsEl.innerHTML = `
                     <button type="button" class="dd-cal-action-btn dd-add-btn" id="dayDetailAddSpecialBtn">
-                        + Add Holiday / Exam on this Date
+                        Add Holiday / Exam on this Date
                     </button>
                 `;
             }
@@ -2344,6 +2357,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+                const actionsEl = document.getElementById('dayDetailActions');
+
         if (deleteBtn) {
             e.preventDefault();
             const curDate = dayDetailCurrentDate;
@@ -2351,22 +2366,58 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
                 : null;
             const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
-            const rangeLabel = rangeInfo.fromDate === rangeInfo.toDate
-                ? rangeInfo.fromDate
-                : `From ${rangeInfo.fromDate} to ${rangeInfo.toDate}`;
-            const entryTitle = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : curDate;
+            const typeAndName = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : rangeInfo.dayType;
 
-            closeStaffDayDetail();
+            if (actionsEl) {
+                actionsEl.innerHTML = `
+                    <div class="day-detail-delete-confirm">
+                        <div class="delete-confirm-title">Delete this calendar entry?</div>
+                        <div class="delete-confirm-details">
+                            <strong>${escHtml(typeAndName)}</strong><br>
+                            <span>From: ${escHtml(rangeInfo.fromDate)}</span> &bull; <span>To: ${escHtml(rangeInfo.toDate)}</span>
+                        </div>
+                        <div class="delete-confirm-actions">
+                            <button type="button" class="day-detail-btn cancel-delete-btn" id="dayDetailCancelDeleteBtn">Cancel</button>
+                            <button type="button" class="day-detail-btn confirm-delete-btn" id="dayDetailConfirmDeleteBtn">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return;
+        }
 
-            const ok = await showConfirmModal({
-                title: 'Delete Calendar Entry',
-                message: `Are you sure you want to delete this calendar entry?\n\n${entryTitle}\n(${rangeLabel})`,
-                icon: '🗑',
-                confirmText: 'Delete Entry',
-                cancelText: 'Cancel',
-                isDanger: true
-            });
-            if (!ok) return;
+        const cancelDeleteBtn = e.target.closest('#dayDetailCancelDeleteBtn');
+        if (cancelDeleteBtn) {
+            e.preventDefault();
+            if (actionsEl) {
+                actionsEl.innerHTML = `
+                    <div class="day-detail-action-group">
+                        <button type="button" class="day-detail-btn edit-btn" id="dayDetailEditSpecialBtn">
+                            Edit
+                        </button>
+                        <button type="button" class="day-detail-btn delete-btn" id="dayDetailDeleteSpecialBtn">
+                            Delete
+                        </button>
+                        <button type="button" class="day-detail-btn close-btn" id="dayDetailCloseSpecialBtn">
+                            Close
+                        </button>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        const confirmDeleteBtn = e.target.closest('#dayDetailConfirmDeleteBtn');
+        if (confirmDeleteBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
+            const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
+                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
+                : null;
+            const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
+
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.textContent = 'Deleting...';
 
             try {
                 const res = await fetch(`${API_BASE}/api/WorkingDay/DeleteCalendar`, {
@@ -2387,10 +2438,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!res.ok) {
                     const errText = await res.text();
                     showToast('error', errText || 'Failed to delete calendar entry');
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.textContent = 'Delete';
                     return;
                 }
 
                 showToast('success', 'Calendar entry deleted successfully.');
+                closeStaffDayDetail();
 
                 if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
                     const staffCourse = (localStorage.getItem('userCourse') || '').trim() || null;
@@ -2402,6 +2456,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 console.error('Delete calendar error:', err);
                 showToast('error', 'Network error deleting calendar entry');
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.textContent = 'Delete';
             }
             return;
         }
@@ -2482,6 +2538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     course: staffCourse,
                     year: year ? parseInt(year, 10) : null,
                     section: section || null,
+                    addedBy: (localStorage.getItem('userName') || '').trim() || null,
                     originalName: editingOriginalData?.originalName || null,
                     originalFromDate: editingOriginalData?.originalFromDate || null,
                     originalToDate: editingOriginalData?.originalToDate || null

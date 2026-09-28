@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 
 function getOrdinal(n) {
     const num = parseInt(n, 10) || 0;
@@ -1797,37 +1797,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Format date for display: DD-MM-YYYY
             const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
 
+            // Helper to format date string YYYY-MM-DD -> DD Mon YYYY
+            function formatTooltipDate(dStr) {
+                if (!dStr) return '';
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const parts = dStr.split('-');
+                if (parts.length === 3) {
+                    const y = parts[0];
+                    const m = parseInt(parts[1], 10) - 1;
+                    const d = String(parseInt(parts[2], 10)).padStart(2, '0');
+                    return `${d} ${months[m] || parts[1]} ${y}`;
+                }
+                return dStr;
+            }
+
+            // Helper to find date range for a special day entry
+            function findSpecialRangeForHod(dateStr, s) {
+                let fromDate = dateStr;
+                let toDate = dateStr;
+                if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
+                    const matchingDates = [];
+                    for (const [d, list] of CollegeWorkingDays.specialDaysMap.entries()) {
+                        const arr = Array.isArray(list) ? list : (list ? [list] : []);
+                        const match = arr.find(item =>
+                            item.name === s.name &&
+                            item.dayType === s.dayType &&
+                            (!s.department || !item.department || item.department.toLowerCase().includes(s.department.toLowerCase()) || s.department.toLowerCase().includes(item.department.toLowerCase())) &&
+                            (!s.year || item.year === s.year) &&
+                            (!s.section || s.section === 'All' || item.section === 'All' || item.section === s.section)
+                        );
+                        if (match) matchingDates.push(d);
+                    }
+                    if (matchingDates.length > 0) {
+                        matchingDates.sort();
+                        fromDate = matchingDates[0];
+                        toDate = matchingDates[matchingDates.length - 1];
+                    }
+                }
+                return { fromDate, toDate };
+            }
+
             // Build multi-entry hover tooltip content
-            let tooltipPlain = formattedDate;
             let tooltipHtml = '';
 
             if (specials.length > 0) {
-                const plainLines = [formattedDate, ''];
-                specials.forEach(s => {
-                    const sCourse = s.course || s.department || dept || 'Computer Science';
-                    const sYearText = s.year ? `${s.year}${getOrdinal(s.year)} Year` : 'All Years';
-                    const sSecText = s.section && s.section !== 'All' ? `Section ${s.section}` : 'All Sections';
-                    plainLines.push(`${s.dayType} — ${s.name}`);
-                    plainLines.push(`${sCourse} — ${sYearText} — ${sSecText}`);
-                    plainLines.push('');
-                });
-                tooltipPlain = plainLines.join('\n').trim();
-
                 tooltipHtml = `
-                    <div class="cal-tt-header">${formattedDate}</div>
                     <div class="cal-tt-body">
                         ${specials.map(s => {
-                            const badgeCls = s.dayType === 'Holiday' ? 'cal-tt-holiday' : 'cal-tt-exam';
+                            const range = findSpecialRangeForHod(dateStr, s);
+                            const fromFormatted = formatTooltipDate(range.fromDate);
+                            const toFormatted = formatTooltipDate(range.toDate);
                             const sCourse = s.course || s.department || dept || 'Computer Science';
                             const sYearText = s.year ? `${s.year}${getOrdinal(s.year)} Year` : 'All Years';
                             const sSecText = s.section && s.section !== 'All' ? `Section ${s.section}` : 'All Sections';
+                            const addedByText = s.addedBy || 'Staff';
+                            const badgeCls = s.dayType === 'Holiday' ? 'cal-tt-holiday' : 'cal-tt-exam';
+
                             return `
                                 <div class="cal-tt-entry">
-                                    <div class="cal-tt-title-row">
-                                        <span class="cal-tt-badge ${badgeCls}">${s.dayType}</span>
-                                        <strong>${escHtml(s.name)}</strong>
+                                    <div class="cal-tt-type-row">
+                                        <span class="cal-tt-badge ${badgeCls}">${escHtml(s.dayType)}</span>
                                     </div>
-                                    <div class="cal-tt-sub">${escHtml(sCourse)} &bull; ${sYearText} &bull; ${sSecText}</div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">Name:</span> <span class="cal-tt-val"><strong>${escHtml(s.name || s.dayType)}</strong></span></div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">From:</span> <span class="cal-tt-val">${fromFormatted}</span></div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">To:</span> <span class="cal-tt-val">${toFormatted}</span></div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">Class:</span> <span class="cal-tt-val">${escHtml(sCourse)}</span></div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">Year:</span> <span class="cal-tt-val">${sYearText}</span></div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">Section:</span> <span class="cal-tt-val">${sSecText}</span></div>
+                                    <div class="cal-tt-field"><span class="cal-tt-lbl">Added/Edited by:</span> <span class="cal-tt-val">${escHtml(addedByText)}</span></div>
                                 </div>
                             `;
                         }).join('')}
@@ -1839,11 +1876,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const extraClass = hasHoliday ? ' cal-holiday' : '';
                 html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}"
                             data-date="${dateStr}"
-                            ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}
-                            title="${escHtml(tooltipPlain)}">
+                            ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}>
                             <span class="cal-day-num">${day}</span>
                             ${hasHoliday && primaryName ? `<span class="cal-special-label">${escHtml(primaryName)}</span>` : ''}
-                            ${wasEdited ? '<span class="cal-edit-dot" title="Edited by HOD"></span>' : ''}
+                            ${wasEdited ? '<span class="cal-edit-dot"></span>' : ''}
                          </div>`;
                 continue;
             }
@@ -1854,16 +1890,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const appliedCount  = covering.length;
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
-            const dayTitle = specials.length > 0 ? tooltipPlain : dateStr;
 
             html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}"
                         data-date="${dateStr}"
-                        ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}
-                        title="${escHtml(dayTitle)}">
+                        ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}>
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
                         <span class="cal-day-num">${day}</span>
                         ${hasExam && primaryName ? `<span class="cal-special-label">${escHtml(primaryName)}</span>` : ''}
-                        ${wasEdited ? '<span class="cal-edit-dot" title="Edited by HOD"></span>' : ''}
+                        ${wasEdited ? '<span class="cal-edit-dot"></span>' : ''}
                         ${hasActivity ? `<span class="cal-day-counts">
                             <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
                         </span>` : ''}
@@ -1922,6 +1956,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
     });
 
+    let editingOriginalData = null;
+
+    function openAddCalendarModalWithData(data) {
+        closeDayDetail();
+        editingOriginalData = data || null;
+        const modal = document.getElementById('addCalendarModal');
+        const fromInput = document.getElementById('addCalFromDate');
+        const toInput   = document.getElementById('addCalToDate');
+        const typeInput = document.getElementById('addCalDayType');
+        const nameInput = document.getElementById('addCalName');
+        const yearInput = document.getElementById('addCalYear');
+        const secInput  = document.getElementById('addCalSection');
+
+        if (fromInput) fromInput.value = data?.fromDate || '';
+        if (toInput)   toInput.value   = data?.toDate   || '';
+        if (typeInput) typeInput.value = data?.dayType  || 'Holiday';
+        if (nameInput) nameInput.value = data?.name     || '';
+        if (yearInput) yearInput.value = data?.year !== null && data?.year !== undefined ? data.year.toString() : '';
+        if (secInput)  secInput.value  = data?.section  || '';
+
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+    }
+
     function initAddCalendarModal() {
         const openBtn = document.getElementById('openAddCalendarModalBtn');
         const modal = document.getElementById('addCalendarModal');
@@ -1929,20 +1989,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cancelBtn = document.getElementById('cancelAddCalendarBtn');
         const form = document.getElementById('addCalendarForm');
 
-        if (!openBtn || !modal) return;
+        if (!modal) return;
 
         function open() {
+            closeDayDetail();
+            editingOriginalData = null;
+            if (form) form.reset();
+            const yearInput = document.getElementById('addCalYear');
+            const secInput  = document.getElementById('addCalSection');
+            if (yearInput && selectedCalYear) yearInput.value = selectedCalYear;
+            if (secInput && selectedCalSection && selectedCalSection !== 'All') secInput.value = selectedCalSection;
+
             modal.style.display = 'flex';
             modal.classList.add('active');
         }
         function close() {
+            editingOriginalData = null;
             modal.style.display = 'none';
             modal.classList.remove('active');
         }
 
-        openBtn.onclick = open;
+        if (openBtn) openBtn.onclick = open;
         if (closeBtn) closeBtn.onclick = close;
         if (cancelBtn) cancelBtn.onclick = close;
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) close();
+        });
 
         if (form) {
             form.onsubmit = async (e) => {
@@ -1972,6 +2044,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 const hodCourse = (localStorage.getItem('userCourse') || '').trim() || null;
+                const hodName = (localStorage.getItem('userName') || 'HOD').trim();
                 const payload = {
                     fromDate,
                     toDate,
@@ -1980,7 +2053,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     department: dept || null,
                     course: hodCourse,
                     year: yearVal ? parseInt(yearVal, 10) : null,
-                    section: secVal || null
+                    section: secVal || null,
+                    addedBy: hodName,
+                    originalName: editingOriginalData?.originalName || null,
+                    originalFromDate: editingOriginalData?.originalFromDate || null,
+                    originalToDate: editingOriginalData?.originalToDate || null
                 };
 
                 try {
@@ -2024,8 +2101,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dayDetailOverlay = document.getElementById('dayDetailOverlay');
     let dayDetailCurrentDate = null;
 
+        function findSpecialDayRangeHod(dateStr, special) {
+        if (!special || !special.name) {
+            return {
+                fromDate: dateStr,
+                toDate: dateStr,
+                dayType: special?.dayType || 'Holiday',
+                name: special?.name || ''
+            };
+        }
+        let fromDate = dateStr;
+        let toDate = dateStr;
+        if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
+            const matchingDates = [];
+            for (const [d, list] of CollegeWorkingDays.specialDaysMap.entries()) {
+                const arr = Array.isArray(list) ? list : (list ? [list] : []);
+                const match = arr.find(item =>
+                    item.name === special.name &&
+                    item.dayType === special.dayType &&
+                    (!special.department || !item.department || item.department.toLowerCase().includes(special.department.toLowerCase()) || special.department.toLowerCase().includes(item.department.toLowerCase())) &&
+                    (!special.year || item.year === special.year) &&
+                    (!special.section || special.section === 'All' || item.section === 'All' || item.section === special.section)
+                );
+                if (match) matchingDates.push(d);
+            }
+            if (matchingDates.length > 0) {
+                matchingDates.sort();
+                fromDate = matchingDates[0];
+                toDate = matchingDates[matchingDates.length - 1];
+            }
+        }
+        return {
+            fromDate,
+            toDate,
+            dayType: special.dayType,
+            name: special.name
+        };
+    }
+
     function openDayDetail(dateStr) {
         dayDetailCurrentDate = dateStr;
+        const allDateSpecials = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysForDate
+            ? CollegeWorkingDays.getSpecialDaysForDate(dateStr)
+            : [];
+        const specials = allDateSpecials.filter(s => {
+            if (selectedCalYear && s.year && s.year !== parseInt(selectedCalYear, 10)) return false;
+            if (selectedCalSection && s.section && s.section !== 'All' && s.section.toUpperCase() !== selectedCalSection.toUpperCase()) return false;
+            return true;
+        });
+        const special = specials[0] || (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(dateStr) : null);
+
         const isWorking = isEffectiveWorkingDay(dateStr);
         const covering = isWorking ? odsCoveringDate(dateStr) : [];
         const applied  = covering.length;
@@ -2040,18 +2165,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const statsEl = document.getElementById('dayDetailStats');
         if (statsEl) {
-            statsEl.innerHTML = isWorking ? `
-                <span class="dd-pill applied">${applied} Applied</span>
-                <span class="dd-pill approved">${approved} Approved</span>
-                <span class="dd-pill rejected">${rejected} Rejected</span>
-                <span class="dd-pill pending">${Math.max(pending, 0)} Pending</span>
-            ` : `<span class="dd-pill rejected">Holiday / Non-working day</span>`;
+            if (special) {
+                const badgeCls = special.dayType === 'Holiday' ? 'rejected' : 'approved';
+                statsEl.innerHTML = `
+                    <span class="dd-pill ${badgeCls}">${escHtml(special.dayType)}: ${escHtml(special.name || special.dayType)}</span>
+                    ${covering.length ? `<span class="dd-pill applied">${applied} OD Applied</span>` : ''}
+                `;
+            } else {
+                statsEl.innerHTML = isWorking ? `
+                    <span class="dd-pill applied">${applied} Applied</span>
+                    <span class="dd-pill approved">${approved} Approved</span>
+                    <span class="dd-pill rejected">${rejected} Rejected</span>
+                    <span class="dd-pill pending">${Math.max(pending, 0)} Pending</span>
+                ` : `<span class="dd-pill rejected">Holiday / Non-working day</span>`;
+            }
         }
 
         const listEl = document.getElementById('dayDetailList');
         if (listEl) {
             if (!covering.length) {
-                listEl.innerHTML = '<div class="dd-empty">No OD requests cover this date.</div>';
+                listEl.innerHTML = special
+                    ? `<div class="dd-empty">This date is marked as <strong>${escHtml(special.dayType)} (${escHtml(special.name || special.dayType)})</strong>.</div>`
+                    : '<div class="dd-empty">No OD requests cover this date.</div>';
             } else {
                 listEl.innerHTML = covering.map(o => {
                     const event   = o.event ?? o.Event ?? 'OD';
@@ -2067,8 +2202,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return `
                         <div class="dd-row">
                             <div>
-                                <div class="dd-event">${event}</div>
-                                <div class="dd-sub">${who}</div>
+                                <div class="dd-event">${escHtml(event)}</div>
+                                <div class="dd-sub">${escHtml(who)}</div>
                             </div>
                             <span style="font-weight:700;color:${statusColor}">${statusLabel}</span>
                         </div>`;
@@ -2078,13 +2213,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const actionsEl = document.getElementById('dayDetailActions');
         if (actionsEl) {
-            actionsEl.innerHTML = isWorking
-                ? `<button type="button" class="dd-cal-action-btn dd-remove-btn" id="dayDetailRemoveBtn">
-                        Remove from Calendar
-                   </button>`
-                : `<button type="button" class="dd-cal-action-btn dd-add-btn" id="dayDetailAddBtn">
-                        Add to Calendar (Edit)
-                   </button>`;
+            if (special) {
+                actionsEl.innerHTML = `
+                    <div class="day-detail-action-group">
+                        <button type="button" class="day-detail-btn edit-btn" id="dayDetailEditSpecialBtn">Edit</button>
+                        <button type="button" class="day-detail-btn delete-btn" id="dayDetailDeleteSpecialBtn">Delete</button>
+                        <button type="button" class="day-detail-btn close-btn" id="dayDetailCloseSpecialBtn">Close</button>
+                    </div>
+                `;
+            } else {
+                actionsEl.innerHTML = `
+                    <button type="button" class="dd-cal-action-btn dd-add-btn" id="dayDetailAddSpecialBtn">
+                        + Add Holiday / Exam on this Date
+                    </button>
+                `;
+            }
         }
 
         dayDetailOverlay?.classList.add('active');
@@ -2093,54 +2236,170 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('dayDetailCloseBtn')?.addEventListener('click', closeDayDetail);
     dayDetailOverlay?.addEventListener('click', (e) => { if (e.target === dayDetailOverlay) closeDayDetail(); });
 
-    // HOD toggles a calendar day's working/non-working status from the
-    // day-detail modal — "Remove from Calendar" marks it a holiday,
-    // "Add to Calendar (Edit)" restores/marks it a working day.
     document.getElementById('dayDetailActions')?.addEventListener('click', async (e) => {
-        const removeBtn = e.target.closest('#dayDetailRemoveBtn');
-        const addBtn = e.target.closest('#dayDetailAddBtn');
-        if (!removeBtn && !addBtn) return;
+        const editBtn = e.target.closest('#dayDetailEditSpecialBtn');
+        const deleteBtn = e.target.closest('#dayDetailDeleteSpecialBtn');
+        const closeActionBtn = e.target.closest('#dayDetailCloseSpecialBtn');
+        const addBtn = e.target.closest('#dayDetailAddSpecialBtn');
+        const cancelDeleteBtn = e.target.closest('#dayDetailCancelDeleteBtn');
+        const confirmDeleteBtn = e.target.closest('#dayDetailConfirmDeleteBtn');
+        const actionsEl = document.getElementById('dayDetailActions');
+
         if (!dayDetailCurrentDate) return;
 
-        const makeWorking = !!addBtn;
-        const label = removeBtn ? 'remove this day from the calendar' : 'add this day to the calendar';
-        const ok = await showConfirmModal({
-            title: 'Update Calendar Day',
-            message: `Are you sure you want to ${label}?`,
-            icon: '📅',
-            confirmText: 'Yes, Proceed',
-            cancelText: 'Cancel',
-            isDanger: !!removeBtn
-        });
-        if (!ok) return;
+        if (closeActionBtn) {
+            e.preventDefault();
+            closeDayDetail();
+            return;
+        }
 
-        const btn = removeBtn || addBtn;
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
-
-        try {
-            const res = await fetch(`${API_BASE}/api/WorkingDay/${dayDetailCurrentDate}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isWorking: makeWorking })
+        if (addBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
+            closeDayDetail();
+            openAddCalendarModalWithData({
+                fromDate: curDate,
+                toDate: curDate,
+                dayType: 'Holiday',
+                name: '',
+                year: selectedCalYear ? parseInt(selectedCalYear, 10) : null,
+                section: selectedCalSection !== 'All' ? selectedCalSection : null
             });
+            return;
+        }
 
-            if (res.ok) {
-                calendarOverrides[dayDetailCurrentDate] = makeWorking;
-                showToast('success', makeWorking ? 'Day added to calendar.' : 'Day removed from calendar.');
-                renderCalendarMonth();
-                openDayDetail(dayDetailCurrentDate);
-            } else {
-                const errText = await res.text();
-                showToast('error', errText || 'Could not update the calendar.');
-                btn.disabled = false;
-                btn.textContent = removeBtn ? 'Remove from Calendar' : 'Add to Calendar (Edit)';
+        if (editBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
+            closeDayDetail();
+            const allDateSpecials = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysForDate
+                ? CollegeWorkingDays.getSpecialDaysForDate(curDate)
+                : [];
+            const specials = allDateSpecials.filter(s => {
+                if (selectedCalYear && s.year && s.year !== parseInt(selectedCalYear, 10)) return false;
+                if (selectedCalSection && s.section && s.section !== 'All' && s.section.toUpperCase() !== selectedCalSection.toUpperCase()) return false;
+                return true;
+            });
+            const special = specials[0] || (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(curDate) : null);
+            const rangeInfo = findSpecialDayRangeHod(curDate, special);
+            openAddCalendarModalWithData({
+                fromDate: rangeInfo.fromDate,
+                toDate: rangeInfo.toDate,
+                dayType: rangeInfo.dayType,
+                name: rangeInfo.name,
+                year: special?.year ?? (selectedCalYear ? parseInt(selectedCalYear, 10) : null),
+                section: special?.section ?? (selectedCalSection !== 'All' ? selectedCalSection : null),
+                originalName: rangeInfo.name,
+                originalFromDate: rangeInfo.fromDate,
+                originalToDate: rangeInfo.toDate
+            });
+            return;
+        }
+
+        if (deleteBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
+            const allDateSpecials = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysForDate
+                ? CollegeWorkingDays.getSpecialDaysForDate(curDate)
+                : [];
+            const specials = allDateSpecials.filter(s => {
+                if (selectedCalYear && s.year && s.year !== parseInt(selectedCalYear, 10)) return false;
+                if (selectedCalSection && s.section && s.section !== 'All' && s.section.toUpperCase() !== selectedCalSection.toUpperCase()) return false;
+                return true;
+            });
+            const special = specials[0] || (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(curDate) : null);
+            const rangeInfo = findSpecialDayRangeHod(curDate, special);
+            const typeAndName = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : rangeInfo.dayType;
+
+            if (actionsEl) {
+                actionsEl.innerHTML = `
+                    <div class="day-detail-delete-confirm">
+                        <div class="delete-confirm-title">Delete this calendar entry?</div>
+                        <div class="delete-confirm-details">
+                            <strong>${escHtml(typeAndName)}</strong><br>
+                            <span>From: ${escHtml(rangeInfo.fromDate)}</span> &bull; <span>To: ${escHtml(rangeInfo.toDate)}</span>
+                        </div>
+                        <div class="delete-confirm-actions">
+                            <button type="button" class="day-detail-btn cancel-delete-btn" id="dayDetailCancelDeleteBtn">Cancel</button>
+                            <button type="button" class="day-detail-btn confirm-delete-btn" id="dayDetailConfirmDeleteBtn">Delete</button>
+                        </div>
+                    </div>
+                `;
             }
-        } catch (err) {
-            console.error('WorkingDay update error:', err);
-            showToast('error', 'Network error — check backend is running');
-            btn.disabled = false;
-            btn.textContent = removeBtn ? 'Remove from Calendar' : 'Add to Calendar (Edit)';
+            return;
+        }
+
+        if (cancelDeleteBtn) {
+            e.preventDefault();
+            if (actionsEl) {
+                actionsEl.innerHTML = `
+                    <div class="day-detail-action-group">
+                        <button type="button" class="day-detail-btn edit-btn" id="dayDetailEditSpecialBtn">Edit</button>
+                        <button type="button" class="day-detail-btn delete-btn" id="dayDetailDeleteSpecialBtn">Delete</button>
+                        <button type="button" class="day-detail-btn close-btn" id="dayDetailCloseSpecialBtn">Close</button>
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        if (confirmDeleteBtn) {
+            e.preventDefault();
+            const curDate = dayDetailCurrentDate;
+            const allDateSpecials = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysForDate
+                ? CollegeWorkingDays.getSpecialDaysForDate(curDate)
+                : [];
+            const specials = allDateSpecials.filter(s => {
+                if (selectedCalYear && s.year && s.year !== parseInt(selectedCalYear, 10)) return false;
+                if (selectedCalSection && s.section && s.section !== 'All' && s.section.toUpperCase() !== selectedCalSection.toUpperCase()) return false;
+                return true;
+            });
+            const special = specials[0] || (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(curDate) : null);
+            const rangeInfo = findSpecialDayRangeHod(curDate, special);
+
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.textContent = 'Deleting...';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/WorkingDay/DeleteCalendar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fromDate: rangeInfo.fromDate,
+                        toDate: rangeInfo.toDate,
+                        date: curDate,
+                        name: rangeInfo.name || null,
+                        dayType: rangeInfo.dayType || null,
+                        department: dept || null,
+                        year: selectedCalYear ? parseInt(selectedCalYear, 10) : null,
+                        section: selectedCalSection && selectedCalSection !== 'All' ? selectedCalSection : null
+                    })
+                });
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    showToast('error', errText || 'Failed to delete calendar entry');
+                    confirmDeleteBtn.disabled = false;
+                    confirmDeleteBtn.textContent = 'Delete';
+                    return;
+                }
+
+                showToast('success', 'Calendar entry deleted successfully.');
+                closeDayDetail();
+
+                if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+                    await CollegeWorkingDays.syncWithBackend(API_BASE, dept);
+                }
+                calendarOverridesLoaded = false;
+                await loadCalendarOverrides();
+                renderCalendarMonth();
+            } catch (err) {
+                console.error('Delete calendar error:', err);
+                showToast('error', 'Network error deleting calendar entry');
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.textContent = 'Delete';
+            }
+            return;
         }
     });
 

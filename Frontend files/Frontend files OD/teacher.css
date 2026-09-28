@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    OD Application - Teacher Dashboard Styles
    ============================================ */
 
@@ -3911,10 +3911,49 @@ input:checked + .switch-slider:before {
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2) !important;
 }
 
+/* ── Global Modal Close "×" Button ── */
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary, #cbd5e1);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="light"] .modal-close {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #64748b !important;
+}
+
+[data-theme="light"] .modal-close:hover {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+    border-color: #fca5a5 !important;
+}
+
 /* ── Edit Calendar Modal (Add/Edit Calendar Range) ── */
 .edit-cal-modal-card {
-    max-width: 500px;
-    width: 100%;
+    max-width: 480px;
+    width: 92%;
     text-align: left;
     padding: 28px;
     border-radius: 16px;
@@ -3935,24 +3974,54 @@ input:checked + .switch-slider:before {
 
 .edit-cal-title {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     color: var(--text-primary, #f8fafc);
 }
 
 .edit-cal-form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
 }
 
 .edit-cal-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 14px;
+}
+
+.edit-cal-form .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 0;
+}
+
+.edit-cal-form .input-group label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.edit-cal-form input,
+.edit-cal-form select {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-primary, #f8fafc);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    width: 100%;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.edit-cal-form input:focus,
+.edit-cal-form select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
 .edit-cal-subtext {
@@ -3968,14 +4037,39 @@ input:checked + .switch-slider:before {
     margin-top: 8px;
 }
 
-.edit-cal-btn-cancel,
+.edit-cal-btn-cancel {
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.2s ease;
+}
+
+.edit-cal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
 .edit-cal-btn-save {
     padding: 9px 20px;
     border-radius: 8px;
     font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
+    background: #4f46e5;
+    color: #ffffff;
+    border: 1px solid #4338ca;
     transition: all 0.2s ease;
+}
+
+.edit-cal-btn-save:hover {
+    background: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
 }
 
 /* ── Light theme: Edit Calendar Modal ── */
@@ -3983,6 +4077,7 @@ input:checked + .switch-slider:before {
     background: #ffffff !important;
     color: #0f172a !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid #e2e8f0 !important;
 }
 
 [data-theme="light"] .edit-cal-header {
@@ -3993,32 +4088,331 @@ input:checked + .switch-slider:before {
     color: #0f172a !important;
 }
 
+[data-theme="light"] .edit-cal-form .input-group label {
+    color: #475569 !important;
+}
+
 [data-theme="light"] .edit-cal-form input,
 [data-theme="light"] .edit-cal-form select {
     background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
-    border-radius: 8px;
-    padding: 8px 12px;
 }
 
 [data-theme="light"] .edit-cal-form input:focus,
 [data-theme="light"] .edit-cal-form select:focus {
     border-color: #6366f1 !important;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
-    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
 }
 
 [data-theme="light"] .edit-cal-subtext {
     color: #64748b !important;
 }
 
-/* ── confirm-modal-card: ensure it also respects themes ── */
+[data-theme="light"] .edit-cal-btn-cancel {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .edit-cal-btn-cancel:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .edit-cal-btn-save {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    border: 1px solid #4338ca !important;
+}
+
+[data-theme="light"] .edit-cal-btn-save:hover {
+    background: #4338ca !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
+}
+
+/* ── confirm-modal-card: Clean confirmation dialog styling ── */
 .confirm-modal-card {
     position: relative;
+    max-width: 440px;
+    width: 90%;
+    padding: 28px 24px;
+    border-radius: 16px;
+    text-align: center;
+}
+
+.confirm-modal-card .modal-icon:empty,
+.confirm-modal-card .modal-icon[style*="display: none"] {
+    display: none !important;
+    margin: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+}
+
+.confirm-modal-card .modal-details:empty,
+.confirm-modal-card .modal-details[style*="display: none"] {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+.confirm-modal-card h3#modalTitle {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary, #f8fafc);
+}
+
+.confirm-modal-card p#modalMessage {
+    white-space: pre-line;
+    line-height: 1.55;
+    font-size: 0.92rem;
+    margin-bottom: 22px;
+    color: var(--text-secondary, #cbd5e1);
 }
 
 [data-theme="light"] .confirm-modal-card {
     background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .confirm-modal-card h3#modalTitle {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .confirm-modal-card p#modalMessage {
+    color: #475569 !important;
+}
+/* ── Dropdown option theme fixes for Staff page ── */
+select option,
+.edit-cal-form select option,
+.report-search-select option {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="light"] select option,
+[data-theme="light"] .edit-cal-form select option,
+[data-theme="light"] .report-search-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+
+/* ========================================================
+   Day-Detail Inline Delete Confirmation (Light & Dark)
+   ======================================================== */
+.day-detail-action-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.day-detail-btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    outline: none;
+}
+
+.day-detail-btn.edit-btn,
+#dayDetailEditSpecialBtn {
+    background: #4f46e5;
+    color: #ffffff;
+    border: 1px solid #6366f1;
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.day-detail-btn.edit-btn:hover,
+#dayDetailEditSpecialBtn:hover {
+    background: #4338ca;
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.day-detail-btn.delete-btn,
+#dayDetailDeleteSpecialBtn {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.day-detail-btn.delete-btn:hover,
+#dayDetailDeleteSpecialBtn:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.day-detail-btn.close-btn,
+#dayDetailCloseSpecialBtn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.day-detail-btn.close-btn:hover,
+#dayDetailCloseSpecialBtn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.day-detail-delete-confirm {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 14px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.delete-confirm-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #ef4444;
+    margin-bottom: 8px;
+}
+
+.delete-confirm-details {
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--text-secondary, #cbd5e1);
+    margin-bottom: 14px;
+}
+
+.delete-confirm-details strong {
+    color: var(--text-primary, #f8fafc);
+}
+
+.delete-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.confirm-delete-btn {
+    background: #ef4444;
+    color: #ffffff;
+    border: 1px solid #dc2626;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.confirm-delete-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.cancel-delete-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-delete-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+[data-theme="light"] .day-detail-btn.edit-btn,
+[data-theme="light"] #dayDetailEditSpecialBtn {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    border: 1px solid #4338ca !important;
+}
+
+[data-theme="light"] .day-detail-btn.edit-btn:hover,
+[data-theme="light"] #dayDetailEditSpecialBtn:hover {
+    background: #4338ca !important;
+}
+
+[data-theme="light"] .day-detail-btn.delete-btn,
+[data-theme="light"] #dayDetailDeleteSpecialBtn {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border: 1px solid #fca5a5 !important;
+}
+
+[data-theme="light"] .day-detail-btn.delete-btn:hover,
+[data-theme="light"] #dayDetailDeleteSpecialBtn:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="light"] .day-detail-btn.close-btn,
+[data-theme="light"] #dayDetailCloseSpecialBtn {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .day-detail-btn.close-btn:hover,
+[data-theme="light"] #dayDetailCloseSpecialBtn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .day-detail-delete-confirm {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+}
+
+[data-theme="light"] .delete-confirm-title {
+    color: #dc2626 !important;
+}
+
+[data-theme="light"] .delete-confirm-details {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .delete-confirm-details strong {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .cancel-delete-btn {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .cancel-delete-btn:hover {
+    background: #e2e8f0 !important;
     color: #0f172a !important;
 }

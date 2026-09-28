@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 
 // Register number → student name lookup, used to show real names next to
 // register numbers in the Group Members list (group OD data only ever
@@ -244,8 +244,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         const confirmBtn = document.getElementById('saturdayModalConfirmBtn');
         const skipBtn = document.getElementById('saturdayModalSkipBtn');
 
+        // Look up special day entries for this date scoped to student department/year/section
+        const dept = (localStorage.getItem('userDept') || '').trim();
+        const year = (localStorage.getItem('userYear') || '').trim();
+        const section = (localStorage.getItem('userSection') || '').trim();
+
+        let specialLines = [];
+        if (typeof CollegeWorkingDays !== 'undefined') {
+            const allDateSpecials = CollegeWorkingDays.getSpecialDaysForDate
+                ? CollegeWorkingDays.getSpecialDaysForDate(dateStr)
+                : [];
+
+            const matching = allDateSpecials.filter(s => {
+                if (dept && s.department && !s.department.toLowerCase().includes(dept.toLowerCase()) && !dept.toLowerCase().includes(s.department.toLowerCase())) return false;
+                if (year && s.year && s.year !== parseInt(year, 10)) return false;
+                if (section && s.section && s.section !== 'All' && s.section.toUpperCase() !== section.toUpperCase()) return false;
+                return true;
+            });
+
+            if (matching.length > 0) {
+                matching.forEach(s => {
+                    const labelType = s.dayType === 'Examination' ? 'Examination' : 'Holiday';
+                    const nameLabel = s.name || s.dayType || labelType;
+                    specialLines.push(`${labelType}: ${nameLabel}`);
+                });
+            } else {
+                const single = CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section) : null;
+                if (single && (single.name || single.dayType)) {
+                    const labelType = single.dayType === 'Examination' ? 'Examination' : 'Holiday';
+                    const nameLabel = single.name || single.dayType || labelType;
+                    specialLines.push(`${labelType}: ${nameLabel}`);
+                }
+            }
+        }
+
+        let messageText = `The selected date (${dateStr} - ${dayName}) falls on a non-working day.`;
+        if (specialLines.length > 0) {
+            messageText += `\n\n${specialLines.join('\n')}`;
+        }
+        messageText += `\n\nDo you want to include ${dayName} in your OD application?`;
+
         if (!modal) {
-            if (confirm(`The selected date (${dateStr} - ${dayName}) is normally a non-working day.\n\nDo you want to include ${dayName} in your OD request?`)) {
+            if (confirm(messageText)) {
                 if (onConfirm) onConfirm();
             } else {
                 if (onCancel) onCancel();
@@ -253,8 +293,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (title) title.textContent = `${dayName} Selected`;
-        if (msg) msg.textContent = `The selected date (${dateStr} - ${dayName}) falls on a non-working day. Do you want to include ${dayName} in your OD application?`;
+        if (title) title.textContent = specialLines.length > 0 ? `Special Date Selected` : `${dayName} Selected`;
+        if (msg) msg.textContent = messageText;
         if (confirmBtn) confirmBtn.textContent = `Yes, Include ${dayName}`;
         if (skipBtn) skipBtn.textContent = `Skip / Clear`;
 

@@ -3461,8 +3461,35 @@ body {
     border-color: #6ee7b7 !important;
 }
 
-/* ── Edit Calendar Form Modal Card (Light + Dark Theme) ── */
-.edit-cal-card {
+.cal-tt-type-row {
+    margin-bottom: 6px;
+}
+.cal-tt-field {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 0;
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+.cal-tt-lbl {
+    color: #94a3b8;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+.cal-tt-val {
+    color: #f8fafc;
+    text-align: right;
+    word-break: break-word;
+}
+[data-theme="light"] .cal-tt-lbl {
+    color: #64748b !important;
+}
+[data-theme="light"] .cal-tt-val {
+    color: #0f172a !important;
+}
+
+/* ── Edit Calendar Form Modal Card (Light + Dark Theme) ── */.edit-cal-card {
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
@@ -3540,4 +3567,282 @@ body {
 [data-theme="light"] .edit-cal-card select:focus {
     border-color: #4f46e5 !important;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+}
+/* ── Global Modal Close Button for HOD ── */
+.modal {
+    position: relative;
+}
+
+#dayDetailModal {
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary, #cbd5e1);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="light"] .modal-close {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #64748b !important;
+}
+
+[data-theme="light"] .modal-close:hover {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+    border-color: #fca5a5 !important;
+}
+
+/* ── Dropdown option theme fixes ── */
+select option,
+.cal-filter-select option,
+.edit-cal-card select option,
+.report-search-select option {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="light"] select option,
+[data-theme="light"] .cal-filter-select option,
+[data-theme="light"] .edit-cal-card select option,
+[data-theme="light"] .report-search-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+
+/* ========================================================
+   Day-Detail Inline Delete Confirmation (Light & Dark)
+   ======================================================== */
+.day-detail-action-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.day-detail-btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    outline: none;
+}
+
+.day-detail-btn.edit-btn,
+#dayDetailEditSpecialBtn {
+    background: #4f46e5;
+    color: #ffffff;
+    border: 1px solid #6366f1;
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.day-detail-btn.edit-btn:hover,
+#dayDetailEditSpecialBtn:hover {
+    background: #4338ca;
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.day-detail-btn.delete-btn,
+#dayDetailDeleteSpecialBtn {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.day-detail-btn.delete-btn:hover,
+#dayDetailDeleteSpecialBtn:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.day-detail-btn.close-btn,
+#dayDetailCloseSpecialBtn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.day-detail-btn.close-btn:hover,
+#dayDetailCloseSpecialBtn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.day-detail-delete-confirm {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 14px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.delete-confirm-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #ef4444;
+    margin-bottom: 8px;
+}
+
+.delete-confirm-details {
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--text-secondary, #cbd5e1);
+    margin-bottom: 14px;
+}
+
+.delete-confirm-details strong {
+    color: var(--text-primary, #f8fafc);
+}
+
+.delete-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.confirm-delete-btn {
+    background: #ef4444;
+    color: #ffffff;
+    border: 1px solid #dc2626;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.confirm-delete-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.cancel-delete-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-delete-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+[data-theme="light"] .day-detail-btn.edit-btn,
+[data-theme="light"] #dayDetailEditSpecialBtn {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    border: 1px solid #4338ca !important;
+}
+
+[data-theme="light"] .day-detail-btn.edit-btn:hover,
+[data-theme="light"] #dayDetailEditSpecialBtn:hover {
+    background: #4338ca !important;
+}
+
+[data-theme="light"] .day-detail-btn.delete-btn,
+[data-theme="light"] #dayDetailDeleteSpecialBtn {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border: 1px solid #fca5a5 !important;
+}
+
+[data-theme="light"] .day-detail-btn.delete-btn:hover,
+[data-theme="light"] #dayDetailDeleteSpecialBtn:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="light"] .day-detail-btn.close-btn,
+[data-theme="light"] #dayDetailCloseSpecialBtn {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .day-detail-btn.close-btn:hover,
+[data-theme="light"] #dayDetailCloseSpecialBtn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .day-detail-delete-confirm {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+}
+
+[data-theme="light"] .delete-confirm-title {
+    color: #dc2626 !important;
+}
+
+[data-theme="light"] .delete-confirm-details {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .delete-confirm-details strong {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .cancel-delete-btn {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+[data-theme="light"] .cancel-delete-btn:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
 }
