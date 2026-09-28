@@ -1914,11 +1914,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const myDept = (dept || '').trim();
             const myYear = (year || '').trim();
             const mySec = (section || '').trim();
+            const myCourse = (localStorage.getItem('userCourse') || '').trim();
             const params = new URLSearchParams();
             params.append('_', Date.now().toString());
             if (myDept) params.append('dept', myDept);
             if (myYear) params.append('year', myYear);
             if (mySec) params.append('section', mySec);
+            if (myCourse) params.append('course', myCourse);
 
             const res = await fetch(`${API_BASE}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
             if (res.ok) {
@@ -2346,7 +2348,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 closeStaffDayDetail();
 
                 if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                    await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section);
+                    const staffCourse = (localStorage.getItem('userCourse') || '').trim() || null;
+                    await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section, staffCourse);
                 }
                 calendarOverridesLoaded = false;
                 await loadCalendarOverrides();
@@ -2414,13 +2417,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
+                const staffCourse = (localStorage.getItem('userCourse') || '').trim() || null;
                 const payload = {
                     fromDate,
                     toDate,
                     dayType,
                     name,
-                    department: dept || 'Computer Science',
-                    course: 'B.Sc Computer Science',
+                    department: dept || null,
+                    course: staffCourse,
                     year: year ? parseInt(year, 10) : null,
                     section: section || null,
                     originalName: editingOriginalData?.originalName || null,
@@ -2445,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     form.reset();
 
                     if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                        await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section);
+                        await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section, staffCourse);
                     }
 
                     calendarOverridesLoaded = false;

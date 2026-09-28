@@ -1,4 +1,4 @@
-﻿/**
+/**
  * College Working-Days Calendar
  * ------------------------------
  * Enabled for the full current year (2026): every Mon–Sat date from
@@ -112,50 +112,52 @@ const CollegeWorkingDays = (() => {
             if (course && course !== 'All') params.append('course', course);
 
             const res = await fetch(`${baseUrl}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
-            if (res.ok) {
-                const data = await res.json();
-                if (data && Array.isArray(data.workingDays) && data.workingDays.length > 0) {
-                    workingSet.clear();
-                    data.workingDays.forEach(d => workingSet.add(d));
-                }
+            if (!res.ok) return; // keep existing maps on network error
+
+            const data = await res.json();
+            if (!data) return; // keep existing maps on bad response
+
+            // Only replace workingSet when backend returns a valid non-empty list
+            if (Array.isArray(data.workingDays) && data.workingDays.length > 0) {
+                workingSet.clear();
+                data.workingDays.forEach(d => workingSet.add(d));
+            }
+
+            // Build fresh map; only commit if we got a valid response (even empty array is valid)
+            if (Array.isArray(data.specialDays)) {
                 specialDaysMap.clear();
-                if (data && Array.isArray(data.specialDays)) {
-                    data.specialDays.forEach(s => {
-                        if (s && s.date) {
-                            if (!specialDaysMap.has(s.date)) {
-                                specialDaysMap.set(s.date, []);
-                            }
-                            specialDaysMap.get(s.date).push({
-                                id: s.id || 0,
-                                date: s.date,
-                                dayType: s.dayType || 'Holiday',
-                                name: s.name || '',
-                                department: s.department || null,
-                                course: s.course || null,
-                                year: s.year || null,
-                                section: s.section || null
-                            });
-                        }
-                    });
-                } else if (data && Array.isArray(data.overrides)) {
-                    data.overrides.forEach(o => {
-                        if (o && o.date && (o.dayType || o.name || !o.isWorking)) {
-                            if (!specialDaysMap.has(o.date)) {
-                                specialDaysMap.set(o.date, []);
-                            }
-                            specialDaysMap.get(o.date).push({
-                                id: o.id || 0,
-                                date: o.date,
-                                dayType: o.dayType || (o.isWorking ? 'Working' : 'Holiday'),
-                                name: o.name || (o.isWorking ? 'Working Day' : 'Holiday'),
-                                department: o.department || null,
-                                course: o.course || null,
-                                year: o.year || null,
-                                section: o.section || null
-                            });
-                        }
-                    });
-                }
+                data.specialDays.forEach(s => {
+                    if (s && s.date) {
+                        if (!specialDaysMap.has(s.date)) specialDaysMap.set(s.date, []);
+                        specialDaysMap.get(s.date).push({
+                            id: s.id || 0,
+                            date: s.date,
+                            dayType: s.dayType || 'Holiday',
+                            name: s.name || '',
+                            department: s.department || null,
+                            course: s.course || null,
+                            year: s.year || null,
+                            section: s.section || null
+                        });
+                    }
+                });
+            } else if (Array.isArray(data.overrides)) {
+                specialDaysMap.clear();
+                data.overrides.forEach(o => {
+                    if (o && o.date && (o.dayType || o.name || !o.isWorking)) {
+                        if (!specialDaysMap.has(o.date)) specialDaysMap.set(o.date, []);
+                        specialDaysMap.get(o.date).push({
+                            id: o.id || 0,
+                            date: o.date,
+                            dayType: o.dayType || (o.isWorking ? 'Working' : 'Holiday'),
+                            name: o.name || (o.isWorking ? 'Working Day' : 'Holiday'),
+                            department: o.department || null,
+                            course: o.course || null,
+                            year: o.year || null,
+                            section: o.section || null
+                        });
+                    }
+                });
             }
         } catch (err) {
             console.warn('Calendar sync fallback to local default working days:', err);

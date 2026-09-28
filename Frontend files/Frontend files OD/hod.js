@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 document.addEventListener('DOMContentLoaded', async () => {
     const hodId = localStorage.getItem('hodId');
     const dept  = localStorage.getItem('userDept');
@@ -1957,13 +1957,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
+                const hodCourse = (localStorage.getItem('userCourse') || '').trim() || null;
                 const payload = {
                     fromDate,
                     toDate,
                     dayType,
                     name,
-                    department: dept || 'Computer Science',
-                    course: 'B.Sc Computer Science',
+                    department: dept || null,
+                    course: hodCourse,
                     year: yearVal ? parseInt(yearVal, 10) : null,
                     section: secVal || null
                 };

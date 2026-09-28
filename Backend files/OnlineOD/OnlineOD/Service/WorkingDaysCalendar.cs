@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OnlineOD.Models;
@@ -7,9 +7,9 @@ namespace OnlineOD.Service
 {
     /// <summary>
     /// College working-days calendar. Seeded dynamically for the current
-    /// year: every Monâ€“Sat date from today through Dec 31 is enabled as a
+    /// year: every Mon–Sat date from today through Dec 31 is enabled as a
     /// working day (Sundays excluded). OD applications are only permitted
-    /// on the dates that appear here â€” this is the server-side twin of the
+    /// on the dates that appear here — this is the server-side twin of the
     /// working-days.js used on the student apply forms, so the rule is
     /// enforced even for requests that bypass the browser UI.
     ///
@@ -20,13 +20,13 @@ namespace OnlineOD.Service
     {
         private static readonly object _lock = new object();
 
-        // Seed list: every Monâ€“Sat from today through Dec 31 of the current year.
+        // Seed list: every Mon–Sat from today through Dec 31 of the current year.
         private static readonly HashSet<string> SeedWorkingDays = GenerateSeedWorkingDays();
 
         private static HashSet<string> GenerateSeedWorkingDays()
         {
             var set = new HashSet<string>();
-            var start = DateTime.Today;
+            var start = new DateTime(DateTime.Today.Year, 1, 1); // Start from Jan 1 so past months render correctly
             var end = new DateTime(DateTime.Today.Year, 12, 31);
 
             for (var d = start; d <= end; d = d.AddDays(1))
@@ -59,7 +59,7 @@ namespace OnlineOD.Service
         public static string MinDate => WorkingDays.Count > 0 ? WorkingDays.Min() : SeedMinDate;
         public static string MaxDate => WorkingDays.Count > 0 ? WorkingDays.Max() : SeedMaxDate;
 
-        /// <summary>Applies a batch of calendar overrides on top of the seed list â€” called once at app startup.</summary>
+        /// <summary>Applies a batch of calendar overrides on top of the seed list — called once at app startup.</summary>
         public static void LoadOverrides(IEnumerable<WorkingDayOverride> overrides)
         {
             lock (_lock)

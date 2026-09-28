@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 // Register number → student name lookup, used to show real names next to
 // register numbers in the Group Members list (group OD data only ever
@@ -2393,25 +2393,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         let calIdx = 0;
 
         function buildKeys() {
-            if (calKeys.length || typeof CollegeWorkingDays === 'undefined') return;
+            // Always rebuild so we get fresh month list on each open
+            if (typeof CollegeWorkingDays === 'undefined') return;
             const seen = new Set();
             CollegeWorkingDays.list.forEach(d => seen.add(d.slice(0, 7)));
             calKeys = [...seen].sort();
         }
 
         async function loadData() {
+            // Reset keys and index on each open so current month is always shown first
+            calKeys = [];
             buildKeys();
-            if (!calKeys.length) return;
-            if (calIdx === 0 && calKeys.length) {
-                const todayKey = new Date().toISOString().slice(0, 7);
-                const idx = calKeys.indexOf(todayKey);
-                calIdx = idx >= 0 ? idx : 0;
+            if (!calKeys.length) {
+                if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;opacity:0.6;">Calendar not available.</div>';
+                return;
             }
+            // Navigate to current month
+            const todayKey = new Date().toISOString().slice(0, 7);
+            const idx = calKeys.indexOf(todayKey);
+            calIdx = idx >= 0 ? idx : 0;
 
-            const myDept = (localStorage.getItem('userDept') || '').trim();
-            const myYear = (localStorage.getItem('userYear') || '').trim();
-            const mySec  = (localStorage.getItem('userSection') || '').trim();
-            const myCourse = (localStorage.getItem('userCourse') || '').trim();
+            // Show loading while syncing with backend
+            if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;opacity:0.7;">Loading calendar…</div>';
+            if (label) label.textContent = '…';
+
+            const myDept   = (localStorage.getItem('userDept')    || '').trim();
+            const myYear   = (localStorage.getItem('userYear')     || '').trim();
+            const mySec    = (localStorage.getItem('userSection')  || '').trim();
+            const myCourse = (localStorage.getItem('userCourse')   || '').trim();
 
             if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
                 await CollegeWorkingDays.syncWithBackend(API_BASE, myDept, myYear, mySec, myCourse);
@@ -2439,9 +2448,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             let html = '';
             for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
 
-            const myDept = (localStorage.getItem('userDept') || '').trim();
-            const myYear = (localStorage.getItem('userYear') || '').trim();
-            const mySec  = (localStorage.getItem('userSection') || '').trim();
+            const myDept = (localStorage.getItem('userDept')   || '').trim();
+            const myYear = (localStorage.getItem('userYear')   || '').trim();
+            const mySec  = (localStorage.getItem('userSection')|| '').trim();
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
@@ -2493,6 +2502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (calIdx < calKeys.length - 1) { calIdx++; renderMonth(); }
         });
     }
+
 
     initStudentAcademicCalendar();
 
