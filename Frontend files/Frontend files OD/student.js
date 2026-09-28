@@ -528,47 +528,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         overlay.className = 'special-day-warning-overlay';
         overlay.style.zIndex = '10100';
 
-        let bodyContent = '';
-        let btnConfirmText = 'Include Date';
-
-        if (specials.length === 1) {
-            const s = specials[0];
+        const listContent = specials.map(s => {
             const [y, m, d] = s.date.split('-');
             const formattedDate = `${d}-${m}-${y}`;
             const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
-            const fieldLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
-
-            bodyContent = `
-                <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text-primary, #f8fafc);">
-                    ${formattedDate} is marked as a ${typeLabel}.
-                </p>
-                <p style="font-size: 0.9rem; margin-bottom: 16px; color: var(--text-secondary, #94a3b8);">
-                    <strong>${fieldLabel}:</strong> ${escHtml(s.name || typeLabel)}
-                </p>
-                <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #cbd5e1);">
-                    Do you want to include this date in your OD?
-                </p>
+            const nameLabel = s.name || s.dayType;
+            return `
+                <div style="margin-bottom: 12px; padding: 8px 12px; background: rgba(239,68,68,0.08); border-radius: 8px; border-left: 3px solid #ef4444;">
+                    <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary, #f8fafc);">
+                        ${formattedDate} — ${typeLabel}
+                    </div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #f59e0b; margin-top: 2px;">
+                        ${escHtml(nameLabel)}
+                    </div>
+                </div>
             `;
-            btnConfirmText = 'Include Date';
-        } else {
-            const listItems = specials.map(s => {
-                const [y, m, d] = s.date.split('-');
-                const formattedDate = `${d}-${m}-${y}`;
-                const typeLabel = s.dayType === 'Holiday' ? 'Holiday' : 'Examination';
-                return `<li style="margin-bottom: 6px;"><strong>${formattedDate}</strong> — ${typeLabel} — ${escHtml(s.name || s.dayType)}</li>`;
-            }).join('');
+        }).join('');
 
-            bodyContent = `
-                <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary, #f8fafc);">
-                    Selected OD range contains special days:
-                </p>
-                <ul style="text-align: left; margin-bottom: 16px; padding-left: 20px; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary, #cbd5e1);">${listItems}</ul>
-                <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #cbd5e1);">
-                    Do you want to include these dates?
-                </p>
-            `;
-            btnConfirmText = 'Include Dates';
-        }
+        const bodyContent = `
+            <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary, #cbd5e1);">
+                This OD includes a special date:
+            </p>
+            <div style="margin: 10px 0 16px;">
+                ${listContent}
+            </div>
+            <p style="font-size: 0.88rem; margin-bottom: 20px; color: var(--text-secondary, #94a3b8);">
+                Please choose:
+            </p>
+        `;
 
         overlay.innerHTML = `
             <div class="special-day-warning-modal" style="max-width: 440px; text-align: center; padding: 24px; border-radius: 16px;">
@@ -577,12 +564,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    ⚠ Invalid OD Date
+                    Special Date Included
                 </h4>
                 ${bodyContent}
                 <div class="sdw-actions" style="display: flex; gap: 10px; justify-content: center;">
                     <button type="button" class="btn-primary sdw-btn-confirm" id="sdwIncludeBtn" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                        ${btnConfirmText}
+                        Include Date(s)
                     </button>
                     <button type="button" class="btn-secondary sdw-btn-edit" id="sdwEditBtn" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                         Edit Dates

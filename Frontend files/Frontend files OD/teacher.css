@@ -3749,3 +3749,53 @@ input:checked + .switch-slider:before {
     border-color: #4f46e5 !important;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
 }
+
+/* ── Staff Day Detail Special Actions & Buttons (Light & Dark) ── */
+#dayDetailEditSpecialBtn {
+    background: #4f46e5;
+    color: #ffffff;
+    border: 1px solid #6366f1;
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+#dayDetailEditSpecialBtn:hover {
+    background: #4338ca;
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+#dayDetailDeleteSpecialBtn {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+#dayDetailDeleteSpecialBtn:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+[data-theme="light"] #dayDetailEditSpecialBtn {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    border: 1px solid #4338ca !important;
+}
+[data-theme="light"] #dayDetailEditSpecialBtn:hover {
+    background: #4338ca !important;
+}
+[data-theme="light"] #dayDetailDeleteSpecialBtn {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border: 1px solid #fca5a5 !important;
+}
+[data-theme="light"] #dayDetailDeleteSpecialBtn:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #dc2626 !important;
+}

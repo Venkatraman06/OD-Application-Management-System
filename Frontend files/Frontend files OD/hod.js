@@ -1540,6 +1540,66 @@ document.addEventListener('DOMContentLoaded', async () => {
         calMonthKeys = [...seen].sort();
     }
 
+    function populateHodSections(selectedYear) {
+        const sectionSelect = document.getElementById('calFilterSection');
+        if (!sectionSelect) return;
+        const sectionsSet = new Set();
+        const myDept = (dept || '').trim().toLowerCase();
+
+        if (Array.isArray(allStudentsData) && allStudentsData.length > 0) {
+            allStudentsData.forEach(s => {
+                const sDept = (s.department || s.Department || '').trim().toLowerCase();
+                if (!myDept || sDept === myDept) {
+                    const y = s.year || s.Year;
+                    if (!selectedYear || String(y) === String(selectedYear)) {
+                        const sec = (s.section || s.Section || '').trim();
+                        if (sec) sectionsSet.add(sec.toUpperCase());
+                    }
+                }
+            });
+        }
+
+        if (Array.isArray(calendarODs)) {
+            calendarODs.forEach(o => {
+                const y = o.year || o.Year;
+                if (!selectedYear || String(y) === String(selectedYear)) {
+                    const sec = (o.section || o.Section || '').trim();
+                    if (sec) sectionsSet.add(sec.toUpperCase());
+                }
+            });
+        }
+
+        if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
+            for (const [, list] of CollegeWorkingDays.specialDaysMap.entries()) {
+                const items = Array.isArray(list) ? list : (list ? [list] : []);
+                items.forEach(item => {
+                    const sDept = (item.department || '').trim().toLowerCase();
+                    if (!myDept || !sDept || sDept === myDept) {
+                        const y = item.year;
+                        if (!selectedYear || !y || String(y) === String(selectedYear)) {
+                            const sec = (item.section || '').trim();
+                            if (sec && sec !== 'All') sectionsSet.add(sec.toUpperCase());
+                        }
+                    }
+                });
+            }
+        }
+
+        if (sectionsSet.size === 0) ['A', 'B', 'C'].forEach(s => sectionsSet.add(s));
+        const sortedSections = [...sectionsSet].sort();
+        const prevVal = sectionSelect.value;
+
+        sectionSelect.innerHTML = '<option value="">All Sections</option>' +
+            sortedSections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+
+        if (sortedSections.includes(prevVal)) {
+            sectionSelect.value = prevVal;
+        } else {
+            sectionSelect.value = '';
+            selectedCalSection = '';
+        }
+    }
+
     function initHodCalendarFilters() {
         if (calFiltersInitialized) return;
         const yearSelect = document.getElementById('calFilterYear');
@@ -1548,7 +1608,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (yearSelect && sectionSelect) {
             const myDept = (dept || '').trim().toLowerCase();
             const yearsSet = new Set();
-            const sectionsSet = new Set();
 
             if (Array.isArray(allStudentsData) && allStudentsData.length > 0) {
                 allStudentsData.forEach(s => {
@@ -1556,8 +1615,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!myDept || sDept === myDept) {
                         const y = s.year || s.Year;
                         if (y) yearsSet.add(parseInt(y, 10));
-                        const sec = (s.section || s.Section || '').trim();
-                        if (sec) sectionsSet.add(sec.toUpperCase());
                     }
                 });
             }
@@ -1566,26 +1623,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                 calendarODs.forEach(o => {
                     const y = o.year || o.Year;
                     if (y) yearsSet.add(parseInt(y, 10));
-                    const sec = (o.section || o.Section || '').trim();
-                    if (sec) sectionsSet.add(sec.toUpperCase());
                 });
             }
 
-            // Fallbacks if sets empty
-            if (yearsSet.size === 0) [1, 2, 3].forEach(y => yearsSet.add(y));
-            if (sectionsSet.size === 0) ['A', 'B', 'C'].forEach(s => sectionsSet.add(s));
+            if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
+                for (const [, list] of CollegeWorkingDays.specialDaysMap.entries()) {
+                    const items = Array.isArray(list) ? list : (list ? [list] : []);
+                    items.forEach(item => {
+                        const sDept = (item.department || '').trim().toLowerCase();
+                        if (!myDept || !sDept || sDept === myDept) {
+                            const y = item.year;
+                            if (y) yearsSet.add(parseInt(y, 10));
+                        }
+                    });
+                }
+            }
 
+            if (yearsSet.size === 0) [1, 2, 3].forEach(y => yearsSet.add(y));
             const sortedYears = [...yearsSet].sort((a,b) => a - b);
-            const sortedSections = [...sectionsSet].sort();
 
             yearSelect.innerHTML = '<option value="">All Years</option>' +
                 sortedYears.map(y => `<option value="${y}">${y}${getOrdinal(y)} Year</option>`).join('');
 
-            sectionSelect.innerHTML = '<option value="">All Sections</option>' +
-                sortedSections.map(s => `<option value="${s}">Section ${s}</option>`).join('');
+            populateHodSections('');
 
             yearSelect.addEventListener('change', () => {
                 selectedCalYear = yearSelect.value;
+                populateHodSections(selectedCalYear);
                 renderCalendarMonth();
             });
 
@@ -1611,12 +1675,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             calMonthIndex = idx >= 0 ? idx : 0;
         }
 
+        if (!allStudentsData || allStudentsData.length === 0) {
+            await loadStudentLookup();
+        }
+
         await loadCalendarOverrides();
 
         if (calendarODs === null && !calendarLoading) {
             calendarLoading = true;
-            const grid = document.getElementById('calendarGrid');
-            if (grid) grid.innerHTML = '<div class="dd-empty">Loading calendar data...</div>';
             try {
                 const res = await fetch(`${API_BASE}/api/OdApply?_=${Date.now()}`, { cache: 'no-store' });
                 const all = res.ok ? await res.json() : [];

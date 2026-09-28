@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const facultyId = localStorage.getItem('facultyId');
@@ -2244,6 +2244,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         openStaffDayDetail(dateStr);
     });
 
+    function findSpecialDayRange(dateStr, special, targetDept, targetYear, targetSection) {
+        if (!special || !special.name) {
+            return {
+                fromDate: dateStr,
+                toDate: dateStr,
+                dayType: special?.dayType || 'Holiday',
+                name: special?.name || ''
+            };
+        }
+        const matchingDates = [];
+        if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
+            for (const [dStr, list] of CollegeWorkingDays.specialDaysMap.entries()) {
+                const items = Array.isArray(list) ? list : (list ? [list] : []);
+                const match = items.find(s =>
+                    s.name === special.name &&
+                    s.dayType === special.dayType &&
+                    (!targetDept || !s.department || s.department.toLowerCase().includes(targetDept.toLowerCase()) || targetDept.toLowerCase().includes(s.department.toLowerCase())) &&
+                    (!targetYear || !s.year || s.year === parseInt(targetYear, 10)) &&
+                    (!targetSection || targetSection === 'All' || !s.section || s.section === 'All' || s.section.toUpperCase() === targetSection.toUpperCase())
+                );
+                if (match) matchingDates.push(dStr);
+            }
+        }
+        if (matchingDates.length === 0) matchingDates.push(dateStr);
+        matchingDates.sort();
+        return {
+            fromDate: matchingDates[0],
+            toDate: matchingDates[matchingDates.length - 1],
+            dayType: special.dayType,
+            name: special.name
+        };
+    }
+
     document.getElementById('dayDetailActions')?.addEventListener('click', async (e) => {
         const editBtn = e.target.closest('#dayDetailEditSpecialBtn');
         const deleteBtn = e.target.closest('#dayDetailDeleteSpecialBtn');
@@ -2255,14 +2288,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
                 ? CollegeWorkingDays.getSpecialDay(dayDetailCurrentDate, dept, year, section)
                 : null;
+            const rangeInfo = findSpecialDayRange(dayDetailCurrentDate, special, dept, year, section);
             openAddCalendarModalWithData({
-                fromDate: special?.date || dayDetailCurrentDate,
-                toDate: special?.date || dayDetailCurrentDate,
-                dayType: special?.dayType || 'Holiday',
-                name: special?.name || '',
-                originalName: special?.name || '',
-                originalFromDate: special?.date || dayDetailCurrentDate,
-                originalToDate: special?.date || dayDetailCurrentDate
+                fromDate: rangeInfo.fromDate,
+                toDate: rangeInfo.toDate,
+                dayType: rangeInfo.dayType,
+                name: rangeInfo.name,
+                originalName: rangeInfo.name,
+                originalFromDate: rangeInfo.fromDate,
+                originalToDate: rangeInfo.toDate
             });
             return;
         }
@@ -2271,10 +2305,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
                 ? CollegeWorkingDays.getSpecialDay(dayDetailCurrentDate, dept, year, section)
                 : null;
-            const entryName = special ? `${special.dayType}: ${special.name}` : dayDetailCurrentDate;
+            const rangeInfo = findSpecialDayRange(dayDetailCurrentDate, special, dept, year, section);
+            const rangeLabel = rangeInfo.fromDate === rangeInfo.toDate
+                ? rangeInfo.fromDate
+                : `From ${rangeInfo.fromDate} to ${rangeInfo.toDate}`;
+            const entryTitle = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : dayDetailCurrentDate;
             const ok = await showConfirmModal({
                 title: 'Delete Calendar Entry',
-                message: `Are you sure you want to delete this calendar entry?\n\n${entryName} (${dayDetailCurrentDate})`,
+                message: `Are you sure you want to delete this calendar entry?\n\n${entryTitle}\n(${rangeLabel})`,
                 icon: '🗑',
                 confirmText: 'Delete Entry',
                 cancelText: 'Cancel',
@@ -2287,9 +2325,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        fromDate: rangeInfo.fromDate,
+                        toDate: rangeInfo.toDate,
                         date: dayDetailCurrentDate,
-                        name: special?.name || null,
-                        dayType: special?.dayType || null,
+                        name: rangeInfo.name || null,
+                        dayType: rangeInfo.dayType || null,
                         department: dept || null,
                         year: year ? parseInt(year, 10) : null,
                         section: section || null
