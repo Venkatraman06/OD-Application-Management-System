@@ -2850,14 +2850,19 @@ body {
     border-color: rgba(16,185,129,0.55) !important;
 }
 .calendar-day .cal-special-label {
-    font-size: 0.52rem;
+    font-size: 0.48rem;
     line-height: 1.1;
     max-width: 100%;
+    width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    opacity: 0.85;
+    opacity: 0.9;
     margin-top: 1px;
+    text-align: center;
+    padding: 0 2px;
+    box-sizing: border-box;
+    display: block;
 }
 /* OD Special-Day Warning Modal */
 .special-day-warning-overlay {
@@ -2906,8 +2911,10 @@ body {
 
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .calendar-day {
@@ -2924,6 +2931,11 @@ body {
     color: #94a3b8;
     font-size: 0.82rem;
     font-weight: 600;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    padding: 2px;
 }
 
 .calendar-day.empty { background: transparent; border: none; }
@@ -3845,4 +3857,55 @@ select option,
 [data-theme="light"] .cancel-delete-btn:hover {
     background: #e2e8f0 !important;
     color: #0f172a !important;
+}
+
+/* Mobile Responsive Calendar Grid (HOD) */
+@media (max-width: 600px) {
+    .calendar-grid {
+        gap: 3px !important;
+        grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    }
+    .calendar-day {
+        border-radius: 6px !important;
+        padding: 2px 1px !important;
+        font-size: 0.72rem !important;
+    }
+    .calendar-day .cal-day-num {
+        font-size: 0.75rem !important;
+        line-height: 1 !important;
+    }
+    .calendar-day .cal-special-label {
+        font-size: 0.44rem !important;
+        line-height: 1 !important;
+        padding: 0 1px !important;
+    }
+    .calendar-day .cal-day-counts {
+        font-size: 0.5rem !important;
+    }
+    .calendar-day .cal-edit-dot,
+    .calendar-day .cal-dot {
+        width: 4px !important;
+        height: 4px !important;
+        top: 2px !important;
+        left: 2px !important;
+    }
+    .calendar-day .cal-dot {
+        left: auto !important;
+        right: 2px !important;
+    }
+}
+@media (max-width: 380px) {
+    .calendar-grid {
+        gap: 2px !important;
+    }
+    .calendar-day {
+        font-size: 0.65rem !important;
+        padding: 1px 0 !important;
+    }
+    .calendar-day .cal-day-num {
+        font-size: 0.68rem !important;
+    }
+    .calendar-day .cal-special-label {
+        font-size: 0.4rem !important;
+    }
 }

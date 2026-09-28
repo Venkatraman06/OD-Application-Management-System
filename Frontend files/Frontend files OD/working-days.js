@@ -324,15 +324,17 @@ const AnalogClockPicker = (() => {
 
         face.querySelectorAll('.clock-number').forEach(el => el.remove());
 
-        const radius = 72;
-        const centerX = 103;
-        const centerY = 103;
+        const cx = face.clientWidth / 2;
+        const cy = face.clientHeight / 2;
+        const radius = Math.round(cx * 0.70);
+
+        hand.style.height = `${radius}px`;
 
         if (mode === 'hours') {
             for (let h = 1; h <= 12; h++) {
                 const angle = (h * 30 - 90) * (Math.PI / 180);
-                const x = centerX + radius * Math.cos(angle);
-                const y = centerY + radius * Math.sin(angle);
+                const x = cx + radius * Math.cos(angle);
+                const y = cy + radius * Math.sin(angle);
 
                 const num = document.createElement('div');
                 num.className = `clock-number ${selectedHour === h ? 'active' : ''}`;
@@ -347,13 +349,13 @@ const AnalogClockPicker = (() => {
                 });
                 face.appendChild(num);
             }
-            const deg = selectedHour * 30;
+            const deg = (selectedHour % 12) * 30;
             hand.style.transform = `rotate(${deg}deg)`;
         } else {
             for (let m = 0; m < 60; m += 5) {
                 const angle = (m * 6 - 90) * (Math.PI / 180);
-                const x = centerX + radius * Math.cos(angle);
-                const y = centerY + radius * Math.sin(angle);
+                const x = cx + radius * Math.cos(angle);
+                const y = cy + radius * Math.sin(angle);
 
                 const num = document.createElement('div');
                 num.className = `clock-number ${Math.round(selectedMin / 5) * 5 === m ? 'active' : ''}`;
