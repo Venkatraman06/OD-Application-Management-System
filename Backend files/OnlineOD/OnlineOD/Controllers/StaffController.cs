@@ -108,7 +108,8 @@ namespace OnlineOD.Controllers
                 rollNumber = staff.RollNumber,
                 department = staff.Department,
                 section = staff.Section,
-                year = staff.Year
+                year = staff.Year,
+                email = staff.Email
             });
         }
 

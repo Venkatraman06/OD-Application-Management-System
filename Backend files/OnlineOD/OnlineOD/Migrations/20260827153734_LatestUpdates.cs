@@ -10,13 +10,10 @@ namespace OnlineOD.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "CompetitionType",
-                table: "OdApplies",
-                type: "nvarchar(max)",
-                nullable: true);
+            migrationBuilder.Sql(@"
+        IF COL_LENGTH('OdApplies', 'CompetitionType') IS NULL
+            ALTER TABLE [OdApplies] ADD [CompetitionType] nvarchar(max) NULL;");
         }
-
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
