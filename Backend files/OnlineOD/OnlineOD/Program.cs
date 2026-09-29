@@ -62,12 +62,15 @@ if (isPostgreSql)
 {
     AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
     builder.Services.AddDbContext<ApplicationDbContext, PostgreSqlDbContext>(options =>
+    {
         options.UseNpgsql(
             connectionString,
             npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorCodesToAdd: null)));
+                errorCodesToAdd: null));
+        options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    });
 }
 else
 {
