@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
+using System.Security.Claims;
 
 namespace OnlineOD.Controllers
 {
@@ -126,6 +128,7 @@ namespace OnlineOD.Controllers
 
 
         // this will update the HOD approval status of the OD request and return the updated OD request details
+        [Authorize(Roles = "HOD")]
         [HttpPut("FinalApprove/{odId}")]
         public async Task<IActionResult> FinalApprove(int odId, [FromQuery] string status)
         {
@@ -135,10 +138,30 @@ namespace OnlineOD.Controllers
             if (status != "Approved" && status != "Rejected")
                 return BadRequest("Status must be Approved or Rejected");
 
+            var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+            {
+                return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+            }
+
+            var authHod = await _hodService.GetHodByIdAsync(authHodId);
+            if (authHod == null || !authHod.IsActive)
+            {
+                return StatusCode(403, new { message = "HOD account not found or deactivated." });
+            }
+
             // Block approve/reject once the OD is already ongoing (today falls
             // within its From/To range) — same rule enforced on the staff side.
             var existing = await _odService.GetOdApplyByIdAsync(odId);
             if (existing == null) return NotFound("OD request not found");
+
+            var odDept = (existing.department ?? "").Trim();
+            var hodDept = (authHod.Department ?? "").Trim();
+            if (!string.IsNullOrEmpty(odDept) && !string.IsNullOrEmpty(hodDept) && !odDept.Equals(hodDept, StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(403, new { message = "You are not authorized to approve OD applications outside of your department." });
+            }
+
             if (IsOdOngoing(existing.FromDate, existing.ToDate))
                 return BadRequest("This OD is already ongoing and can no longer be approved or rejected.");
 

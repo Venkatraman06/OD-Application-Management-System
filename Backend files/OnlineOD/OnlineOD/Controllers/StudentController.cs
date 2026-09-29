@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
+using System.Security.Claims;
 
 namespace OnlineOD.Controllers
 {
@@ -28,9 +30,19 @@ namespace OnlineOD.Controllers
 
 
         //  this will get the student details by id from the database
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudentById(int id)
         {
+            if (User.IsInRole("Student"))
+            {
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId != id)
+                {
+                    return StatusCode(403, new { message = "You are not authorized to view another student's profile." });
+                }
+            }
+
             var student = await _studentService.GetStudentByIdAsync(id);
             if (student == null) return NotFound();
             return Ok(student);
@@ -67,13 +79,49 @@ namespace OnlineOD.Controllers
 
 
         // this will update the student details in the database
+        [Authorize(Roles = "Student,Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateStudent(int id, [FromBody] Student student)
         {
-            if (student == null || student.StudentId != id) return BadRequest();
-            var updated = await _studentService.UpdateStudentAsync(student);
-            if (updated == null) return NotFound();
-            return Ok(updated);
+            if (student == null) return BadRequest();
+
+            if (User.IsInRole("Student"))
+            {
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId != id)
+                {
+                    return StatusCode(403, new { message = "You are not authorized to update another student's profile." });
+                }
+
+                var existing = await _studentService.GetStudentByIdAsync(id);
+                if (existing == null) return NotFound();
+
+                // Allow updating only self-editable profile fields, keeping institutional/identity fields locked
+                var safeStudent = new Student
+                {
+                    StudentId = existing.StudentId,
+                    Name = !string.IsNullOrWhiteSpace(student.Name) ? student.Name.Trim() : existing.Name,
+                    RegisterNumber = existing.RegisterNumber, // Locked
+                    Department = existing.Department,         // Locked
+                    Section = existing.Section,               // Locked
+                    Year = existing.Year,                     // Locked
+                    semester = existing.semester,             // Locked
+                    IsActive = existing.IsActive,             // Locked
+                    DOB = student.DOB != default(DateTime) ? student.DOB : existing.DOB,
+                    Email = !string.IsNullOrWhiteSpace(student.Email) ? student.Email.Trim() : existing.Email,
+                    Password = !string.IsNullOrWhiteSpace(student.Password) ? student.Password : existing.Password
+                };
+
+                var updated = await _studentService.UpdateStudentAsync(safeStudent);
+                return Ok(updated);
+            }
+            else
+            {
+                if (student.StudentId != id) return BadRequest();
+                var updated = await _studentService.UpdateStudentAsync(student);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
         }
 
 

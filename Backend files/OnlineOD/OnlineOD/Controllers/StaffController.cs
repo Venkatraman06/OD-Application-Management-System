@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
+using System.Security.Claims;
 
 namespace OnlineOD.Controllers
 {
@@ -135,11 +137,10 @@ namespace OnlineOD.Controllers
         }
 
         // Approve/Reject by faculty — then email HOD with clickable buttons.
-        // staffId identifies WHICH staff is deciding — required for group ODs
-        // spanning multiple sections, so a Section-A staff can only decide on
-        // Section-A members, and Section-B staff only on Section-B members.
+        // Authenticated Staff ID extracted from JWT ClaimTypes.NameIdentifier.
+        [Authorize(Roles = "Staff")]
         [HttpPut("Approve/{odId}")]
-        public async Task<IActionResult> Approve(int odId, [FromQuery] string status, [FromQuery] int staffId)
+        public async Task<IActionResult> Approve(int odId, [FromQuery] string status, [FromQuery] int? staffId = null)
         {
             if (string.IsNullOrEmpty(status))
                 return BadRequest("Status is required");
@@ -147,8 +148,11 @@ namespace OnlineOD.Controllers
             if (status != "Approved" && status != "Rejected")
                 return BadRequest("Status must be Approved or Rejected");
 
-            if (staffId <= 0)
-                return BadRequest("staffId is required");
+            var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+            {
+                return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+            }
 
             // Block approve/reject once the OD is already ongoing (today falls
             // within its From/To range) — the decision window is meant to
@@ -161,7 +165,7 @@ namespace OnlineOD.Controllers
             OdApply? od;
             try
             {
-                od = await _odService.ApproveByStaffAsync(odId, status, staffId);
+                od = await _odService.ApproveByStaffAsync(odId, status, authStaffId);
             }
             catch (InvalidOperationException ex)
             {

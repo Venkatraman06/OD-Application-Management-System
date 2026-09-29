@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
 using OnlineOD.Services;
+using System.Security.Claims;
 
 namespace OnlineOD.Controllers
 {
@@ -12,14 +14,17 @@ namespace OnlineOD.Controllers
     {
         private readonly IOdApplyService _service;
         private readonly IStaffService _staffService;
+        private readonly IStudentService _studentService;
         private readonly EmailService _emailService;
         private readonly EmailQueue _emailQueue;
 
         public OdApplyController(IOdApplyService service, IStaffService staffService,
+            IStudentService studentService,
             EmailService emailService, EmailQueue emailQueue)
         {
             _service = service;
             _staffService = staffService;
+            _studentService = studentService;
             _emailService = emailService;
             _emailQueue = emailQueue;
         }
@@ -42,18 +47,48 @@ namespace OnlineOD.Controllers
         }
 
         // GET /api/OdApply/Student-Od/{studentId}
+        // Students may only retrieve their own ODs. Staff/HOD/Admin are unrestricted.
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet("Student-Od/{studentId}")]
         public async Task<IActionResult> GetByStudentId(int studentId)
         {
+            if (User.IsInRole("Student"))
+            {
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId != studentId)
+                {
+                    return StatusCode(403, new { message = "You are not authorized to view another student's OD applications." });
+                }
+            }
+
             var ods = await _service.GetByStudentIdAsync(studentId);
             return Ok(ods);
         }
 
-        // ── NEW: GET /api/OdApply/ByRegister/{registerNumber}
-        // Fix 4: member students look up their OD status by register number
+        // ── GET /api/OdApply/ByRegister/{registerNumber}
+        // Member students look up their OD status by register number.
+        // Students may only retrieve ODs for their own register number (verified from DB).
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet("ByRegister/{registerNumber}")]
         public async Task<IActionResult> GetByRegisterNumber(string registerNumber)
         {
+            if (User.IsInRole("Student"))
+            {
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId))
+                    return Unauthorized(new { message = "Invalid or missing student authentication token." });
+
+                var authStudent = await _studentService.GetStudentByIdAsync(authStudentId);
+                if (authStudent == null)
+                    return StatusCode(403, new { message = "Authenticated student not found." });
+
+                if (string.IsNullOrWhiteSpace(authStudent.RegisterNumber) ||
+                    !authStudent.RegisterNumber.Trim().Equals(registerNumber.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return StatusCode(403, new { message = "You are not authorized to view another student's OD applications." });
+                }
+            }
+
             var all = await _service.GetAllOdApplyAsync();
 
             var target = registerNumber.Trim().ToLower();
@@ -99,11 +134,31 @@ namespace OnlineOD.Controllers
         }
 
         // POST /api/OdApply/OD-Apply
+        // Only authenticated Students may submit OD applications.
+        // The authenticated Student ID and register number are resolved from JWT claims and DB,
+        // overriding any caller-supplied values to prevent applying on behalf of another student.
+        [Authorize(Roles = "Student")]
         [HttpPost("OD-Apply")]
         public async Task<IActionResult> CreateOdApply([FromBody] OdApplyDto dto)
         {
             if (dto == null)
                 return BadRequest("OD Apply data is required");
+
+            // Resolve the authenticated student from the JWT claim
+            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId <= 0)
+                return Unauthorized(new { message = "Invalid or missing student authentication token." });
+
+            var authStudent = await _studentService.GetStudentByIdAsync(authStudentId);
+            if (authStudent == null || !authStudent.IsActive)
+                return StatusCode(403, new { message = "Student account not found or deactivated." });
+
+            // Enforce the authenticated student's identity — ignore any caller-supplied values
+            dto.StudentId = authStudent.StudentId;
+            dto.StudentName = authStudent.Name;
+            dto.registerNumber = authStudent.RegisterNumber;
+            if (string.IsNullOrWhiteSpace(dto.department)) dto.department = authStudent.Department;
+            if (string.IsNullOrWhiteSpace(dto.Section)) dto.Section = authStudent.Section;
 
             var dateError = WorkingDaysCalendar.ValidateRange(dto.FromDate, dto.ToDate);
             if (dateError != null)
@@ -195,14 +250,29 @@ namespace OnlineOD.Controllers
             return Ok(result);
         }
 
-        // DELETE /api/OdApply/{id}
         // DELETE /api/OdApply/{odId}
         // Lets a student cancel/withdraw their own OD application — but only
         // while it is still Pending. Once faculty has approved or rejected
         // it, the student can no longer delete it from their side.
+        // Admin may delete any OD record.
+        [Authorize(Roles = "Student,Admin")]
         [HttpDelete("{odId}")]
         public async Task<IActionResult> DeleteOd(int odId)
         {
+            if (User.IsInRole("Student"))
+            {
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing student authentication token." });
+
+                // Load the OD first so we can verify ownership before attempting deletion
+                var od = await _service.GetOdApplyByIdAsync(odId);
+                if (od == null) return NotFound("OD not found.");
+
+                if (od.StudentId != authStudentId)
+                    return StatusCode(403, new { message = "You are not authorized to cancel another student's OD application." });
+            }
+
             var (success, error) = await _service.DeleteOdApplyAsync(odId);
             if (!success)
             {
@@ -213,21 +283,24 @@ namespace OnlineOD.Controllers
         }
 
         // PUT /api/OdApply/{odId}/RejectMember?registerNumber=XXX&staffId=YYY
-        // staffId identifies which staff is rejecting — enforced server-side
-        // so only that student's OWN class section's staff can reject them,
-        // even on a group OD shared across multiple sections.
+        // Authenticated Staff ID extracted from JWT ClaimTypes.NameIdentifier.
+        [Authorize(Roles = "Staff")]
         [HttpPut("{odId}/RejectMember")]
-        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int staffId)
+        public async Task<IActionResult> RejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int? staffId = null)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
-            if (staffId <= 0)
-                return BadRequest("staffId is required");
+
+            var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+            {
+                return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+            }
 
             OdApply? od;
             try
             {
-                od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim(), staffId);
+                od = await _service.RejectGroupMemberAsync(odId, registerNumber.Trim(), authStaffId);
             }
             catch (InvalidOperationException ex)
             {
@@ -239,18 +312,23 @@ namespace OnlineOD.Controllers
 
         // PUT /api/OdApply/{odId}/UnrejectMember?registerNumber=XXX&staffId=YYY
         // Faculty undoing their own rejection — same section-ownership rule.
+        [Authorize(Roles = "Staff")]
         [HttpPut("{odId}/UnrejectMember")]
-        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int staffId)
+        public async Task<IActionResult> UnrejectMember(int odId, [FromQuery] string registerNumber, [FromQuery] int? staffId = null)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
-            if (staffId <= 0)
-                return BadRequest("staffId is required");
+
+            var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+            {
+                return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+            }
 
             OdApply? od;
             try
             {
-                od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim(), staffId);
+                od = await _service.UnrejectGroupMemberAsync(odId, registerNumber.Trim(), authStaffId);
             }
             catch (InvalidOperationException ex)
             {
@@ -262,11 +340,18 @@ namespace OnlineOD.Controllers
 
         // PUT /api/OdApply/{odId}/HodOverrideMember?registerNumber=XXX
         // HOD approving a member that faculty rejected
+        [Authorize(Roles = "HOD")]
         [HttpPut("{odId}/HodOverrideMember")]
         public async Task<IActionResult> HodOverrideMember(int odId, [FromQuery] string registerNumber)
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
+
+            var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+            {
+                return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+            }
 
             var od = await _service.HodOverrideGroupMemberAsync(odId, registerNumber.Trim());
             if (od == null) return NotFound("OD request not found");
@@ -330,6 +415,8 @@ namespace OnlineOD.Controllers
         // Each student (identified by registerNumber) gets their own certificate
         // row for this OD — required for group ODs where multiple members each
         // upload their own certificate without overwriting each other's.
+        // Only the authenticated Student (whose register number matches the OD or its member list) may upload.
+        [Authorize(Roles = "Student")]
         [HttpPost("{odId}/UploadCertificate")]
         public async Task<IActionResult> UploadCertificate(int odId,
             [FromForm] string winningStatus,
@@ -339,8 +426,36 @@ namespace OnlineOD.Controllers
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
 
+            // Resolve authenticated student and verify they are a member of this OD
+            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId <= 0)
+                return Unauthorized(new { message = "Invalid or missing student authentication token." });
+
+            var authStudent = await _studentService.GetStudentByIdAsync(authStudentId);
+            if (authStudent == null)
+                return StatusCode(403, new { message = "Authenticated student not found." });
+
+            // The register number in the form must belong to the authenticated student
+            if (string.IsNullOrWhiteSpace(authStudent.RegisterNumber) ||
+                !authStudent.RegisterNumber.Trim().Equals(registerNumber.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(403, new { message = "You can only upload a certificate for your own register number." });
+            }
+
             var od = await _service.GetOdApplyByIdAsync(odId);
             if (od == null) return NotFound();
+
+            // Verify this student is the applicant or a listed group member of the OD
+            var requestedReg = registerNumber.Trim();
+            bool isMember = (od.registerNumber != null &&
+                             od.registerNumber.Trim().Equals(requestedReg, StringComparison.OrdinalIgnoreCase))
+                            ||
+                            (od.IsGroupOd && od.RegisterNumbers != null &&
+                             od.RegisterNumbers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                              .Any(r => r.Equals(requestedReg, StringComparison.OrdinalIgnoreCase)));
+
+            if (!isMember)
+                return StatusCode(403, new { message = "You are not a member of this OD application." });
 
             var existingCerts = await _service.GetCertificatesForOdAsync(odId);
             var mine = existingCerts.FirstOrDefault(c =>
@@ -464,6 +579,7 @@ namespace OnlineOD.Controllers
         // PUT /api/OdApply/{odId}/VerifyCertificate?registerNumber=XXX
         // Staff verifies ONE specific member's certificate — once verified,
         // that student (and only that student) can no longer replace it.
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpPut("{odId}/VerifyCertificate")]
         public async Task<IActionResult> VerifyCertificate(int odId, [FromQuery] string registerNumber)
         {
