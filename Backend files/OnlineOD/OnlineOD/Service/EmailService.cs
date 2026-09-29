@@ -26,9 +26,22 @@ namespace OnlineOD.Services
         }
 
         // ── Token helper (HMAC-SHA256, URL-safe base64) ──────────────────────
+        private string GetTokenSecret()
+        {
+            var secret = Environment.GetEnvironmentVariable("EmailSettings__TokenSecret")
+                         ?? _config["EmailSettings:TokenSecret"];
+
+            if (string.IsNullOrWhiteSpace(secret) || secret.Equals("YOUR_TOKEN_SECRET", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("[EmailService] Missing required configuration: 'EmailSettings:TokenSecret' (or environment variable 'EmailSettings__TokenSecret'). Email approval tokens cannot be generated or validated without a configured secret.");
+            }
+
+            return secret.Trim();
+        }
+
         private string GenerateToken(int odId, string action)
         {
-            var secret = _config["EmailSettings:TokenSecret"] ?? "nasc-od-secret-key-2006-venkat-rp";
+            var secret = GetTokenSecret();
             var raw = $"{odId}:{action}:{secret}";
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
             return Convert.ToBase64String(bytes)
@@ -36,7 +49,17 @@ namespace OnlineOD.Services
         }
 
         public bool ValidateToken(int odId, string action, string token)
-            => token == GenerateToken(odId, action);
+        {
+            try
+            {
+                return token == GenerateToken(odId, action);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+        }
 
         // ── Shared send helper ────────────────────────────────────────────────
         private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
@@ -451,7 +474,12 @@ namespace OnlineOD.Services
         public async Task SendContactAdminEmailAsync(
             string registerNumber, string dob, string password, string role, string message)
         {
-            var adminEmail = _config["EmailSettings:AdminEmail"] ?? _config["EmailSettings:SenderEmail"];
+            var adminEmail = Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
+                          ?? _config["EmailSettings:AdminEmail"]
+                          ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                          ?? _config["Gmail:SenderEmail"]
+                          ?? _config["EmailSettings:SenderEmail"]
+                          ?? "admin@example.com";
 
             var rows = $@"
             <table style='width:100%;border-collapse:collapse;font-size:14px'>

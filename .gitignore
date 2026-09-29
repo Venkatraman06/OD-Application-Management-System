@@ -5,3 +5,5 @@ node_modules/
 .env
 appsettings.Development.json
 GmailOAuthSetup/
+Backend files/OnlineOD/OnlineOD/wwwroot/uploads/*
+!Backend files/OnlineOD/OnlineOD/wwwroot/uploads/.gitkeep
