@@ -62,15 +62,12 @@ if (isPostgreSql)
 {
     AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
     builder.Services.AddDbContext<ApplicationDbContext, PostgreSqlDbContext>(options =>
-    {
         options.UseNpgsql(
             connectionString,
             npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
                 maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorCodesToAdd: null));
-        options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-    });
+                errorCodesToAdd: null)));
 }
 else
 {
@@ -280,17 +277,12 @@ using (var scope = app.Services.CreateScope())
 
         try
         {
-            if (isPostgreSql)
-            {
-                await db.Database.MigrateAsync();
-            }
-
             var bootstrapper = scope.ServiceProvider.GetRequiredService<IAdminBootstrapService>();
             await bootstrapper.BootstrapAsync();
         }
         catch (Exception bootstrapEx)
         {
-            Console.WriteLine($"[Startup] Database migration / Admin bootstrap check error:\n{bootstrapEx}");
+            Console.WriteLine($"[Startup] Admin bootstrap check: {bootstrapEx.Message}");
         }
     }
     catch (Exception ex)
