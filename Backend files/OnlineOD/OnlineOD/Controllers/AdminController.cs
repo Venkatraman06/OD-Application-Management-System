@@ -1,23 +1,78 @@
+using System.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Dtos;
+using OnlineOD.Filters;
 using OnlineOD.Models;
+using OnlineOD.Service;
 using OnlineOD.Services;
 
 namespace OnlineOD.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
+    [TypeFilter(typeof(ActiveAdminFilter))]
     public class AdminController : ControllerBase
     {
         private readonly EmailService _emailService;
         private readonly ApplicationDbContext _context;
+        private readonly IAdminPasswordService _passwordService;
+        private readonly IJwtTokenService _jwtTokenService;
 
-        public AdminController(EmailService emailService, ApplicationDbContext context)
+        public AdminController(
+            EmailService emailService,
+            ApplicationDbContext context,
+            IAdminPasswordService passwordService,
+            IJwtTokenService jwtTokenService)
         {
             _emailService = emailService;
             _context = context;
+            _passwordService = passwordService;
+            _jwtTokenService = jwtTokenService;
+        }
+
+        // POST /api/Admin/login
+        [HttpPost("login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] AdminLoginDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.AdminId) || string.IsNullOrWhiteSpace(dto.Password))
+            {
+                return BadRequest(new { message = "Admin ID and Password are required." });
+            }
+
+            var admin = await _context.Admins.FirstOrDefaultAsync(a => a.AdminId.ToLower() == dto.AdminId.Trim().ToLower());
+
+            if (admin == null)
+            {
+                return Unauthorized(new { message = "Invalid Admin ID or password." });
+            }
+
+            if (!admin.IsActive)
+            {
+                return StatusCode(403, new { message = "Your administrator account has been deactivated. Please contact the system administrator." });
+            }
+
+            var isPasswordValid = _passwordService.VerifyPassword(admin, admin.PasswordHash, dto.Password);
+            if (!isPasswordValid)
+            {
+                return Unauthorized(new { message = "Invalid Admin ID or password." });
+            }
+
+            var token = _jwtTokenService.GenerateAdminToken(admin);
+
+            return Ok(new
+            {
+                adminId = admin.AdminId,
+                name = admin.Name,
+                email = admin.Email,
+                isActive = admin.IsActive,
+                role = "Admin",
+                token = token
+            });
         }
 
         // POST /api/Admin/ContactAdmin
@@ -28,6 +83,7 @@ namespace OnlineOD.Controllers
         // which is why requests never appeared on the admin page even though
         // the student saw "request sent" successfully.
         [HttpPost("ContactAdmin")]
+        [AllowAnonymous]
         public async Task<IActionResult> ContactAdmin([FromBody] ContactAdminDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.RegisterNumber))
@@ -576,6 +632,206 @@ namespace OnlineOD.Controllers
                 message = hod.IsActive ? "HOD account activated." : "HOD account deactivated.",
                 isActive = hod.IsActive
             });
+        }
+
+        // ── Admin Accounts Management ────────────────────────────────
+
+        // GET /api/Admin/Accounts
+        [HttpGet("Accounts")]
+        public async Task<IActionResult> GetAccounts()
+        {
+            var admins = await _context.Admins
+                .AsNoTracking()
+                .OrderBy(a => a.Id)
+                .Select(a => new AdminResponseDto
+                {
+                    Id = a.Id,
+                    AdminId = a.AdminId,
+                    Name = a.Name,
+                    Email = a.Email,
+                    IsActive = a.IsActive,
+                    CreatedAt = a.CreatedAt,
+                    UpdatedAt = a.UpdatedAt
+                })
+                .ToListAsync();
+
+            return Ok(admins);
+        }
+
+        // POST /api/Admin/Accounts
+        [HttpPost("Accounts")]
+        public async Task<IActionResult> CreateAccount([FromBody] CreateAdminDto dto)
+        {
+            if (dto == null)
+            {
+                return BadRequest(new { message = "Admin account data is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.AdminId) || string.IsNullOrWhiteSpace(dto.Password) || string.IsNullOrWhiteSpace(dto.Name))
+            {
+                return BadRequest(new { message = "Admin ID, Name, and Password are required." });
+            }
+
+            var cleanAdminId = dto.AdminId.Trim();
+            var exists = await _context.Admins.AnyAsync(a => a.AdminId.ToLower() == cleanAdminId.ToLower());
+            if (exists)
+            {
+                return Conflict(new { message = $"An administrator account with Admin ID '{cleanAdminId}' already exists." });
+            }
+
+            var admin = new Admin
+            {
+                AdminId = cleanAdminId,
+                Name = dto.Name.Trim(),
+                Email = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : null,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            admin.PasswordHash = _passwordService.HashPassword(admin, dto.Password.Trim());
+
+            _context.Admins.Add(admin);
+            await _context.SaveChangesAsync();
+
+            var response = new AdminResponseDto
+            {
+                Id = admin.Id,
+                AdminId = admin.AdminId,
+                Name = admin.Name,
+                Email = admin.Email,
+                IsActive = admin.IsActive,
+                CreatedAt = admin.CreatedAt,
+                UpdatedAt = admin.UpdatedAt
+            };
+
+            return Ok(response);
+        }
+
+        // PUT /api/Admin/Accounts/{id}
+        [HttpPut("Accounts/{id}")]
+        public async Task<IActionResult> UpdateAccount(int id, [FromBody] UpdateAdminDto dto)
+        {
+            if (dto == null)
+            {
+                return BadRequest(new { message = "Update data is required." });
+            }
+
+            var admin = await _context.Admins.FindAsync(id);
+            if (admin == null)
+            {
+                return NotFound(new { message = "Administrator account not found." });
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+            {
+                admin.Name = dto.Name.Trim();
+            }
+
+            admin.Email = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : null;
+
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                admin.PasswordHash = _passwordService.HashPassword(admin, dto.Password.Trim());
+            }
+
+            admin.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var response = new AdminResponseDto
+            {
+                Id = admin.Id,
+                AdminId = admin.AdminId,
+                Name = admin.Name,
+                Email = admin.Email,
+                IsActive = admin.IsActive,
+                CreatedAt = admin.CreatedAt,
+                UpdatedAt = admin.UpdatedAt
+            };
+
+            return Ok(response);
+        }
+
+        // PUT /api/Admin/Accounts/{id}/ToggleStatus
+        [HttpPut("Accounts/{id}/ToggleStatus")]
+        public async Task<IActionResult> ToggleAccountStatus(int id)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var admin = await _context.Admins.FindAsync(id);
+                if (admin == null)
+                {
+                    return NotFound(new { message = "Administrator account not found." });
+                }
+
+                // Last Active Admin Protection: If target is currently active, verify at least one other active admin exists
+                if (admin.IsActive)
+                {
+                    var activeCount = await _context.Admins.CountAsync(a => a.IsActive);
+                    if (activeCount <= 1)
+                    {
+                        return BadRequest(new { message = "Cannot deactivate the last active administrator account." });
+                    }
+                }
+
+                admin.IsActive = !admin.IsActive;
+                admin.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    message = admin.IsActive ? "Administrator account activated." : "Administrator account deactivated.",
+                    isActive = admin.IsActive
+                });
+            }
+            catch (Exception ex) when (ex is DbUpdateConcurrencyException || ex is DbUpdateException)
+            {
+                await transaction.RollbackAsync();
+                return Conflict(new { message = "A concurrent modification was detected while updating administrator status. Please refresh and try again." });
+            }
+        }
+
+        // DELETE /api/Admin/Accounts/{id}
+        [HttpDelete("Accounts/{id}")]
+        public async Task<IActionResult> DeleteAccount(int id)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var admin = await _context.Admins.FindAsync(id);
+                if (admin == null)
+                {
+                    return NotFound(new { message = "Administrator account not found." });
+                }
+
+                // Last Active Admin Protection: Cannot delete if it is the only admin, or if total admin count is 1
+                var totalCount = await _context.Admins.CountAsync();
+                if (totalCount <= 1)
+                {
+                    return BadRequest(new { message = "Cannot delete the only administrator account in the system." });
+                }
+
+                if (admin.IsActive)
+                {
+                    var activeCount = await _context.Admins.CountAsync(a => a.IsActive);
+                    if (activeCount <= 1)
+                    {
+                        return BadRequest(new { message = "Cannot delete the last active administrator account." });
+                    }
+                }
+
+                _context.Admins.Remove(admin);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(new { message = "Administrator account deleted successfully." });
+            }
+            catch (Exception ex) when (ex is DbUpdateConcurrencyException || ex is DbUpdateException)
+            {
+                await transaction.RollbackAsync();
+                return Conflict(new { message = "A concurrent modification was detected while deleting the administrator account. Please refresh and try again." });
+            }
         }
     }
 }

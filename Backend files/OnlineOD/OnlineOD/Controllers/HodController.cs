@@ -11,11 +11,14 @@ namespace OnlineOD.Controllers
     {
         private readonly IHodService _hodService;
         private readonly IOdApplyService _odService;
+        private readonly IJwtTokenService _jwtTokenService;
+
         //dependancy injection of services
-        public HodController(IHodService hodService, IOdApplyService odService)
+        public HodController(IHodService hodService, IOdApplyService odService, IJwtTokenService jwtTokenService)
         {
             _hodService = hodService;
             _odService = odService;
+            _jwtTokenService = jwtTokenService;
         }
 
 
@@ -99,12 +102,15 @@ namespace OnlineOD.Controllers
             if (!hod.IsActive)
                 return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
 
+            var token = _jwtTokenService.GenerateHodToken(hod);
+
             return Ok(new
             {
                 hodId = hod.HodId,
                 name = hod.Name,
                 rollNumber = hod.RollNumber,
-                department = hod.Department
+                department = hod.Department,
+                token = token
             });
         }
 

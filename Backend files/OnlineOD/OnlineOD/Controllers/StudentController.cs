@@ -10,10 +10,12 @@ namespace OnlineOD.Controllers
     public class StudentController : ControllerBase
     {
         private readonly IStudentService _studentService;
+        private readonly IJwtTokenService _jwtTokenService;
 
-        public StudentController(IStudentService studentService)
+        public StudentController(IStudentService studentService, IJwtTokenService jwtTokenService)
         {
             _studentService = studentService;
+            _jwtTokenService = jwtTokenService;
         }
 
         //this will get all the student details from my database
@@ -143,6 +145,8 @@ namespace OnlineOD.Controllers
             if (!student.IsActive)
                 return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
 
+            var token = _jwtTokenService.GenerateStudentToken(student);
+
             return Ok(new
             {
                 studentId = student.StudentId,
@@ -154,7 +158,8 @@ namespace OnlineOD.Controllers
                 dob = student.DOB,
                 semester = student.semester,
                 email = student.Email,
-                isActive = student.IsActive
+                isActive = student.IsActive,
+                token = token
             });
         }
     }

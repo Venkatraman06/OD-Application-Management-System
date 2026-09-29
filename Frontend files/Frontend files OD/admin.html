@@ -18,11 +18,9 @@
 <body>
 
 <!-- ============================================
-     Simple access gate — admin.html has no backend
-     Admin login/role yet, so entry is protected with a
-     local access code only. See admin.js ADMIN_ACCESS_CODE.
-     For real deployments, replace this with a proper
-     server-side Admin login before going live.
+     Admin Login — authenticates via POST /api/Admin/login.
+     JWT token is stored in sessionStorage and sent as
+     Authorization: Bearer <token> on all admin API calls.
      ============================================ -->
 <div class="gate-overlay" id="gateOverlay">
     <div class="gate-card">
@@ -32,11 +30,18 @@
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
         </div>
-        <h2>Admin Access</h2>
-        <p>Enter the admin access code to continue.</p>
-        <input type="password" id="gateCodeInput" placeholder="Access code" autocomplete="off">
-        <span class="gate-error" id="gateError"></span>
-        <button type="button" id="gateSubmitBtn">Unlock</button>
+        <h2>Admin Login</h2>
+        <p>Sign in with your Admin ID and password.</p>
+        <form id="adminLoginForm" novalidate>
+            <div class="gate-form-row">
+                <input type="text" id="adminIdInput" placeholder="Admin ID" autocomplete="username" required>
+            </div>
+            <div class="gate-form-row">
+                <input type="password" id="adminPasswordInput" placeholder="Password" autocomplete="current-password" required>
+            </div>
+            <span class="gate-error" id="gateError"></span>
+            <button type="submit" id="gateSubmitBtn">Sign In</button>
+        </form>
         <a href="index.html" class="gate-back-link">&larr; Back to login</a>
     </div>
 </div>
@@ -72,7 +77,7 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
             </button>
-            <a href="index.html" class="admin-logout-link">Log out</a>
+            <button type="button" class="admin-logout-link" id="adminLogoutBtn">Log out</button>
         </div>
     </header>
 
@@ -104,6 +109,10 @@
         <button class="admin-tab" data-tab="events">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Events <span class="tab-count" id="eventsTabCount">0</span>
+        </button>
+        <button class="admin-tab" data-tab="accounts">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="19" cy="8" r="3"/><path d="M22 20c0-2.7-2-4.7-4.5-5"/></svg>
+            Admin Accounts <span class="tab-count" id="accountsTabCount">0</span>
         </button>
     </nav>
 
@@ -576,6 +585,56 @@
                             </thead>
                             <tbody id="eventsTableBody">
                                 <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============== ADMIN ACCOUNTS ============== -->
+        <section class="admin-panel" id="panel-accounts">
+            <div class="admin-grid">
+                <div class="admin-card form-card">
+                    <h2 id="accountFormTitle">Add Admin Account</h2>
+                    <form id="accountForm" class="admin-form" novalidate>
+                        <input type="hidden" id="accountId" value="">
+                        <div class="form-row">
+                            <label>Admin ID</label>
+                            <input type="text" id="accountAdminId" required placeholder="e.g. admin2" autocomplete="off">
+                        </div>
+                        <div class="form-row">
+                            <label>Name</label>
+                            <input type="text" id="accountName" required placeholder="Full name">
+                        </div>
+                        <div class="form-row">
+                            <label>Email</label>
+                            <input type="email" id="accountEmail" required placeholder="admin@example.com">
+                        </div>
+                        <div class="form-row">
+                            <label>Password <span id="accountPasswordHint" style="font-size:0.75rem;color:var(--surface-400);">(required for new account)</span></label>
+                            <input type="password" id="accountPassword" placeholder="Leave blank to keep existing" autocomplete="new-password">
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" id="accountResetBtn">Clear</button>
+                            <button type="submit" class="btn-primary" id="accountSubmitBtn">Add Admin</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="admin-card list-card">
+                    <div class="list-card-header">
+                        <h2>All Admin Accounts</h2>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Admin ID</th><th>Name</th><th>Email</th><th>Status</th><th>Created</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody">
+                                <tr><td colspan="6" class="table-empty">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>

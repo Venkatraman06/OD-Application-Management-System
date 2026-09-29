@@ -15,15 +15,18 @@ namespace OnlineOD.Controllers
         private readonly IHodService _hodService;
         private readonly EmailService _emailService;
         private readonly EmailQueue _emailQueue;
+        private readonly IJwtTokenService _jwtTokenService;
 
         public StaffController(IStaffService staffService, IOdApplyService odService,
-             IHodService hodService, EmailService emailService, EmailQueue emailQueue)
+             IHodService hodService, EmailService emailService, EmailQueue emailQueue,
+             IJwtTokenService jwtTokenService)
         {
             _staffService = staffService;
             _odService = odService;
             _hodService = hodService;
             _emailService = emailService;
             _emailQueue = emailQueue;
+            _jwtTokenService = jwtTokenService;
         }
 
         [HttpGet]
@@ -104,6 +107,8 @@ namespace OnlineOD.Controllers
             if (!staff.IsActive)
                 return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
 
+            var token = _jwtTokenService.GenerateStaffToken(staff);
+
             return Ok(new
             {
                 facultyId = staff.StaffId,
@@ -111,7 +116,8 @@ namespace OnlineOD.Controllers
                 rollNumber = staff.RollNumber,
                 department = staff.Department,
                 section = staff.Section,
-                year = staff.Year
+                year = staff.Year,
+                token = token
             });
         }
 

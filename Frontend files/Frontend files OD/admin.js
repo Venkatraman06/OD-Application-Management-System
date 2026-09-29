@@ -1,46 +1,119 @@
 const API_BASE = 'https://od-application-backend.onrender.com';
 
 // ============================================
-// Access gate
-// There is no backend Admin login yet, so this page is protected by a
-// simple local access code instead. It is NOT real security — anyone who
-// reads this file can find the code — it only keeps the page from being
-// stumbled into by accident. Change ADMIN_ACCESS_CODE below, or (better)
-// wire this page into a proper server-side Admin login later.
+// JWT Admin Auth helpers
 // ============================================
-const ADMIN_ACCESS_CODE = 'admin123';
+
+function getAdminToken() {
+    return sessionStorage.getItem('adminToken');
+}
+
+function logoutAdmin() {
+    sessionStorage.removeItem('adminToken');
+    window.location.href = 'admin.html';
+}
+
+/**
+ * Authenticated fetch wrapper for all Admin API calls.
+ * Injects Authorization: Bearer <token>.
+ * On 401 → session expired → redirect to login.
+ * On 403 → account deactivated → redirect to login.
+ */
+async function adminFetch(url, options = {}) {
+    const token = getAdminToken();
+    const headers = Object.assign({}, options.headers || {});
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+        sessionStorage.removeItem('adminToken');
+        alert('Your session has expired. Please log in again.');
+        window.location.href = 'admin.html';
+        throw new Error('Session expired');
+    }
+    if (res.status === 403) {
+        sessionStorage.removeItem('adminToken');
+        alert('Your Admin account has been deactivated. Please contact another Admin.');
+        window.location.href = 'admin.html';
+        throw new Error('Account deactivated');
+    }
+    return res;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-    const gateOverlay = document.getElementById('gateOverlay');
-    const adminShell  = document.getElementById('adminShell');
-    const gateInput   = document.getElementById('gateCodeInput');
-    const gateError   = document.getElementById('gateError');
-    const gateBtn     = document.getElementById('gateSubmitBtn');
+    const gateOverlay  = document.getElementById('gateOverlay');
+    const adminShell   = document.getElementById('adminShell');
+    const loginForm    = document.getElementById('adminLoginForm');
+    const adminIdInput = document.getElementById('adminIdInput');
+    const pwdInput     = document.getElementById('adminPasswordInput');
+    const gateError    = document.getElementById('gateError');
+    const gateBtn      = document.getElementById('gateSubmitBtn');
+
+    function showGate() {
+        gateOverlay.style.display = 'flex';
+        adminShell.style.display  = 'none';
+    }
 
     function unlock() {
         gateOverlay.style.display = 'none';
-        adminShell.style.display = 'block';
-        sessionStorage.setItem('adminUnlocked', '1');
+        adminShell.style.display  = 'block';
         initAdminApp();
     }
 
-    function tryUnlock() {
-        if (gateInput.value === ADMIN_ACCESS_CODE) {
-            unlock();
-        } else {
-            gateError.textContent = 'Incorrect access code.';
-            gateInput.value = '';
-            gateInput.focus();
-        }
-    }
-
-    if (sessionStorage.getItem('adminUnlocked') === '1') {
+    // If a valid token is already stored, go straight to the dashboard
+    if (getAdminToken()) {
         unlock();
     } else {
-        gateBtn.addEventListener('click', tryUnlock);
-        gateInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-        gateInput.focus();
+        showGate();
     }
+
+    loginForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const adminId  = adminIdInput.value.trim();
+        const password = pwdInput.value;
+
+        if (!adminId || !password) {
+            gateError.textContent = 'Please enter your Admin ID and password.';
+            return;
+        }
+
+        gateBtn.disabled    = true;
+        gateBtn.textContent = 'Signing in…';
+        gateError.textContent = '';
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminId, password })
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                let msg = 'Invalid Admin ID or password.';
+                try {
+                    const parsed = JSON.parse(text);
+                    if (parsed.message) msg = parsed.message;
+                } catch { /* plain text */ }
+                gateError.textContent = msg;
+                return;
+            }
+
+            const data = await res.json();
+            if (!data.token) {
+                gateError.textContent = 'Login failed: no token received.';
+                return;
+            }
+
+            sessionStorage.setItem('adminToken', data.token);
+            unlock();
+        } catch (err) {
+            console.error(err);
+            gateError.textContent = 'Network error — could not connect to server.';
+        } finally {
+            gateBtn.disabled    = false;
+            gateBtn.textContent = 'Sign In';
+        }
+    });
 });
 
 // ============================================
@@ -62,6 +135,11 @@ function initAdminApp() {
         }, { passive: false });
     }
 
+    // ── Logout button ──
+    document.getElementById('adminLogoutBtn')?.addEventListener('click', () => {
+        logoutAdmin();
+    });
+
     document.querySelectorAll('.admin-tab').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
@@ -78,6 +156,7 @@ function initAdminApp() {
             else if (tab === 'odrequests') loadOdRequests();
             else if (tab === 'certificates') loadCertificates();
             else if (tab === 'events') loadEvents();
+            else if (tab === 'accounts') loadAdminAccounts();
         });
     });
 
@@ -120,7 +199,7 @@ function initAdminApp() {
                 : kind === 'odrequest' ? `Admin/ODRequests/${id}`
                 : kind === 'event' ? `Events/${id}`
                 : `Hod/${id}`;
-            const res = await fetch(`${API_BASE}/api/${endpoint}`, { method: 'DELETE' });
+            const res = await adminFetch(`${API_BASE}/api/${endpoint}`, { method: 'DELETE' });
             if (!res.ok) { showToast('error', 'Delete failed.'); return; }
             showToast('success', 'Deleted.');
             if (kind === 'student') loadStudents();
@@ -142,7 +221,7 @@ function initAdminApp() {
                 : role === 'staff' ? `Admin/Staff/${id}/ToggleStatus`
                 : role === 'event' ? `Events/${id}/ToggleStatus`
                 : `Admin/Hod/${id}/ToggleStatus`;
-            const res = await fetch(`${API_BASE}/api/${endpoint}`, { method: 'PUT' });
+            const res = await adminFetch(`${API_BASE}/api/${endpoint}`, { method: 'PUT' });
             if (!res.ok) {
                 showToast('error', 'Failed to update status.');
                 return;
@@ -198,7 +277,7 @@ function initAdminApp() {
         const tbody = document.getElementById('odHistoryTableBody');
         if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Loading OD history...</td></tr>';
         try {
-            const res = await fetch(API_BASE + '/api/Student/OdHistory?_=' + Date.now(), { cache: 'no-store' });
+            const res = await adminFetch(API_BASE + '/api/Student/OdHistory?_=' + Date.now(), { cache: 'no-store' });
             odHistoryList = res.ok ? await res.json() : [];
         } catch (err) {
             console.error(err);
@@ -250,7 +329,7 @@ function initAdminApp() {
     async function loadStudents() {
         const tbody = document.getElementById('studentTableBody');
         try {
-            const res = await fetch(`${API_BASE}/api/Student?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Student?_=${Date.now()}`, { cache: 'no-store' });
             students = res.ok ? await res.json() : [];
             if (window.setStudentNameLookup) {
                 const map = {};
@@ -393,13 +472,13 @@ function initAdminApp() {
                 const existing = students.find(s => String(s.studentId ?? s.StudentId) === String(id));
                 const body = { ...payload, studentId: parseInt(id, 10) };
                 if (!body.password) body.password = existing ? (existing.password ?? existing.Password) : '';
-                res = await fetch(`${API_BASE}/api/Student/${id}`, {
+                res = await adminFetch(`${API_BASE}/api/Student/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
             } else {
-                res = await fetch(`${API_BASE}/api/Student`, {
+                res = await adminFetch(`${API_BASE}/api/Student`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -432,7 +511,7 @@ function initAdminApp() {
 
     async function loadStaff() {
         try {
-            const res = await fetch(`${API_BASE}/api/Faculty?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Faculty?_=${Date.now()}`, { cache: 'no-store' });
             staff = res.ok ? await res.json() : [];
         } catch (err) {
             console.error(err);
@@ -560,13 +639,13 @@ function initAdminApp() {
                 const body = { ...payload, staffId: parseInt(id, 10) };
                 if (!body.password) body.password = existing ? (existing.password ?? existing.Password) : '';
                 // UpdateStaff is a plain PUT api/Faculty (no id in the URL) — id lives in the body
-                res = await fetch(`${API_BASE}/api/Faculty`, {
+                res = await adminFetch(`${API_BASE}/api/Faculty`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
             } else {
-                res = await fetch(`${API_BASE}/api/Faculty`, {
+                res = await adminFetch(`${API_BASE}/api/Faculty`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -599,7 +678,7 @@ function initAdminApp() {
 
     async function loadHods() {
         try {
-            const res = await fetch(`${API_BASE}/api/Hod?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Hod?_=${Date.now()}`, { cache: 'no-store' });
             hods = res.ok ? await res.json() : [];
         } catch (err) {
             console.error(err);
@@ -725,13 +804,13 @@ function initAdminApp() {
                     hodSubmitBtn.disabled = false;
                     return;
                 }
-                res = await fetch(`${API_BASE}/api/Hod`, {
+                res = await adminFetch(`${API_BASE}/api/Hod`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
             } else {
-                res = await fetch(`${API_BASE}/api/Hod`, {
+                res = await adminFetch(`${API_BASE}/api/Hod`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -767,7 +846,7 @@ function initAdminApp() {
 
     async function loadRequests() {
         try {
-            const res = await fetch(`${API_BASE}/api/Admin/ContactRequests?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Admin/ContactRequests?_=${Date.now()}`, { cache: 'no-store' });
             requests = res.ok ? await res.json() : [];
         } catch (err) {
             console.error(err);
@@ -816,7 +895,7 @@ function initAdminApp() {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
                 try {
-                    const res = await fetch(`${API_BASE}/api/Admin/ContactRequests/${id}/Resolve`, { method: 'PUT' });
+                    const res = await adminFetch(`${API_BASE}/api/Admin/ContactRequests/${id}/Resolve`, { method: 'PUT' });
                     if (!res.ok) { showToast('error', 'Could not update request.'); return; }
                     showToast('success', 'Marked as resolved.');
                     loadRequests();
@@ -921,7 +1000,7 @@ function initAdminApp() {
         const tbody = document.getElementById('odRequestsTableBody');
         if (tbody) tbody.innerHTML = '<tr><td colspan="14" class="table-empty">Loading OD requests...</td></tr>';
         try {
-            const res = await fetch(`${API_BASE}/api/Admin/ODRequests?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Admin/ODRequests?_=${Date.now()}`, { cache: 'no-store' });
             odRequests = res.ok ? await res.json() : [];
         } catch (err) {
             console.error(err);
@@ -1159,7 +1238,7 @@ function initAdminApp() {
         if (saveBtn) saveBtn.disabled = true;
 
         try {
-            const res = await fetch(`${API_BASE}/api/Admin/ODRequests/${id}`, {
+            const res = await adminFetch(`${API_BASE}/api/Admin/ODRequests/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1208,7 +1287,7 @@ function initAdminApp() {
         closeUndoConfirmModal();
 
         try {
-            const res = await fetch(`${API_BASE}/api/Admin/ODRequests/${id}/UndoDecision`, {
+            const res = await adminFetch(`${API_BASE}/api/Admin/ODRequests/${id}/UndoDecision`, {
                 method: 'POST'
             });
 
@@ -1251,7 +1330,7 @@ function initAdminApp() {
 
     async function loadEvents() {
         try {
-            const res = await fetch(`${API_BASE}/api/Events?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Events?_=${Date.now()}`, { cache: 'no-store' });
             events = res.ok ? await res.json() : [];
         } catch (err) {
             console.error(err);
@@ -1369,13 +1448,13 @@ function initAdminApp() {
         try {
             let res;
             if (isEdit) {
-                res = await fetch(`${API_BASE}/api/Events/${id}`, {
+                res = await adminFetch(`${API_BASE}/api/Events/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
             } else {
-                res = await fetch(`${API_BASE}/api/Events`, {
+                res = await adminFetch(`${API_BASE}/api/Events`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1444,7 +1523,7 @@ function initAdminApp() {
         if (sBody) sBody.innerHTML = '<tr><td colspan="12" class="table-empty">Loading submitted certificates...</td></tr>';
 
         try {
-            const res = await fetch(`${API_BASE}/api/Admin/Certificates?_=${Date.now()}`, { cache: 'no-store' });
+            const res = await adminFetch(`${API_BASE}/api/Admin/Certificates?_=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 certPendingList = data.pending || [];
@@ -1675,4 +1754,213 @@ function initAdminApp() {
     loadOdRequests();
     loadCertificates();
     loadEvents();
+
+    // ============================================
+    // ADMIN ACCOUNTS MANAGEMENT
+    // ============================================
+    let adminAccounts = [];
+    const accountForm       = document.getElementById('accountForm');
+    const accountIdEl       = document.getElementById('accountId');
+    const accountSubmitBtn  = document.getElementById('accountSubmitBtn');
+    const accountFormTitle  = document.getElementById('accountFormTitle');
+    const accountPasswordHint = document.getElementById('accountPasswordHint');
+
+    async function loadAdminAccounts() {
+        const tbody = document.getElementById('accountsTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Loading admin accounts…</td></tr>';
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Admin/Accounts?_=${Date.now()}`, { cache: 'no-store' });
+            adminAccounts = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error(err);
+            adminAccounts = [];
+            showToast('error', 'Failed to load admin accounts.');
+        }
+        setEl('accountsTabCount', adminAccounts.length);
+        renderAdminAccounts(adminAccounts);
+    }
+
+    function renderAdminAccounts(list) {
+        const tbody = document.getElementById('accountsTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No admin accounts found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map(a => {
+            const id     = a.id ?? a.Id;
+            const active = (a.isActive ?? a.IsActive) !== false;
+            const created = a.createdAt ?? a.CreatedAt;
+            const createdLabel = created ? new Date(created).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+            const statusPill = active
+                ? `<span class="status-pill status-resolved">Active</span>`
+                : `<span class="status-pill status-rejected">Inactive</span>`;
+            return `
+            <tr>
+                <td><b>${esc(a.adminId ?? a.AdminId)}</b></td>
+                <td>${esc(a.name ?? a.Name ?? '-')}</td>
+                <td>${esc(a.email ?? a.Email ?? '-')}</td>
+                <td>${statusPill}</td>
+                <td style="font-size:0.78rem;color:var(--surface-400);">${createdLabel}</td>
+                <td>
+                    <div class="row-actions">
+                        <button class="row-btn edit-btn" title="Edit" data-id="${id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                        <button class="row-btn" title="${active ? 'Deactivate' : 'Activate'}" data-toggle-id="${id}" style="color:${active ? '#fbbf24' : '#4ade80'};" title="${active ? 'Deactivate' : 'Activate'}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/>${active ? '<line x1="8" y1="12" x2="16" y2="12"/>' : '<line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>'}</svg>
+                        </button>
+                        <button class="row-btn delete-btn" title="Delete" data-id="${id}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('accountsTableBody')?.addEventListener('click', async (e) => {
+        const toggleBtn = e.target.closest('[data-toggle-id]');
+        if (toggleBtn) {
+            const id = toggleBtn.dataset.toggleId;
+            try {
+                const res = await adminFetch(`${API_BASE}/api/Admin/Accounts/${id}/ToggleStatus`, { method: 'PUT' });
+                if (!res.ok) { showToast('error', 'Failed to update status.'); return; }
+                const data = await res.json();
+                showToast('success', data.message || 'Status updated.');
+                loadAdminAccounts();
+            } catch (err) {
+                console.error(err);
+                showToast('error', 'Network error updating status.');
+            }
+            return;
+        }
+
+        const id = e.target.closest('[data-id]')?.dataset.id;
+        if (!id) return;
+        const account = adminAccounts.find(a => String(a.id ?? a.Id) === String(id));
+        if (!account) return;
+
+        if (e.target.closest('.delete-btn')) {
+            askDelete('adminaccount', id, `admin account "${account.adminId ?? account.AdminId}"`);
+            return;
+        }
+        if (e.target.closest('.edit-btn')) {
+            fillAccountForm(account);
+        }
+    });
+
+    // Route 'adminaccount' kind through the shared delete confirm handler
+    const _origDeleteConfirmClick = document.getElementById('deleteConfirmBtn')?._adminAccountKindWired;
+    if (!_origDeleteConfirmClick) {
+        const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+        if (deleteConfirmBtn) {
+            deleteConfirmBtn._adminAccountKindWired = true;
+            // Patch the existing pendingDelete handler to support 'adminaccount' kind
+            // by intercepting via the existing deleteOverlay flow already wired above.
+            // We extend it by adding an extra handler for 'adminaccount' after the fact.
+            // Re-wire using a capturing wrapper via a data-kind sentinel:
+            const existingHandler = deleteConfirmBtn.onclick;
+            deleteConfirmBtn.addEventListener('click', async () => {
+                if (!pendingDelete || pendingDelete.kind !== 'adminaccount') return;
+                const { id } = pendingDelete;
+                pendingDelete = null;
+                deleteOverlay.classList.remove('active');
+                try {
+                    const res = await adminFetch(`${API_BASE}/api/Admin/Accounts/${id}`, { method: 'DELETE' });
+                    if (!res.ok) {
+                        const text = await res.text().catch(() => '');
+                        let msg = 'Delete failed.';
+                        try { const p = JSON.parse(text); if (p.message) msg = p.message; } catch { if (text && text.length < 150) msg = text; }
+                        showToast('error', msg);
+                        return;
+                    }
+                    showToast('success', 'Admin account deleted.');
+                    loadAdminAccounts();
+                } catch (err) {
+                    console.error(err);
+                    showToast('error', 'Network error while deleting admin account.');
+                }
+            });
+        }
+    }
+
+    function fillAccountForm(a) {
+        accountIdEl.value = a.id ?? a.Id ?? '';
+        document.getElementById('accountAdminId').value = a.adminId ?? a.AdminId ?? '';
+        document.getElementById('accountName').value    = a.name ?? a.Name ?? '';
+        document.getElementById('accountEmail').value   = a.email ?? a.Email ?? '';
+        document.getElementById('accountPassword').value = '';
+        if (accountFormTitle) accountFormTitle.textContent = 'Edit Admin Account';
+        if (accountPasswordHint) accountPasswordHint.textContent = '(leave blank to keep existing)';
+        if (accountSubmitBtn) accountSubmitBtn.textContent = 'Update Admin';
+        document.getElementById('panel-accounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('accountResetBtn')?.addEventListener('click', () => {
+        accountForm?.reset();
+        if (accountIdEl) accountIdEl.value = '';
+        if (accountFormTitle) accountFormTitle.textContent = 'Add Admin Account';
+        if (accountPasswordHint) accountPasswordHint.textContent = '(required for new account)';
+        if (accountSubmitBtn) accountSubmitBtn.textContent = 'Add Admin';
+    });
+
+    accountForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id     = accountIdEl.value;
+        const isEdit = !!id;
+
+        const payload = {
+            adminId:  document.getElementById('accountAdminId').value.trim(),
+            name:     document.getElementById('accountName').value.trim(),
+            email:    document.getElementById('accountEmail').value.trim(),
+            password: document.getElementById('accountPassword').value
+        };
+
+        if (!payload.adminId || !payload.name || !payload.email) {
+            showToast('error', 'Please fill in Admin ID, Name, and Email.');
+            return;
+        }
+        if (!isEdit && !payload.password) {
+            showToast('error', 'Password is required for a new Admin account.');
+            return;
+        }
+
+        if (accountSubmitBtn) accountSubmitBtn.disabled = true;
+        try {
+            let res;
+            if (isEdit) {
+                res = await adminFetch(`${API_BASE}/api/Admin/Accounts/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                res = await adminFetch(`${API_BASE}/api/Admin/Accounts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                let msg = 'Could not save admin account.';
+                try { const p = JSON.parse(text); if (p.message) msg = p.message; } catch { if (text && text.length < 200) msg = text; }
+                showToast('error', msg);
+                return;
+            }
+            showToast('success', isEdit ? 'Admin account updated.' : 'Admin account created.');
+            accountForm.reset();
+            if (accountIdEl) accountIdEl.value = '';
+            if (accountFormTitle) accountFormTitle.textContent = 'Add Admin Account';
+            if (accountPasswordHint) accountPasswordHint.textContent = '(required for new account)';
+            if (accountSubmitBtn) accountSubmitBtn.textContent = 'Add Admin';
+            loadAdminAccounts();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error — could not save admin account.');
+        } finally {
+            if (accountSubmitBtn) accountSubmitBtn.disabled = false;
+        }
+    });
 }

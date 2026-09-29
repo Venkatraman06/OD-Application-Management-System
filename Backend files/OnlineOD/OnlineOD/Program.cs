@@ -1,9 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using OnlineOD.Data;
 using OnlineOD.Service;
 using OnlineOD.Services;
 using System;
+using System.Text;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -132,9 +135,52 @@ builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IHodService, HodService>();
 builder.Services.AddScoped<IOdApplyService, OdApplyService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IAdminPasswordService, AdminPasswordService>();
+builder.Services.AddScoped<IAdminBootstrapService, AdminBootstrapService>();
+builder.Services.AddScoped<OnlineOD.Filters.ActiveAdminFilter>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddSingleton<EmailQueue>();
 builder.Services.AddHostedService<EmailBackgroundWorker>();
+
+var jwtSecret = Environment.GetEnvironmentVariable("JwtSettings__SecretKey")
+             ?? builder.Configuration["JwtSettings:SecretKey"];
+
+var jwtIssuer = Environment.GetEnvironmentVariable("JwtSettings__Issuer")
+             ?? builder.Configuration["JwtSettings:Issuer"]
+             ?? "OnlineOD";
+
+var jwtAudience = Environment.GetEnvironmentVariable("JwtSettings__Audience")
+               ?? builder.Configuration["JwtSettings:Audience"]
+               ?? "OnlineODFrontend";
+
+var keyBytes = !string.IsNullOrWhiteSpace(jwtSecret) && !jwtSecret.Equals("YOUR_JWT_SECRET", StringComparison.OrdinalIgnoreCase)
+    ? Encoding.UTF8.GetBytes(jwtSecret.Trim())
+    : new byte[32];
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(1),
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+    };
+});
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -228,6 +274,16 @@ using (var scope = app.Services.CreateScope())
 
         var overrides = db.WorkingDayOverrides.AsNoTracking().ToList();
         WorkingDaysCalendar.LoadOverrides(overrides);
+
+        try
+        {
+            var bootstrapper = scope.ServiceProvider.GetRequiredService<IAdminBootstrapService>();
+            await bootstrapper.BootstrapAsync();
+        }
+        catch (Exception bootstrapEx)
+        {
+            Console.WriteLine($"[Startup] Admin bootstrap check: {bootstrapEx.Message}");
+        }
     }
     catch (Exception ex)
     {
@@ -253,6 +309,7 @@ if (Directory.Exists(frontendPath))
     });
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

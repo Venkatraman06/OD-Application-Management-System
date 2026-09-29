@@ -24,6 +24,7 @@ namespace OnlineOD.Data
         public DbSet<WorkingDayOverride> WorkingDayOverrides { get; set; }
         public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
         public DbSet<Event> Events { get; set; }
+        public DbSet<Admin> Admins { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -44,6 +45,14 @@ namespace OnlineOD.Data
             modelBuilder.Entity<Event>()
                 .Property(e => e.IsActive)
                 .HasDefaultValue(true);
+
+            modelBuilder.Entity<Admin>()
+                .Property(a => a.IsActive)
+                .HasDefaultValue(true);
+
+            modelBuilder.Entity<Admin>()
+                .HasIndex(a => a.AdminId)
+                .IsUnique();
         }
     }
 }

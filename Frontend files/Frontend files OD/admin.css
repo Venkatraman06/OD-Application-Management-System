@@ -63,6 +63,7 @@ body::-webkit-scrollbar-thumb:hover {
 }
 .gate-card h2 { margin: 0 0 6px; font-size: 1.3rem; font-weight: 800; color: white; }
 .gate-card p { margin: 0 0 20px; font-size: 0.85rem; color: var(--surface-400); }
+.gate-form-row { margin-bottom: 10px; }
 .gate-card input {
     width: 100%;
     padding: 12px 14px;
@@ -71,12 +72,12 @@ body::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.04);
     color: white;
     font-size: 0.9rem;
-    margin-bottom: 6px;
     font-family: var(--font-family);
 }
 .gate-card input:focus { outline: none; border-color: var(--primary-500); }
 .gate-error { display: block; min-height: 18px; font-size: 0.78rem; color: var(--error); margin-bottom: 8px; }
-.gate-card button#gateSubmitBtn {
+.gate-card button#gateSubmitBtn,
+.gate-card button[type="submit"] {
     width: 100%;
     padding: 12px;
     border: none;
@@ -90,6 +91,20 @@ body::-webkit-scrollbar-thumb:hover {
 }
 .gate-back-link { display: block; margin-top: 16px; font-size: 0.8rem; color: var(--surface-400); text-decoration: none; }
 .gate-back-link:hover { color: var(--primary-300); }
+
+/* ── Logout as a button ── */
+button.admin-logout-link {
+    cursor: pointer;
+    font-family: var(--font-family);
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #f87171;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 9px 18px;
+    border-radius: var(--radius-md);
+}
+button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 
 /* ── Header ── */
 .admin-header {
