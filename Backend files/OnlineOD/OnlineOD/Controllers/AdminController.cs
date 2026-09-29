@@ -124,7 +124,8 @@ namespace OnlineOD.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Could not send your request. Please try again later.", detail = ex.Message });
+                Console.WriteLine($"ContactAdmin save failed: {ex.Message}");
+                return StatusCode(500, new { message = "Could not send your request. Please try again later." });
             }
         }
 

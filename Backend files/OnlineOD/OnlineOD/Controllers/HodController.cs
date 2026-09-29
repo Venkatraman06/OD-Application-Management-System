@@ -30,7 +30,16 @@ namespace OnlineOD.Controllers
         public async Task<IActionResult> Get()
         {
             var hods = await _hodService.GetAllHodAsync();
-            return Ok(hods);
+            var list = hods.Select(h => new
+            {
+                hodId = h.HodId,
+                name = h.Name,
+                rollNumber = h.RollNumber,
+                department = h.Department,
+                email = h.Email,
+                isActive = h.IsActive
+            });
+            return Ok(list);
         }
 
 
@@ -47,7 +56,19 @@ namespace OnlineOD.Controllers
             }
 
             var hod = await _hodService.GetHodByIdAsync(id);
-            return Ok(hod);
+            if (hod == null) return NotFound();
+            if (User.IsInRole("HOD") && !hod.IsActive)
+                return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+            return Ok(new
+            {
+                hodId = hod.HodId,
+                name = hod.Name,
+                rollNumber = hod.RollNumber,
+                department = hod.Department,
+                email = hod.Email,
+                isActive = hod.IsActive
+            });
         }
 
 

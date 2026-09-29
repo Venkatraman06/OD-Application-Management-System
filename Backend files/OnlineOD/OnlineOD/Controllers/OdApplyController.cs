@@ -655,6 +655,17 @@ namespace OnlineOD.Controllers
             if (!isMember)
                 return StatusCode(403, new { message = "You are not a member of this OD application." });
 
+            if (photo == null || photo.Length == 0)
+                return BadRequest("Certificate photo file is required.");
+
+            var ext = Path.GetExtension(photo.FileName).ToLowerInvariant();
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".webp" };
+            if (!allowedExtensions.Contains(ext))
+                return BadRequest("Invalid file type. Allowed formats: JPG, PNG, PDF, WEBP.");
+
+            if (photo.Length > 10 * 1024 * 1024)
+                return BadRequest("File size exceeds maximum allowed limit of 10MB.");
+
             var existingCerts = await _service.GetCertificatesForOdAsync(odId);
             var mine = existingCerts.FirstOrDefault(c =>
                 c.RegisterNumber.Equals(registerNumber.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -664,7 +675,8 @@ namespace OnlineOD.Controllers
 
             var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
             Directory.CreateDirectory(uploadsDir);
-            var fileName = $"{odId}_{registerNumber.Trim()}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+            var safeReg = System.Text.RegularExpressions.Regex.Replace(registerNumber.Trim(), @"[^a-zA-Z0-9_-]", "");
+            var fileName = $"{odId}_{safeReg}_{Guid.NewGuid()}{ext}";
             var filePath = Path.Combine(uploadsDir, fileName);
             using var stream = System.IO.File.Create(filePath);
             await photo.CopyToAsync(stream);

@@ -36,7 +36,18 @@ namespace OnlineOD.Controllers
         public async Task<IActionResult> GetAll()
         {
             var staffs = await _staffService.GetAllStaffAsync();
-            return Ok(staffs);
+            var list = staffs.Select(s => new
+            {
+                staffId = s.StaffId,
+                name = s.Name,
+                rollNumber = s.RollNumber,
+                department = s.Department,
+                section = s.Section,
+                year = s.Year,
+                email = s.Email,
+                isActive = s.IsActive
+            });
+            return Ok(list);
         }
 
         [Authorize(Roles = "Staff,Admin")]
@@ -51,7 +62,21 @@ namespace OnlineOD.Controllers
             }
 
             var staff = await _staffService.GetStaffByIdAsync(id);
-            return Ok(staff);
+            if (staff == null) return NotFound();
+            if (User.IsInRole("Staff") && !staff.IsActive)
+                return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+            return Ok(new
+            {
+                staffId = staff.StaffId,
+                name = staff.Name,
+                rollNumber = staff.RollNumber,
+                department = staff.Department,
+                section = staff.Section,
+                year = staff.Year,
+                email = staff.Email,
+                isActive = staff.IsActive
+            });
         }
 
         [Authorize(Roles = "Admin")]

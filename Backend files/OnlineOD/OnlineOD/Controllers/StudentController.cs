@@ -79,7 +79,20 @@ namespace OnlineOD.Controllers
 
             var student = await _studentService.GetStudentByIdAsync(id);
             if (student == null) return NotFound();
-            return Ok(student);
+
+            return Ok(new
+            {
+                studentId = student.StudentId,
+                name = student.Name,
+                registerNumber = student.RegisterNumber,
+                department = student.Department,
+                section = student.Section,
+                year = student.Year,
+                dob = student.DOB,
+                semester = student.semester,
+                email = student.Email,
+                isActive = student.IsActive
+            });
         }
 
         // Validate a register number exists — used when adding a Group OD
