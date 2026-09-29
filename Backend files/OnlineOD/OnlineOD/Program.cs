@@ -287,7 +287,7 @@ using (var scope = app.Services.CreateScope())
         }
         catch (Exception bootstrapEx)
         {
-            Console.WriteLine($"[Startup] Database migration / Admin bootstrap check: {bootstrapEx.Message}");
+            Console.WriteLine($"[Startup] Database migration / Admin bootstrap check error:\n{bootstrapEx}");
         }
     }
     catch (Exception ex)
