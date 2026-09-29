@@ -12,11 +12,13 @@ namespace OnlineOD.Controllers
     public class StudentController : ControllerBase
     {
         private readonly IStudentService _studentService;
+        private readonly IStaffService _staffService;
         private readonly IJwtTokenService _jwtTokenService;
 
-        public StudentController(IStudentService studentService, IJwtTokenService jwtTokenService)
+        public StudentController(IStudentService studentService, IStaffService staffService, IJwtTokenService jwtTokenService)
         {
             _studentService = studentService;
+            _staffService = staffService;
             _jwtTokenService = jwtTokenService;
         }
 
@@ -152,15 +154,23 @@ namespace OnlineOD.Controllers
         }
 
         // PUT /api/Student/{studentId}/ToggleStatus?staffId=1
+        // Authenticated Staff identity resolved from JWT ClaimTypes.NameIdentifier.
+        // The optional staffId query param is ignored on the server for identity decisions.
+        [Authorize(Roles = "Staff")]
         [HttpPut("{studentId}/ToggleStatus")]
-        public async Task<IActionResult> ToggleStatus(int studentId, [FromQuery] int staffId)
+        public async Task<IActionResult> ToggleStatus(int studentId, [FromQuery] int? staffId = null)
         {
-            if (staffId <= 0)
-                return BadRequest(new { message = "staffId is required" });
+            var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+            var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+            if (authStaff == null || !authStaff.IsActive)
+                return StatusCode(403, new { message = "Your staff account has been deactivated." });
 
             try
             {
-                var updated = await _studentService.ToggleStudentStatusAsync(studentId, staffId);
+                var updated = await _studentService.ToggleStudentStatusAsync(studentId, authStaffId);
                 if (updated == null)
                     return NotFound(new { message = "Student not found" });
 

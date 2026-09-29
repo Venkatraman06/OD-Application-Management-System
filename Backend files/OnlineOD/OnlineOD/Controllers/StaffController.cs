@@ -38,9 +38,17 @@ namespace OnlineOD.Controllers
             return Ok(staffs);
         }
 
+        [Authorize(Roles = "Staff,Admin")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId != id)
+                    return StatusCode(403, new { message = "You are not authorized to view another staff member's profile." });
+            }
+
             var staff = await _staffService.GetStaffByIdAsync(id);
             return Ok(staff);
         }
@@ -52,11 +60,45 @@ namespace OnlineOD.Controllers
             return Ok(added);
         }
 
+        [Authorize(Roles = "Staff,Admin")]
         [HttpPut]
         public async Task<IActionResult> UpdateStaff([FromBody] Staff staff)
         {
-            var updated = await _staffService.UpdateStaffAsync(staff);
-            return Ok(updated);
+            if (staff == null) return BadRequest("Staff data is required.");
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId != staff.StaffId)
+                    return StatusCode(403, new { message = "You are not authorized to update another staff member's profile." });
+
+                // Load the existing record to lock institutional/identity fields
+                var existing = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (existing == null) return NotFound();
+
+                // Staff may only update personal contact fields — identity and assignment fields are locked
+                var safeStaff = new Staff
+                {
+                    StaffId      = existing.StaffId,        // Locked
+                    RollNumber   = existing.RollNumber,     // Locked
+                    Department   = existing.Department,     // Locked
+                    Section      = existing.Section,        // Locked
+                    Year         = existing.Year,           // Locked
+                    IsActive     = existing.IsActive,       // Locked
+                    Name         = !string.IsNullOrWhiteSpace(staff.Name)  ? staff.Name.Trim()  : existing.Name,
+                    Email        = !string.IsNullOrWhiteSpace(staff.Email) ? staff.Email.Trim() : existing.Email,
+                    Password     = !string.IsNullOrWhiteSpace(staff.Password) ? staff.Password : existing.Password
+                };
+
+                var updated = await _staffService.UpdateStaffAsync(safeStaff);
+                return Ok(updated);
+            }
+            else
+            {
+                // Admin — full update, no restrictions
+                var updated = await _staffService.UpdateStaffAsync(staff);
+                return Ok(updated);
+            }
         }
 
         [HttpDelete("{id}")]
@@ -153,6 +195,11 @@ namespace OnlineOD.Controllers
             {
                 return Unauthorized(new { message = "Invalid or missing staff authentication token." });
             }
+
+            // Per-request active check — blocks deactivated Staff who still hold a valid JWT
+            var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+            if (authStaff == null || !authStaff.IsActive)
+                return StatusCode(403, new { message = "Your staff account has been deactivated." });
 
             // Block approve/reject once the OD is already ongoing (today falls
             // within its From/To range) — the decision window is meant to

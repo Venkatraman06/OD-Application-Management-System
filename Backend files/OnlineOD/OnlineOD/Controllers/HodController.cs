@@ -34,9 +34,17 @@ namespace OnlineOD.Controllers
 
 
         //this will get the hod details by id from the database
+        [Authorize(Roles = "HOD,Admin")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
+            if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId != id)
+                    return StatusCode(403, new { message = "You are not authorized to view another HOD's profile." });
+            }
+
             var hod = await _hodService.GetHodByIdAsync(id);
             return Ok(hod);
         }
@@ -61,22 +69,52 @@ namespace OnlineOD.Controllers
 
 
         //this will update the hod details in the database
+        [Authorize(Roles = "HOD,Admin")]
         [HttpPut]
         public async Task<IActionResult> UpdateHod([FromBody] HodDto dto)
         {
             if (dto == null) return BadRequest("HOD data is required");
-            var hod = new Hod
+
+            if (User.IsInRole("HOD"))
             {
-                HodId = dto.HodId,
-                Name = dto.Name,
-                RollNumber = dto.RollNumber,
-                Department = dto.Department,
-                Email = dto.Email,
-                Password = dto.Password ?? string.Empty
-            };
-            var updated = await _hodService.UpdateHodAsync(hod);
-            if (updated == null) return NotFound();
-            return Ok(updated);
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId != dto.HodId)
+                    return StatusCode(403, new { message = "You are not authorized to update another HOD's profile." });
+
+                var existing = await _hodService.GetHodByIdAsync(authHodId);
+                if (existing == null) return NotFound();
+
+                // HOD may only update personal profile fields — identity and department assignment fields are locked
+                var safeHod = new Hod
+                {
+                    HodId      = existing.HodId,        // Locked
+                    RollNumber = existing.RollNumber,   // Locked
+                    Department = existing.Department,   // Locked
+                    IsActive   = existing.IsActive,     // Locked
+                    Name       = !string.IsNullOrWhiteSpace(dto.Name)  ? dto.Name.Trim()  : existing.Name,
+                    Email      = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : existing.Email,
+                    Password   = !string.IsNullOrWhiteSpace(dto.Password) ? dto.Password : existing.Password
+                };
+
+                var updated = await _hodService.UpdateHodAsync(safeHod);
+                return Ok(updated);
+            }
+            else
+            {
+                // Admin — full update
+                var hod = new Hod
+                {
+                    HodId = dto.HodId,
+                    Name = dto.Name,
+                    RollNumber = dto.RollNumber,
+                    Department = dto.Department,
+                    Email = dto.Email,
+                    Password = dto.Password ?? string.Empty
+                };
+                var updated = await _hodService.UpdateHodAsync(hod);
+                if (updated == null) return NotFound();
+                return Ok(updated);
+            }
         }
 
 

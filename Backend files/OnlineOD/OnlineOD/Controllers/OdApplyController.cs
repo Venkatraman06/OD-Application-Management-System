@@ -15,16 +15,19 @@ namespace OnlineOD.Controllers
         private readonly IOdApplyService _service;
         private readonly IStaffService _staffService;
         private readonly IStudentService _studentService;
+        private readonly IHodService _hodService;
         private readonly EmailService _emailService;
         private readonly EmailQueue _emailQueue;
 
         public OdApplyController(IOdApplyService service, IStaffService staffService,
             IStudentService studentService,
+            IHodService hodService,
             EmailService emailService, EmailQueue emailQueue)
         {
             _service = service;
             _staffService = staffService;
             _studentService = studentService;
+            _hodService = hodService;
             _emailService = emailService;
             _emailQueue = emailQueue;
         }
@@ -297,6 +300,12 @@ namespace OnlineOD.Controllers
                 return Unauthorized(new { message = "Invalid or missing staff authentication token." });
             }
 
+            var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+            if (authStaff == null || !authStaff.IsActive)
+            {
+                return StatusCode(403, new { message = "Your staff account has been deactivated." });
+            }
+
             OdApply? od;
             try
             {
@@ -325,6 +334,12 @@ namespace OnlineOD.Controllers
                 return Unauthorized(new { message = "Invalid or missing staff authentication token." });
             }
 
+            var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+            if (authStaff == null || !authStaff.IsActive)
+            {
+                return StatusCode(403, new { message = "Your staff account has been deactivated." });
+            }
+
             OdApply? od;
             try
             {
@@ -351,6 +366,22 @@ namespace OnlineOD.Controllers
             if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
             {
                 return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+            }
+
+            var authHod = await _hodService.GetHodByIdAsync(authHodId);
+            if (authHod == null || !authHod.IsActive)
+            {
+                return StatusCode(403, new { message = "HOD account not found or deactivated." });
+            }
+
+            var existing = await _service.GetOdApplyByIdAsync(odId);
+            if (existing == null) return NotFound("OD request not found");
+
+            var odDept = (existing.department ?? "").Trim();
+            var hodDept = (authHod.Department ?? "").Trim();
+            if (!string.IsNullOrEmpty(odDept) && !string.IsNullOrEmpty(hodDept) && !odDept.Equals(hodDept, StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(403, new { message = "You are not authorized to override members outside of your department." });
             }
 
             var od = await _service.HodOverrideGroupMemberAsync(odId, registerNumber.Trim());
@@ -585,6 +616,27 @@ namespace OnlineOD.Controllers
         {
             if (string.IsNullOrWhiteSpace(registerNumber))
                 return BadRequest("registerNumber is required");
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "Your HOD account has been deactivated." });
+            }
 
             var cert = await _service.VerifyMemberCertificateAsync(odId, registerNumber.Trim());
             if (cert == null) return NotFound("Certificate not found for this student on this OD");
