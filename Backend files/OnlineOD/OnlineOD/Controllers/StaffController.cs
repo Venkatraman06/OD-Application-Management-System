@@ -31,6 +31,7 @@ namespace OnlineOD.Controllers
             _jwtTokenService = jwtTokenService;
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -53,6 +54,7 @@ namespace OnlineOD.Controllers
             return Ok(staff);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> AddStaff([FromBody] Staff staff)
         {
@@ -101,6 +103,7 @@ namespace OnlineOD.Controllers
             }
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStaff(int id)
         {
@@ -114,6 +117,7 @@ namespace OnlineOD.Controllers
         // (the same routing rule used for PendingODs). Used by the printed
         // OD report to show the actual class staff's name in the Staff
         // Signature line, instead of just the department name.
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("ByDepartmentSection")]
         public async Task<IActionResult> GetByDepartmentSection([FromQuery] string department, [FromQuery] string? section = null)
         {
@@ -170,9 +174,25 @@ namespace OnlineOD.Controllers
         // requests from students in that exact class section — this is what
         // makes a Section-B student's request visible only to Section-B
         // staff instead of every staff member in the department.
+        [Authorize(Roles = "Staff,Admin")]
         [HttpGet("PendingODs/{department}")]
         public async Task<IActionResult> GetPendingODs(string department, [FromQuery] string? section = null)
         {
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                // Strictly enforce staff member's actual assigned department and section
+                department = authStaff.Department ?? "";
+                section = authStaff.Section;
+            }
+
             var ods = await _odService.GetByDepartmentAsync(department, section);
             var withCerts = await _odService.AttachCertificatesAsync(ods);
             return Ok(withCerts);

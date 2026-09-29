@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
@@ -26,7 +27,8 @@ namespace OnlineOD.Controllers
 
         // GET /api/Events/Active
         // Returns only currently active events where IsActive is true and deadline has not passed.
-        // Used by the Student OD Apply form.
+        // Used by the Student OD Apply form (intentionally public).
+        [AllowAnonymous]
         [HttpGet("Active")]
         public async Task<IActionResult> GetActiveEvents()
         {
@@ -64,6 +66,7 @@ namespace OnlineOD.Controllers
 
         // GET /api/Events
         // Returns all events for the Admin Events tab.
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> GetAllEvents()
         {
@@ -116,6 +119,7 @@ namespace OnlineOD.Controllers
         }
 
         // GET /api/Events/{id}
+        [Authorize(Roles = "Admin")]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEventById(int id)
         {
@@ -125,6 +129,7 @@ namespace OnlineOD.Controllers
         }
 
         // POST /api/Events
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> CreateEvent([FromBody] EventDto dto)
         {
@@ -163,6 +168,7 @@ namespace OnlineOD.Controllers
         }
 
         // PUT /api/Events/{id}
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateEvent(int id, [FromBody] EventDto dto)
         {
@@ -188,6 +194,7 @@ namespace OnlineOD.Controllers
         }
 
         // DELETE /api/Events/{id}
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEvent(int id)
         {
@@ -201,6 +208,7 @@ namespace OnlineOD.Controllers
         }
 
         // PUT /api/Events/{id}/ToggleStatus
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}/ToggleStatus")]
         public async Task<IActionResult> ToggleEventStatus(int id)
         {

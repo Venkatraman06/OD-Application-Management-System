@@ -32,20 +32,104 @@ namespace OnlineOD.Controllers
             _emailQueue = emailQueue;
         }
 
-        // GET /api/OdApply — all ODs
+        // GET /api/OdApply — all ODs (scoped by role: Staff/HOD see their department; Admin sees all)
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet]
         public async Task<IActionResult> GetAllOd()
         {
-            var od = await _service.GetAllOdApplyAsync();
-            return Ok(od);
+            var all = await _service.GetAllOdApplyAsync();
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                var dept = (authStaff.Department ?? "").Trim().ToLower();
+                var sec = NormalizeSection(authStaff.Section);
+
+                all = all.Where(o =>
+                    (o.department ?? "").Trim().ToLower() == dept &&
+                    (string.IsNullOrEmpty(sec) || NormalizeSection(o.Section) == sec)
+                ).ToList();
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                var dept = (authHod.Department ?? "").Trim().ToLower();
+                all = all.Where(o => (o.department ?? "").Trim().ToLower() == dept).ToList();
+            }
+
+            return Ok(all);
         }
 
         // GET /api/OdApply/{odId}
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet("{odId:int}")]
         public async Task<IActionResult> GetOdById(int odId)
         {
             var od = await _service.GetOdApplyByIdAsync(odId);
             if (od == null) return NotFound();
+
+            if (User.IsInRole("Student"))
+            {
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing student authentication token." });
+
+                var authStudent = await _studentService.GetStudentByIdAsync(authStudentId);
+                var reg = (authStudent?.RegisterNumber ?? "").Trim();
+
+                bool isOwnerOrMember = od.StudentId == authStudentId ||
+                    (!string.IsNullOrEmpty(reg) && (
+                        (od.registerNumber ?? "").Trim().Equals(reg, StringComparison.OrdinalIgnoreCase) ||
+                        (od.IsGroupOd && (od.RegisterNumbers ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Any(r => r.Equals(reg, StringComparison.OrdinalIgnoreCase)))
+                    ));
+
+                if (!isOwnerOrMember)
+                    return StatusCode(403, new { message = "You are not authorized to view this OD application." });
+            }
+            else if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                var dept = (authStaff.Department ?? "").Trim().ToLower();
+                if ((od.department ?? "").Trim().ToLower() != dept)
+                    return StatusCode(403, new { message = "You are not authorized to view OD applications outside of your department." });
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                var dept = (authHod.Department ?? "").Trim().ToLower();
+                if ((od.department ?? "").Trim().ToLower() != dept)
+                    return StatusCode(403, new { message = "You are not authorized to view OD applications outside of your department." });
+            }
+
             return Ok(od);
         }
 
@@ -114,10 +198,39 @@ namespace OnlineOD.Controllers
 
         // ── NEW: GET /api/OdApply/WithCertificates
         // Fix for faculty certificates view
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("WithCertificates")]
         public async Task<IActionResult> GetWithCertificates()
         {
             var all = await _service.GetAllOdApplyAsync();
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                var dept = (authStaff.Department ?? "").Trim().ToLower();
+                all = all.Where(o => (o.department ?? "").Trim().ToLower() == dept).ToList();
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                var dept = (authHod.Department ?? "").Trim().ToLower();
+                all = all.Where(o => (o.department ?? "").Trim().ToLower() == dept).ToList();
+            }
+
             var certs = all.Where(o => !string.IsNullOrEmpty(o.CertificatePhotoUrl))
                            .OrderByDescending(o => o.AppliedDate)
                            .ToList();
@@ -125,6 +238,7 @@ namespace OnlineOD.Controllers
         }
 
         // GET /api/OdApply/CheckMissingCertificates?registerNumbers=23CS101,23CS102
+        [AllowAnonymous]
         [HttpGet("CheckMissingCertificates")]
         public async Task<IActionResult> CheckMissingCertificates([FromQuery] string registerNumbers)
         {
@@ -392,11 +506,53 @@ namespace OnlineOD.Controllers
 
         // PUT /api/OdApply/{odId}/AlterDays
         // Staff adjusts FromDate, ToDate, and NumberOfDays on a still-Pending OD.
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpPut("{odId}/AlterDays")]
         public async Task<IActionResult> AlterDays(int odId, [FromBody] AlterDaysDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.FromDate) || string.IsNullOrWhiteSpace(dto.ToDate))
                 return BadRequest("FromDate and ToDate are required.");
+
+            var existingOd = await _service.GetOdApplyByIdAsync(odId);
+            if (existingOd == null) return NotFound("OD request not found");
+
+            string editorName = "Staff";
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                var dept = (authStaff.Department ?? "").Trim().ToLower();
+                if ((existingOd.department ?? "").Trim().ToLower() != dept)
+                    return StatusCode(403, new { message = "You are not authorized to alter ODs outside of your department." });
+
+                editorName = authStaff.Name;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                var dept = (authHod.Department ?? "").Trim().ToLower();
+                if ((existingOd.department ?? "").Trim().ToLower() != dept)
+                    return StatusCode(403, new { message = "You are not authorized to alter ODs outside of your department." });
+
+                editorName = authHod.Name;
+            }
+            else
+            {
+                editorName = !string.IsNullOrWhiteSpace(dto.EditedBy) ? dto.EditedBy : "Admin";
+            }
 
             var dateError = WorkingDaysCalendar.ValidateRange(dto.FromDate, dto.ToDate);
             if (dateError != null)
@@ -405,7 +561,7 @@ namespace OnlineOD.Controllers
             // Server recomputes days; client hint is a fallback
             int days = dto.NumberOfDays ?? 1;
 
-            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime, dto.EditedBy);
+            var result = await _service.AlterDaysAsync(odId, dto.FromDate, dto.ToDate, days, dto.StartTime, dto.EndTime, editorName);
             if (result == null)
                 return BadRequest("OD not found or is no longer in Pending status — dates cannot be altered.");
 
@@ -429,11 +585,22 @@ namespace OnlineOD.Controllers
         // PUT /api/OdApply/{odId}/EditGroupOd
         // Student edits their own Group OD (dates, event, reason, members) —
         // only while it is still Pending with both faculty and HOD.
+        [Authorize(Roles = "Student")]
         [HttpPut("{odId}/EditGroupOd")]
         public async Task<IActionResult> EditGroupOd(int odId, [FromBody] EditGroupOdDto dto)
         {
             if (dto == null)
                 return BadRequest("Edit data is required.");
+
+            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(studentIdClaim) || !int.TryParse(studentIdClaim, out var authStudentId) || authStudentId <= 0)
+                return Unauthorized(new { message = "Invalid or missing student authentication token." });
+
+            var existingOd = await _service.GetOdApplyByIdAsync(odId);
+            if (existingOd == null) return NotFound("OD request not found");
+
+            if (existingOd.StudentId != authStudentId)
+                return StatusCode(403, new { message = "You are not authorized to edit this OD application." });
 
             var (od, error) = await _service.EditGroupOdAsync(odId, dto);
             if (error != null)
@@ -511,6 +678,7 @@ namespace OnlineOD.Controllers
         // GET /api/OdApply/{odId}/Certificates
         // Returns every group member's certificate for this OD (one entry per
         // register number who has uploaded so far).
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet("{odId}/Certificates")]
         public async Task<IActionResult> GetCertificates(int odId)
         {
@@ -521,11 +689,37 @@ namespace OnlineOD.Controllers
         // GET /api/OdApply/Analytics/{department}
         // Event/participation/win-count summary + per-student breakdown for
         // a department — shown on both the Staff and HOD dashboards.
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("Analytics/{department}")]
         public async Task<IActionResult> GetAnalytics(string department)
         {
             if (string.IsNullOrWhiteSpace(department))
                 return BadRequest("department is required");
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                department = authStaff.Department ?? "";
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                department = authHod.Department ?? "";
+            }
 
             var data = await _service.GetAnalyticsAsync(department);
             return Ok(data);

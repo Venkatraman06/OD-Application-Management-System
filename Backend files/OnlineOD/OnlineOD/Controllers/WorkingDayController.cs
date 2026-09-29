@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
 using OnlineOD.Service;
+using System.Security.Claims;
 
 namespace OnlineOD.Controllers
 {
@@ -20,6 +22,7 @@ namespace OnlineOD.Controllers
         // GET /api/WorkingDay?dept=...&year=...&section=...&course=...
         // Returns the current effective working-days list, override rows,
         // and configured special days (Holidays / Examinations) scoped to user/role.
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section, [FromQuery] string? course)
         {
@@ -87,6 +90,7 @@ namespace OnlineOD.Controllers
         }
 
         // GET /api/WorkingDay/CheckSpecialDays?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&dept=...&year=...&section=...
+        [AllowAnonymous]
         [HttpGet("CheckSpecialDays")]
         public async Task<IActionResult> CheckSpecialDays([FromQuery] string? fromDate, [FromQuery] string? toDate,
             [FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section)
@@ -156,11 +160,39 @@ namespace OnlineOD.Controllers
 
         // PUT /api/WorkingDay/{date}
         // Body: { "isWorking": true|false, "dayType": "Holiday"|"Examination", "name": "...", "department": "...", "year": 1, "section": "A" }
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpPut("{date}")]
         public async Task<IActionResult> EditDay(string date, [FromBody] EditWorkingDayDto dto)
         {
             if (string.IsNullOrWhiteSpace(date))
                 return BadRequest(new { message = "Date is required." });
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _context.Staffs.FindAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                dto.Department = authStaff.Department;
+                dto.Year = authStaff.Year;
+                dto.Section = authStaff.Section;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _context.Hods.FindAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                dto.Department = authHod.Department;
+            }
 
             bool isWorking = dto.IsWorking ?? (!string.Equals(dto.DayType, "Holiday", StringComparison.OrdinalIgnoreCase));
             var cleanDept = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim();
@@ -216,6 +248,7 @@ namespace OnlineOD.Controllers
         }
 
         // DELETE /api/WorkingDay/{date}
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpDelete("{date}")]
         public async Task<IActionResult> RemoveDay(string date)
         {
@@ -224,6 +257,7 @@ namespace OnlineOD.Controllers
 
         // POST /api/WorkingDay/EditCalendar & POST /api/WorkingDay/AddCalendar (alias)
         // Body: { "fromDate": "YYYY-MM-DD", "toDate": "YYYY-MM-DD", "dayType": "Holiday"|"Examination", "name": "Pongal", "department": "...", "year": 2, "section": "A" }
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpPost("EditCalendar")]
         [HttpPost("AddCalendar")]
         public async Task<IActionResult> EditCalendar([FromBody] EditCalendarRangeDto dto)
@@ -253,6 +287,41 @@ namespace OnlineOD.Controllers
 
             if (start.Date > end.Date)
                 return BadRequest(new { message = "End Date must be greater than or equal to From Date." });
+
+            string creatorName = "Staff";
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _context.Staffs.FindAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                dto.Department = authStaff.Department;
+                dto.Year = authStaff.Year;
+                dto.Section = authStaff.Section;
+                creatorName = authStaff.Name;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _context.Hods.FindAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                dto.Department = authHod.Department;
+                creatorName = authHod.Name;
+            }
+            else
+            {
+                creatorName = !string.IsNullOrWhiteSpace(dto.AddedBy) ? dto.AddedBy.Trim() : (!string.IsNullOrWhiteSpace(dto.StaffName) ? dto.StaffName.Trim() : "Admin");
+            }
 
             bool isWorking = dto.IsWorking ?? (!dayType.Equals("Holiday", StringComparison.OrdinalIgnoreCase));
             var cleanDept = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim();
@@ -325,17 +394,6 @@ namespace OnlineOD.Controllers
 
             await _context.SaveChangesAsync();
 
-            var creatorName = !string.IsNullOrWhiteSpace(dto.AddedBy) ? dto.AddedBy.Trim() : (!string.IsNullOrWhiteSpace(dto.StaffName) ? dto.StaffName.Trim() : null);
-            if (string.IsNullOrWhiteSpace(creatorName))
-            {
-                var staffMatch = await _context.Staffs.AsNoTracking().FirstOrDefaultAsync(s =>
-                    s.IsActive &&
-                    (!string.IsNullOrEmpty(cleanDept) && (s.Department == cleanDept || s.Department.Contains(cleanDept) || cleanDept.Contains(s.Department))) &&
-                    (!cleanYear.HasValue || s.Year == cleanYear.Value) &&
-                    (string.IsNullOrEmpty(cleanSec) || s.Section == cleanSec));
-                creatorName = staffMatch?.Name ?? "Staff";
-            }
-
             // Apply to live memory with assigned Ids and creator name
             foreach (var rec in recordsToApply)
             {
@@ -360,11 +418,67 @@ namespace OnlineOD.Controllers
 
         // POST /api/WorkingDay/DeleteCalendar
         // Deletes a configured Holiday / Examination entry (or range) and resets the dates
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpPost("DeleteCalendar")]
         public async Task<IActionResult> DeleteCalendar([FromBody] DeleteCalendarDto dto)
         {
             if (dto == null)
                 return BadRequest(new { message = "Delete payload is required." });
+
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _context.Staffs.FindAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                if (dto.Id.HasValue && dto.Id.Value > 0)
+                {
+                    var target = await _context.WorkingDayOverrides.FindAsync(dto.Id.Value);
+                    if (target != null)
+                    {
+                        var staffDept = (authStaff.Department ?? "").Trim().ToLower();
+                        var targetDept = (target.Department ?? "").Trim().ToLower();
+                        if (staffDept != targetDept)
+                            return StatusCode(403, new { message = "You are not authorized to delete calendar entries outside of your department." });
+                    }
+                }
+                else
+                {
+                    dto.Department = authStaff.Department;
+                    dto.Year = authStaff.Year;
+                    dto.Section = authStaff.Section;
+                }
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _context.Hods.FindAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                if (dto.Id.HasValue && dto.Id.Value > 0)
+                {
+                    var target = await _context.WorkingDayOverrides.FindAsync(dto.Id.Value);
+                    if (target != null)
+                    {
+                        var hodDept = (authHod.Department ?? "").Trim().ToLower();
+                        var targetDept = (target.Department ?? "").Trim().ToLower();
+                        if (hodDept != targetDept)
+                            return StatusCode(403, new { message = "You are not authorized to delete calendar entries outside of your department." });
+                    }
+                }
+                else
+                {
+                    dto.Department = authHod.Department;
+                }
+            }
 
             var query = _context.WorkingDayOverrides.AsQueryable();
 

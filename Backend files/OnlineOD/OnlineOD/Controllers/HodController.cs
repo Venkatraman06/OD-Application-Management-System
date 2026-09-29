@@ -52,6 +52,7 @@ namespace OnlineOD.Controllers
 
 
         //this will add the hod details to the database
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> AddHod([FromBody] HodDto dto)
         {
@@ -120,6 +121,7 @@ namespace OnlineOD.Controllers
 
 
         // this will delete the hod details from the database
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteHod(int id)
         {

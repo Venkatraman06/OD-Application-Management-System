@@ -13,21 +13,53 @@ namespace OnlineOD.Controllers
     {
         private readonly IStudentService _studentService;
         private readonly IStaffService _staffService;
+        private readonly IHodService _hodService;
         private readonly IJwtTokenService _jwtTokenService;
 
-        public StudentController(IStudentService studentService, IStaffService staffService, IJwtTokenService jwtTokenService)
+        public StudentController(IStudentService studentService, IStaffService staffService, IHodService hodService, IJwtTokenService jwtTokenService)
         {
             _studentService = studentService;
             _staffService = staffService;
+            _hodService = hodService;
             _jwtTokenService = jwtTokenService;
         }
 
-        //this will get all the student details from my database
+        // GET /api/Student - Student lookup and Admin student management
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet]
         public async Task<IActionResult> GetAllStudents()
         {
             var students = await _studentService.GetAllStudentsAsync();
-            return Ok(students);
+
+            if (User.IsInRole("Admin"))
+            {
+                var adminList = students.Select(s => new
+                {
+                    studentId = s.StudentId,
+                    name = s.Name,
+                    registerNumber = s.RegisterNumber,
+                    department = s.Department,
+                    section = s.Section,
+                    year = s.Year,
+                    semester = s.semester,
+                    dob = s.DOB,
+                    email = s.Email,
+                    isActive = s.IsActive
+                });
+                return Ok(adminList);
+            }
+
+            var lookupList = students.Select(s => new
+            {
+                studentId = s.StudentId,
+                name = s.Name,
+                registerNumber = s.RegisterNumber,
+                department = s.Department,
+                section = s.Section,
+                year = s.Year,
+                isActive = s.IsActive
+            });
+            return Ok(lookupList);
         }
 
 
@@ -53,6 +85,7 @@ namespace OnlineOD.Controllers
         // Validate a register number exists — used when adding a Group OD
         // member, so only real students can be added to the group.
         // GET /api/Student/ValidateRegisterNumber/{regNo}
+        [AllowAnonymous]
         [HttpGet("ValidateRegisterNumber/{regNo}")]
         public async Task<IActionResult> ValidateRegisterNumber(string regNo)
         {
@@ -71,6 +104,7 @@ namespace OnlineOD.Controllers
 
 
         // this will add the student details to the database
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> AddStudent([FromBody] Student student)
         {
@@ -128,6 +162,7 @@ namespace OnlineOD.Controllers
 
 
         // this will delete the student details from the database
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudent(int id)
         {
@@ -138,17 +173,71 @@ namespace OnlineOD.Controllers
 
 
         // GET /api/Student/BySection?department=CS&section=B
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("BySection")]
         public async Task<IActionResult> GetBySection([FromQuery] string department, [FromQuery] string? section = null)
         {
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                department = authStaff.Department ?? "";
+                section = authStaff.Section;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                department = authHod.Department ?? "";
+            }
+
             var list = await _studentService.GetStudentsBySectionAsync(department, section);
             return Ok(list);
         }
 
         // GET /api/Student/OdHistory?department=CSE&section=A
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("OdHistory")]
         public async Task<IActionResult> GetOdHistory([FromQuery] string? department = null, [FromQuery] string? section = null)
         {
+            if (User.IsInRole("Staff"))
+            {
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                department = authStaff.Department;
+                section = authStaff.Section;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                department = authHod.Department;
+            }
+
             var list = await _studentService.GetStudentsOdHistoryAsync(department, section);
             return Ok(list);
         }
