@@ -532,9 +532,11 @@ namespace OnlineOD.Controllers
         }
 
         // GET /api/OdApply/ReportSearch
+        // GET /api/OdApply/ReportSearch
         // Dedicated search & report endpoint for the Analytics 4th Box ("OD Student / Report Search").
-        // If staffId is provided, the backend enforces the staff member's assigned year and section
-        // from the database — frontend-supplied year/section params are IGNORED for staff users.
+        // Enforces role-based data scoping: Staff are locked to their DB Department/Year/Section,
+        // HODs are locked to their DB Department, and Admins retain unrestricted search.
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("ReportSearch")]
         public async Task<IActionResult> ReportSearch(
             [FromQuery] string? department = null,
@@ -551,16 +553,33 @@ namespace OnlineOD.Controllers
             [FromQuery] string? section = null,
             [FromQuery] int? staffId = null)
         {
-            // If staffId is provided, enforce the staff member's actual assigned year/section.
-            // This prevents manipulation of year/section query params from the frontend.
-            if (staffId.HasValue && staffId.Value > 0)
+            if (User.IsInRole("Staff"))
             {
-                var staff = await _staffService.GetStaffByIdAsync(staffId.Value);
-                if (staff != null)
-                {
-                    year = staff.Year;
-                    section = staff.Section;
-                }
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                // Strictly enforce the staff member's actual assigned department, year, and section from DB
+                department = authStaff.Department;
+                year = authStaff.Year;
+                section = authStaff.Section;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                // Strictly enforce HOD's department from DB
+                department = authHod.Department;
             }
 
             var results = await _service.SearchOdReportsAsync(
@@ -570,7 +589,8 @@ namespace OnlineOD.Controllers
 
         // GET /api/OdApply/ReportExportExcel
         // Generates and downloads a real Microsoft Excel (.xlsx) workbook for the Analytics 4th Box.
-        // If staffId is provided, the backend enforces the staff member's actual assigned year/section.
+        // Enforces identical role-based data scoping as ReportSearch.
+        [Authorize(Roles = "Staff,HOD,Admin")]
         [HttpGet("ReportExportExcel")]
         public async Task<IActionResult> ReportExportExcel(
             [FromQuery] string? department = null,
@@ -587,15 +607,33 @@ namespace OnlineOD.Controllers
             [FromQuery] string? section = null,
             [FromQuery] int? staffId = null)
         {
-            // If staffId is provided, enforce the staff member's actual assigned year/section.
-            if (staffId.HasValue && staffId.Value > 0)
+            if (User.IsInRole("Staff"))
             {
-                var staff = await _staffService.GetStaffByIdAsync(staffId.Value);
-                if (staff != null)
-                {
-                    year = staff.Year;
-                    section = staff.Section;
-                }
+                var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing staff authentication token." });
+
+                var authStaff = await _staffService.GetStaffByIdAsync(authStaffId);
+                if (authStaff == null || !authStaff.IsActive)
+                    return StatusCode(403, new { message = "Your staff account has been deactivated." });
+
+                // Strictly enforce the staff member's actual assigned department, year, and section from DB
+                department = authStaff.Department;
+                year = authStaff.Year;
+                section = authStaff.Section;
+            }
+            else if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                // Strictly enforce HOD's department from DB
+                department = authHod.Department;
             }
 
             var excelBytes = await _service.GenerateOdReportExcelAsync(

@@ -25,6 +25,7 @@ namespace OnlineOD.Controllers
 
 
         //this will get all the hod details from my database
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> Get()
         {
@@ -156,9 +157,29 @@ namespace OnlineOD.Controllers
 
 
         // this will get all the OD requests that are approved by the faculty for a specific department
+        [Authorize(Roles = "HOD,Admin")]
         [HttpGet("ApprovedByFaculty/{department}")]
         public async Task<IActionResult> GetApprovedByFaculty(string department)
         {
+            if (User.IsInRole("HOD"))
+            {
+                var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(hodIdClaim) || !int.TryParse(hodIdClaim, out var authHodId) || authHodId <= 0)
+                    return Unauthorized(new { message = "Invalid or missing HOD authentication token." });
+
+                var authHod = await _hodService.GetHodByIdAsync(authHodId);
+                if (authHod == null || !authHod.IsActive)
+                    return StatusCode(403, new { message = "HOD account not found or deactivated." });
+
+                var hodDept = (authHod.Department ?? "").Trim();
+                var requestedDept = (department ?? "").Trim();
+                if (!string.IsNullOrEmpty(requestedDept) && !string.IsNullOrEmpty(hodDept) &&
+                    !requestedDept.Equals(hodDept, StringComparison.OrdinalIgnoreCase))
+                {
+                    return StatusCode(403, new { message = "You are not authorized to view OD applications outside of your department." });
+                }
+            }
+
             var ods = await _odService.GetApprovedByFacultyAsync(department);
             var withCerts = await _odService.AttachCertificatesAsync(ods);
             return Ok(withCerts);
