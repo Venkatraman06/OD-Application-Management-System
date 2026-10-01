@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Dtos;
@@ -8,6 +9,7 @@ namespace OnlineOD.Service
     public class StudentService : IStudentService
     {
         private readonly ApplicationDbContext _context;
+        private readonly PasswordHasher<Student> _passwordHasher = new();
 
         public StudentService(ApplicationDbContext context)
         {
@@ -30,6 +32,10 @@ namespace OnlineOD.Service
         // Add new student
         public async Task<Student> AddStudentAsync(Student student)
         {
+            if (!string.IsNullOrWhiteSpace(student.Password))
+            {
+                student.Password = _passwordHasher.HashPassword(student, student.Password);
+            }
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
             return student;
@@ -48,7 +54,10 @@ namespace OnlineOD.Service
             existing.Year = student.Year;
             existing.DOB = student.DOB;
             existing.semester = student.semester;
-            if (!string.IsNullOrWhiteSpace(student.Password)) existing.Password = student.Password;
+            if (!string.IsNullOrWhiteSpace(student.Password) && student.Password != existing.Password)
+            {
+                existing.Password = _passwordHasher.HashPassword(existing, student.Password);
+            }
             existing.Email = student.Email;
             existing.IsActive = student.IsActive;
 
@@ -67,13 +76,58 @@ namespace OnlineOD.Service
             return true;
         }
 
-        // Student login
-        public async Task<Student> LoginAsync(string registerNumber, string password)
+        // Student login with transparent migration for legacy plaintext passwords
+        public async Task<Student?> LoginAsync(string registerNumber, string password)
         {
-            return await _context.Students
-                .FirstOrDefaultAsync(s =>
-                    s.RegisterNumber == registerNumber &&
-                    s.Password == password);
+            if (string.IsNullOrWhiteSpace(registerNumber) || string.IsNullOrWhiteSpace(password))
+                return null;
+
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.RegisterNumber == registerNumber);
+            if (student == null || string.IsNullOrEmpty(student.Password))
+                return null;
+
+            bool isMatch = false;
+            bool needsRehash = false;
+
+            try
+            {
+                var result = _passwordHasher.VerifyHashedPassword(student, student.Password, password);
+                if (result == PasswordVerificationResult.Success)
+                {
+                    isMatch = true;
+                }
+                else if (result == PasswordVerificationResult.SuccessRehashNeeded)
+                {
+                    isMatch = true;
+                    needsRehash = true;
+                }
+            }
+            catch
+            {
+                // Format exception if stored password is not in ASP.NET Core hash format
+            }
+
+            if (!isMatch)
+            {
+                // Fallback: Check if stored password is an existing plaintext password
+                if (student.Password == password)
+                {
+                    isMatch = true;
+                    needsRehash = true;
+                }
+            }
+
+            if (isMatch)
+            {
+                if (needsRehash)
+                {
+                    student.Password = _passwordHasher.HashPassword(student, password);
+                    await _context.SaveChangesAsync();
+                }
+                return student;
+            }
+
+            return null;
         }
 
         // Look up a student by register number only (used to validate group

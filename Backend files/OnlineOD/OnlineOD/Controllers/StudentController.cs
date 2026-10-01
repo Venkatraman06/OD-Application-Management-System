@@ -123,7 +123,20 @@ namespace OnlineOD.Controllers
         {
             if (student == null) return BadRequest();
             var added = await _studentService.AddStudentAsync(student);
-            return CreatedAtAction(nameof(GetStudentById), new { id = added.StudentId }, added);
+            var safeAdded = new
+            {
+                studentId = added.StudentId,
+                name = added.Name,
+                registerNumber = added.RegisterNumber,
+                department = added.Department,
+                section = added.Section,
+                year = added.Year,
+                dob = added.DOB,
+                semester = added.semester,
+                email = added.Email,
+                isActive = added.IsActive
+            };
+            return CreatedAtAction(nameof(GetStudentById), new { id = added.StudentId }, safeAdded);
         }
 
 
@@ -162,14 +175,38 @@ namespace OnlineOD.Controllers
                 };
 
                 var updated = await _studentService.UpdateStudentAsync(safeStudent);
-                return Ok(updated);
+                return Ok(new
+                {
+                    studentId = updated.StudentId,
+                    name = updated.Name,
+                    registerNumber = updated.RegisterNumber,
+                    department = updated.Department,
+                    section = updated.Section,
+                    year = updated.Year,
+                    dob = updated.DOB,
+                    semester = updated.semester,
+                    email = updated.Email,
+                    isActive = updated.IsActive
+                });
             }
             else
             {
                 if (student.StudentId != id) return BadRequest();
                 var updated = await _studentService.UpdateStudentAsync(student);
                 if (updated == null) return NotFound();
-                return Ok(updated);
+                return Ok(new
+                {
+                    studentId = updated.StudentId,
+                    name = updated.Name,
+                    registerNumber = updated.RegisterNumber,
+                    department = updated.Department,
+                    section = updated.Section,
+                    year = updated.Year,
+                    dob = updated.DOB,
+                    semester = updated.semester,
+                    email = updated.Email,
+                    isActive = updated.IsActive
+                });
             }
         }
 

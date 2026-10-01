@@ -84,7 +84,17 @@ namespace OnlineOD.Controllers
         public async Task<IActionResult> AddStaff([FromBody] Staff staff)
         {
             var added = await _staffService.AddStaffAsync(staff);
-            return Ok(added);
+            return Ok(new
+            {
+                staffId = added.StaffId,
+                name = added.Name,
+                rollNumber = added.RollNumber,
+                department = added.Department,
+                section = added.Section,
+                year = added.Year,
+                email = added.Email,
+                isActive = added.IsActive
+            });
         }
 
         [Authorize(Roles = "Staff,Admin")]
@@ -118,13 +128,33 @@ namespace OnlineOD.Controllers
                 };
 
                 var updated = await _staffService.UpdateStaffAsync(safeStaff);
-                return Ok(updated);
+                return Ok(new
+                {
+                    staffId = updated.StaffId,
+                    name = updated.Name,
+                    rollNumber = updated.RollNumber,
+                    department = updated.Department,
+                    section = updated.Section,
+                    year = updated.Year,
+                    email = updated.Email,
+                    isActive = updated.IsActive
+                });
             }
             else
             {
                 // Admin — full update, no restrictions
                 var updated = await _staffService.UpdateStaffAsync(staff);
-                return Ok(updated);
+                return Ok(new
+                {
+                    staffId = updated.StaffId,
+                    name = updated.Name,
+                    rollNumber = updated.RollNumber,
+                    department = updated.Department,
+                    section = updated.Section,
+                    year = updated.Year,
+                    email = updated.Email,
+                    isActive = updated.IsActive
+                });
             }
         }
 

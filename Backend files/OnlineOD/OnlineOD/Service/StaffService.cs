@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Models;
@@ -7,6 +8,7 @@ namespace OnlineOD.Service
     public class StaffService : IStaffService
     {
         public readonly ApplicationDbContext _context;
+        private readonly PasswordHasher<Staff> _passwordHasher = new();
 
         public StaffService(ApplicationDbContext context)
         {
@@ -29,6 +31,10 @@ namespace OnlineOD.Service
 
         public async Task<Staff> AddStaffAsync(Staff staff)
         {
+            if (!string.IsNullOrWhiteSpace(staff.Password))
+            {
+                staff.Password = _passwordHasher.HashPassword(staff, staff.Password);
+            }
             _context.Staffs.Add(staff);
             await _context.SaveChangesAsync();
             return staff;
@@ -46,7 +52,11 @@ namespace OnlineOD.Service
             existing.Section = staff.Section;
             existing.Year = staff.Year;
             existing.Email = staff.Email;
-            existing.Password = staff.Password;
+            if (!string.IsNullOrWhiteSpace(staff.Password) && staff.Password != existing.Password)
+            {
+                existing.Password = _passwordHasher.HashPassword(existing, staff.Password);
+            }
+            existing.IsActive = staff.IsActive;
 
             await _context.SaveChangesAsync();
             return existing;
@@ -63,15 +73,60 @@ namespace OnlineOD.Service
             return true;
         }
 
-        // this will check the staff details in my database for login
-        public async Task<Staff> LoginAsync(string username, string password)
-            {
-            return await _context.Staffs
-                .FirstOrDefaultAsync(s =>
-                    (s.Name == username || s.RollNumber == username) &&
-                    s.Password == password);
+        // this will check the staff details in my database for login with transparent migration for legacy plaintext passwords
+        public async Task<Staff?> LoginAsync(string username, string password)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                return null;
 
-           }
+            var staff = await _context.Staffs
+                .FirstOrDefaultAsync(s => s.Name == username || s.RollNumber == username);
+
+            if (staff == null || string.IsNullOrEmpty(staff.Password))
+                return null;
+
+            bool isMatch = false;
+            bool needsRehash = false;
+
+            try
+            {
+                var result = _passwordHasher.VerifyHashedPassword(staff, staff.Password, password);
+                if (result == PasswordVerificationResult.Success)
+                {
+                    isMatch = true;
+                }
+                else if (result == PasswordVerificationResult.SuccessRehashNeeded)
+                {
+                    isMatch = true;
+                    needsRehash = true;
+                }
+            }
+            catch
+            {
+                // Format exception if stored password is not in ASP.NET Core hash format
+            }
+
+            if (!isMatch)
+            {
+                if (staff.Password == password)
+                {
+                    isMatch = true;
+                    needsRehash = true;
+                }
+            }
+
+            if (isMatch)
+            {
+                if (needsRehash)
+                {
+                    staff.Password = _passwordHasher.HashPassword(staff, password);
+                    await _context.SaveChangesAsync();
+                }
+                return staff;
+            }
+
+            return null;
+        }
 
     }
 }

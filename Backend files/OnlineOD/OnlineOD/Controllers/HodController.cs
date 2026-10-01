@@ -87,7 +87,15 @@ namespace OnlineOD.Controllers
                 Password = dto.Password ?? string.Empty
             };
             var added = await _hodService.AddHodAsync(hod);
-            return Ok(added);
+            return Ok(new
+            {
+                hodId = added.HodId,
+                name = added.Name,
+                rollNumber = added.RollNumber,
+                department = added.Department,
+                email = added.Email,
+                isActive = added.IsActive
+            });
         }
 
 
@@ -120,7 +128,15 @@ namespace OnlineOD.Controllers
                 };
 
                 var updated = await _hodService.UpdateHodAsync(safeHod);
-                return Ok(updated);
+                return Ok(new
+                {
+                    hodId = updated.HodId,
+                    name = updated.Name,
+                    rollNumber = updated.RollNumber,
+                    department = updated.Department,
+                    email = updated.Email,
+                    isActive = updated.IsActive
+                });
             }
             else
             {
@@ -136,7 +152,15 @@ namespace OnlineOD.Controllers
                 };
                 var updated = await _hodService.UpdateHodAsync(hod);
                 if (updated == null) return NotFound();
-                return Ok(updated);
+                return Ok(new
+                {
+                    hodId = updated.HodId,
+                    name = updated.Name,
+                    rollNumber = updated.RollNumber,
+                    department = updated.Department,
+                    email = updated.Email,
+                    isActive = updated.IsActive
+                });
             }
         }
 

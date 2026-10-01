@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineOD.Data;
 using OnlineOD.Dtos;
@@ -168,24 +168,27 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "Verification code has expired. Please request a new code." });
             }
 
-            // Update user password
+            // Update user password with secure hash
             if (record.UserType == "Student")
             {
                 var student = await _context.Students.FindAsync(record.UserId);
                 if (student == null) return NotFound(new { message = "Student account not found." });
-                student.Password = dto.NewPassword;
+                var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Student>();
+                student.Password = hasher.HashPassword(student, dto.NewPassword.Trim());
             }
             else if (record.UserType == "Staff")
             {
                 var staff = await _context.Staffs.FindAsync(record.UserId);
                 if (staff == null) return NotFound(new { message = "Staff account not found." });
-                staff.Password = dto.NewPassword;
+                var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Staff>();
+                staff.Password = hasher.HashPassword(staff, dto.NewPassword.Trim());
             }
             else if (record.UserType == "Hod")
             {
                 var hod = await _context.Hods.FindAsync(record.UserId);
                 if (hod == null) return NotFound(new { message = "HOD account not found." });
-                hod.Password = dto.NewPassword;
+                var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Hod>();
+                hod.Password = hasher.HashPassword(hod, dto.NewPassword.Trim());
             }
 
             // Invalidate the code
