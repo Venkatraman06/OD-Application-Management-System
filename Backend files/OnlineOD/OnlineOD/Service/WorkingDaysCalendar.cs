@@ -161,9 +161,14 @@ namespace OnlineOD.Service
             return true;
         }
 
-        private static bool MatchesScope(SpecialDayItem item, string? dept, int? year, string? section)
+        private static bool MatchesScope(SpecialDayItem item, string? dept, int? year, string? section, string? category = null)
         {
-            if (!string.IsNullOrWhiteSpace(dept) && !string.IsNullOrWhiteSpace(item.Department))
+            // Global/institution-wide item (no department) matches all
+            if (string.IsNullOrWhiteSpace(item.Department))
+                return true;
+
+            // If a department is specified, it must match
+            if (!string.IsNullOrWhiteSpace(dept))
             {
                 if (!string.Equals(item.Department, dept, StringComparison.OrdinalIgnoreCase) &&
                     !item.Department.Contains(dept, StringComparison.OrdinalIgnoreCase) &&
@@ -172,6 +177,11 @@ namespace OnlineOD.Service
                     return false;
                 }
             }
+            else
+            {
+                // No department specified in query/filter: do not leak department-specific item
+                return false;
+            }
 
             if (year.HasValue && year.Value > 0 && item.Year.HasValue && item.Year.Value > 0)
             {
@@ -179,28 +189,38 @@ namespace OnlineOD.Service
                     return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(section) && !string.IsNullOrWhiteSpace(item.Section) &&
-                !item.Section.Equals("All", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(section) && !section.Equals("All", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(item.Section) && !item.Section.Equals("All", StringComparison.OrdinalIgnoreCase))
             {
                 if (!string.Equals(item.Section, section, StringComparison.OrdinalIgnoreCase))
                     return false;
             }
 
+            if (!string.IsNullOrWhiteSpace(category) && !string.IsNullOrWhiteSpace(item.Course))
+            {
+                if (!string.Equals(item.Course, category, StringComparison.OrdinalIgnoreCase) &&
+                    !item.Course.Contains(category, StringComparison.OrdinalIgnoreCase) &&
+                    !category.Contains(item.Course, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 
-        public static List<SpecialDayItem> GetSpecialDays(string? dept = null, int? year = null, string? section = null)
+        public static List<SpecialDayItem> GetSpecialDays(string? dept = null, int? year = null, string? section = null, string? category = null)
         {
             lock (_lock)
             {
                 return _specialDaysList
-                    .Where(s => MatchesScope(s, dept, year, section))
+                    .Where(s => MatchesScope(s, dept, year, section, category))
                     .OrderBy(s => s.Date)
                     .ToList();
             }
         }
 
-        public static List<SpecialDayItem> GetSpecialDaysInRange(string? fromStr, string? toStr, string? dept = null, int? year = null, string? section = null)
+        public static List<SpecialDayItem> GetSpecialDaysInRange(string? fromStr, string? toStr, string? dept = null, int? year = null, string? section = null, string? category = null)
         {
             var from = Normalize(fromStr);
             var to = Normalize(toStr);
@@ -212,7 +232,7 @@ namespace OnlineOD.Service
                 return _specialDaysList
                     .Where(s => string.Compare(s.Date, from, StringComparison.Ordinal) >= 0 &&
                                 string.Compare(s.Date, to, StringComparison.Ordinal) <= 0 &&
-                                MatchesScope(s, dept, year, section))
+                                MatchesScope(s, dept, year, section, category))
                     .OrderBy(s => s.Date)
                     .ToList();
             }

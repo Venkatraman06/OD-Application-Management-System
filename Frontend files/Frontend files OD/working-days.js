@@ -1,4 +1,4 @@
-﻿/**
+/**
  * College Working-Days Calendar
  * ------------------------------
  * Enabled for the full current year (2026): every Mon–Sat date from
@@ -58,11 +58,17 @@ const CollegeWorkingDays = (() => {
     const minDate = sorted[0];
     const maxDate = sorted[sorted.length - 1];
 
-    /** true if dateStr (YYYY-MM-DD) is a published college working day */
-    function isWorkingDay(dateStr) {
+    /** true if dateStr (YYYY-MM-DD) is a published college working day for the given scope */
+    function isWorkingDay(dateStr, dept, year, section, course) {
         if (!dateStr) return false;
-        const list = specialDaysMap.get(dateStr);
-        if (list && list.some(s => s.dayType === 'Holiday')) return false;
+        const d = (dept || (typeof localStorage !== 'undefined' ? localStorage.getItem('userDept') : null) || '').trim();
+        const y = (year || (typeof localStorage !== 'undefined' ? localStorage.getItem('userYear') : null) || '').trim();
+        const s = (section || (typeof localStorage !== 'undefined' ? localStorage.getItem('userSection') : null) || '').trim();
+        const c = (course || (typeof localStorage !== 'undefined' ? (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')) : null) || '').trim();
+
+        const special = getSpecialDay(dateStr, d, y, s, c);
+        if (special && special.dayType === 'Holiday') return false;
+        if (special && special.dayType === 'Working') return true;
         return workingSet.has(dateStr);
     }
 
@@ -72,36 +78,74 @@ const CollegeWorkingDays = (() => {
         return false; // Support arbitrary historical & future dates
     }
 
-    /** returns primary special day info if configured for dateStr (Holiday | Examination), optionally matching scope */
-    function getSpecialDay(dateStr, dept, year, section) {
+    /** returns primary special day info if configured for dateStr (Holiday | Examination), strictly matching scope or global */
+    function getSpecialDay(dateStr, dept, year, section, course) {
         if (!dateStr) return null;
         const list = specialDaysMap.get(dateStr);
         if (!list || list.length === 0) return null;
-        if (!dept && !year && !section) return list[0];
+
+        const cleanDept = (dept || '').trim().toLowerCase();
+        const cleanYear = year ? parseInt(year, 10) : null;
+        const cleanSec = (section && section !== 'All') ? section.trim().toUpperCase() : null;
+        const cleanCourse = (course && course !== 'All') ? course.trim().toLowerCase() : null;
+
+        // 1. Try to find a precise match for this scope
         const match = list.find(s => {
-            if (dept && s.department && !s.department.toLowerCase().includes(dept.toLowerCase()) && !dept.toLowerCase().includes(s.department.toLowerCase())) return false;
-            if (year && s.year && s.year !== parseInt(year, 10)) return false;
-            if (section && section !== 'All' && s.section && s.section !== 'All' && s.section.toUpperCase() !== section.toUpperCase()) return false;
+            if (s.department) {
+                const sDept = s.department.toLowerCase();
+                if (!cleanDept || (!sDept.includes(cleanDept) && !cleanDept.includes(sDept))) return false;
+            }
+            if (cleanYear && s.year && s.year !== cleanYear) return false;
+            if (cleanSec && s.section && s.section !== 'All' && s.section.toUpperCase() !== cleanSec) return false;
+            if (cleanCourse && s.course && s.course !== 'All') {
+                const sC = s.course.toLowerCase();
+                if (!sC.includes(cleanCourse) && !cleanCourse.includes(sC)) return false;
+            }
             return true;
         });
-        return match || list[0];
+        if (match) return match;
+
+        // 2. If no direct match, check if there is a global (institution-wide) entry (no department set)
+        const globalEntry = list.find(s => !s.department || s.department.trim() === '');
+        if (globalEntry) return globalEntry;
+
+        // 3. Otherwise, return null (do NOT return another department's holiday!)
+        return null;
     }
 
-    /** returns all special day entries for a specific date (e.g. multiple sections) */
-    function getSpecialDaysForDate(dateStr) {
+    /** returns all special day entries for a specific date matching scope (or all if no scope given) */
+    function getSpecialDaysForDate(dateStr, dept, year, section, course) {
         if (!dateStr) return [];
-        return specialDaysMap.get(dateStr) || [];
+        const list = specialDaysMap.get(dateStr) || [];
+        if (!dept && !year && !section && !course) return list;
+
+        const cleanDept = (dept || '').trim().toLowerCase();
+        const cleanYear = year ? parseInt(year, 10) : null;
+        const cleanSec = (section && section !== 'All') ? section.trim().toUpperCase() : null;
+
+        return list.filter(s => {
+            if (s.department) {
+                const sDept = s.department.toLowerCase();
+                if (cleanDept && !sDept.includes(cleanDept) && !cleanDept.includes(sDept)) return false;
+            }
+            if (cleanYear && s.year && s.year !== cleanYear) return false;
+            if (cleanSec && s.section && s.section !== 'All' && s.section.toUpperCase() !== cleanSec) return false;
+            return true;
+        });
     }
 
     /** returns array of special days within [fromStr, toStr] range, optionally filtered by scope */
-    function getSpecialDaysInRange(fromStr, toStr, dept, year, section) {
+    function getSpecialDaysInRange(fromStr, toStr, dept, year, section, course) {
         if (!fromStr || !toStr || fromStr > toStr) return [];
         const result = [];
         for (const [date, list] of specialDaysMap.entries()) {
             if (date >= fromStr && date <= toStr) {
                 const items = Array.isArray(list) ? list : (list ? [list] : []);
                 items.forEach(item => {
-                    if (dept && item.department && !item.department.toLowerCase().includes(dept.toLowerCase()) && !dept.toLowerCase().includes(item.department.toLowerCase())) return;
+                    if (item.department) {
+                        const iDept = item.department.toLowerCase();
+                        if (dept && !iDept.includes(dept.toLowerCase()) && !dept.toLowerCase().includes(iDept)) return;
+                    }
                     if (year && item.year && item.year !== parseInt(year, 10)) return;
                     if (section && section !== 'All' && item.section && item.section !== 'All' && item.section.toUpperCase() !== section.toUpperCase()) return;
                     result.push(item);
@@ -128,12 +172,17 @@ const CollegeWorkingDays = (() => {
             const baseUrl = apiBase || (typeof window !== 'undefined' && window.API_BASE ? window.API_BASE : (typeof API_BASE !== 'undefined' ? API_BASE : defaultBackend));
             if (!baseUrl) return;
 
+            const myDept = (dept || (typeof localStorage !== 'undefined' ? localStorage.getItem('userDept') : null) || '').trim();
+            const myYear = (year || (typeof localStorage !== 'undefined' ? localStorage.getItem('userYear') : null) || '').trim();
+            const mySec = (section || (typeof localStorage !== 'undefined' ? localStorage.getItem('userSection') : null) || '').trim();
+            const myCourse = (course || (typeof localStorage !== 'undefined' ? (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')) : null) || '').trim();
+
             const params = new URLSearchParams();
             params.append('_', Date.now().toString());
-            if (dept) params.append('dept', dept);
-            if (year) params.append('year', year.toString());
-            if (section && section !== 'All') params.append('section', section);
-            if (course && course !== 'All') params.append('course', course);
+            if (myDept) params.append('dept', myDept);
+            if (myYear) params.append('year', myYear);
+            if (mySec && mySec !== 'All') params.append('section', mySec);
+            if (myCourse && myCourse !== 'All') params.append('course', myCourse);
 
             const res = await fetch(`${baseUrl}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
             if (!res.ok) return; // keep existing maps on network error

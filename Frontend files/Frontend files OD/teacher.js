@@ -1075,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>OD #:</strong> ${od.odId}</p>
+                    <p><strong>OD #:</strong> ${window.formatOdId ? window.formatOdId(od.odId) : od.odId}</p>
                     <p><strong>Event:</strong> ${od.event || ''}</p>
                     <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
                     <p><strong>Dates:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)} &nbsp;|&nbsp; <strong>Days:</strong> ${od.numberOfDays || ''}</p>
@@ -2087,15 +2087,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
-            const isWorking = isEffectiveWorkingDay(dateStr);
             const wasEdited = Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr);
             const isToday   = dateStr === todayStr;
             const todayClass = isToday ? ' cal-today' : '';
 
-            // Check for special day (Holiday / Examination)
+            // Check for special day (Holiday / Examination) matching this staff member's scope
             const specialDay = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(dateStr)
+                ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section)
                 : null;
+            const isWorking = isEffectiveWorkingDay(dateStr);
             const isHoliday     = specialDay && specialDay.dayType === 'Holiday';
             const isExamination = specialDay && specialDay.dayType === 'Examination';
             const specialName   = specialDay ? (specialDay.name || '') : '';

@@ -108,6 +108,40 @@
             </button>
         </header>
 
+        <script>
+            // Immediate synchronous hydration from login data handoff — renders real data instantly with 0ms delay / 0 '-' flash
+            (function() {
+                try {
+                    var n = localStorage.getItem('userName');
+                    var d = localStorage.getItem('userDept');
+                    var s = localStorage.getItem('userSection');
+                    var r = localStorage.getItem('registerNumber');
+                    var y = localStorage.getItem('userYear');
+                    var sm = localStorage.getItem('userSemester');
+                    var dob = localStorage.getItem('userDob');
+                    var em = localStorage.getItem('userEmail');
+
+                    if (n) {
+                        var eName = document.getElementById('studentName'); if (eName) eName.textContent = n;
+                        var av = document.getElementById('studentAvatar'); if (av) { var sp = av.querySelector('span'); if (sp) sp.textContent = n.charAt(0).toUpperCase(); }
+                    }
+                    if (d) { var eDept = document.getElementById('studentDept'); if (eDept) eDept.textContent = s ? (d + ' • Section ' + s) : d; }
+                    if (r) { var eRoll = document.getElementById('studentRollNo'); if (eRoll) eRoll.textContent = r; }
+                    if (y || sm) { var eYr = document.getElementById('studentYear'); if (eYr) eYr.textContent = 'Year ' + (y || '-') + ' / Sem ' + (sm || '-'); }
+                    if (em) { var eEm = document.getElementById('studentEmail'); if (eEm) eEm.textContent = em; }
+                    if (dob) {
+                        var eDob = document.getElementById('studentDOB');
+                        if (eDob) {
+                            try {
+                                var dt = new Date(dob);
+                                eDob.textContent = isNaN(dt.getTime()) ? dob : dt.toLocaleDateString('en-GB');
+                            } catch(err) { eDob.textContent = dob; }
+                        }
+                    }
+                } catch(e) {}
+            })();
+        </script>
+
         <nav class="tab-nav" id="tabNav">
             <button class="tab-btn active" data-tab="od-apply" id="tabOdApply">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -149,8 +149,42 @@ async function checkGroupMissingCertificates() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    loadStudentNameLookup();
-    loadActiveEvents();
+    // ── Instant profile render from login handoff ──
+    function renderCachedStudentProfile() {
+        try {
+            const name  = localStorage.getItem('userName')       || '';
+            const dept  = localStorage.getItem('userDept')       || '';
+            const sect  = localStorage.getItem('userSection')    || '';
+            const regNo = localStorage.getItem('registerNumber') || '';
+            const yr    = localStorage.getItem('userYear')       || '';
+            const sem   = localStorage.getItem('userSemester')   || '';
+            const dob   = localStorage.getItem('userDob')        || '';
+            const email = localStorage.getItem('userEmail')      || '';
+
+            if (name)  setEl('studentName', name);
+            if (dept)  setEl('studentDept', sect ? `${dept} • Section ${sect}` : dept);
+            if (regNo) setEl('studentRollNo', regNo);
+            if (yr || sem) setEl('studentYear', `Year ${yr || '-'} / Sem ${sem || '-'}`);
+            if (email) setEl('studentEmail', email);
+
+            const dobEl = document.getElementById('studentDOB');
+            if (dobEl && dob) {
+                try {
+                    const d = new Date(dob);
+                    dobEl.textContent = isNaN(d.getTime()) ? dob : d.toLocaleDateString('en-GB');
+                } catch { dobEl.textContent = dob; }
+            }
+
+            const avatar = document.getElementById('studentAvatar');
+            if (avatar && name) {
+                const sp = avatar.querySelector('span');
+                if (sp) sp.textContent = name.charAt(0).toUpperCase();
+            }
+        } catch (e) {}
+    }
+
+    // Hydrate immediately
+    renderCachedStudentProfile();
 
     // ── Guard: must be logged in ──
     const studentId = localStorage.getItem('studentId');
@@ -163,7 +197,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // ── Load student profile ──
+    // ── Parallelized background data loading ──
+    loadStudentNameLookup();
+    loadActiveEvents();
+
+    const myDeptCached = (localStorage.getItem('userDept') || '').trim();
+    const myYearCached = (localStorage.getItem('userYear') || '').trim();
+    const mySecCached  = (localStorage.getItem('userSection') || '').trim();
+    const myCourseCached = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
+
+    if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+        CollegeWorkingDays.syncWithBackend(API_BASE, myDeptCached, myYearCached, mySecCached, myCourseCached)
+            .catch(err => console.warn('Working-days sync error:', err));
+    }
+
+    checkSoloMissingCertificates();
+    checkGroupMissingCertificates();
+
+    // Background authoritative profile refresh
     try {
         const res = await authFetch(`${API_BASE}/api/Student/${parsedStudentId}`);
         if (res.ok) {
@@ -192,9 +243,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const avatar = document.getElementById('studentAvatar');
-            if (avatar) {
+            if (avatar && name) {
                 const sp = avatar.querySelector('span');
-                if (sp) sp.textContent = (name || 'S').charAt(0).toUpperCase();
+                if (sp) sp.textContent = name.charAt(0).toUpperCase();
             }
 
             localStorage.setItem('userName',       name);
@@ -202,20 +253,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('userDept',       dept);
             localStorage.setItem('userSection',    sect);
             localStorage.setItem('userYear',       yr ? yr.toString() : '');
+            localStorage.setItem('userSemester',   sem ? sem.toString() : '');
             localStorage.setItem('userCourse',     s.course || s.Course || 'B.Sc Computer Science');
             if (email) localStorage.setItem('userEmail', email);
-
-            // Kick off calendar sync in background — do NOT await so date inputs
-            // are responsive immediately; validation uses cached data once available.
-            if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                CollegeWorkingDays.syncWithBackend(API_BASE, dept, yr, sect, s.course || s.Course)
-                    .catch(err => console.warn('Working-days sync error:', err));
-            }
-
-            checkSoloMissingCertificates();
-            checkGroupMissingCertificates();
         }
-    } catch (err) { console.error('Student load error:', err); }
+    } catch (err) { console.error('Student background refresh error:', err); }
 
     // ============================================
     // Working-days-only helpers
@@ -903,18 +945,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const empty = document.getElementById('emptyState');
-        if (empty) {
-            if (odList.length === 0) {
-                // No ODs at all — show the "You haven't submitted any" state
-                empty.style.display = 'flex';
-                const h3 = empty.querySelector('h3');
-                const p = empty.querySelector('p');
-                if (h3) h3.textContent = 'No OD Applications Found';
-                if (p) p.textContent = "You haven't submitted any OD requests yet.";
-            } else {
-                // ODs exist but filter gave 0 results — just hide, no message
-                empty.style.display = 'none';
+        let filterEmptyEl = document.getElementById('filterEmptyState');
+        if (!filterEmptyEl) {
+            filterEmptyEl = document.createElement('div');
+            filterEmptyEl.id = 'filterEmptyState';
+            filterEmptyEl.style.cssText = 'padding:32px 16px;text-align:center;color:var(--surface-400,#94a3b8);font-size:0.9rem;';
+            const list = document.getElementById('statusList');
+            if (list && list.parentNode) {
+                list.parentNode.insertBefore(filterEmptyEl, list.nextSibling);
             }
+        }
+
+        if (odList.length === 0) {
+            // No ODs at all — show the "You haven't submitted any" state
+            if (empty) empty.style.display = 'flex';
+            if (filterEmptyEl) filterEmptyEl.style.display = 'none';
+        } else if (visibleCount === 0) {
+            // ODs exist but current filter gave 0 results — neutral message
+            if (empty) empty.style.display = 'none';
+            if (filterEmptyEl) {
+                filterEmptyEl.textContent = 'No OD applications available for this filter.';
+                filterEmptyEl.style.display = 'block';
+            }
+        } else {
+            // Matching ODs exist
+            if (empty) empty.style.display = 'none';
+            if (filterEmptyEl) filterEmptyEl.style.display = 'none';
         }
     }
 
@@ -1426,7 +1482,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const certVerified   = !!(myCert && (myCert.CertificateVerified ?? myCert.certificateVerified ?? false));
         const odId           = od.OdId ?? od.odId ?? '';
 
-        setEl('modalEventName', eventName || 'OD Request');
+        const formattedId = window.formatOdId ? window.formatOdId(odId) : (odId ? `#${odId}` : '');
+        setEl('modalEventName', `${eventName || 'OD Request'}${formattedId ? ' (' + formattedId + ')' : ''}`);
         setEl('modalEventNameBody', eventName || '-');
         const compType = od.CompetitionType ?? od.competitionType ?? '';
         setEl('modalCollege', college || '-');
@@ -2338,7 +2395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(myFacultyStatus, hodStatus)}</span>
                     </div>
                     <div class="card-meta">
-                        <span><strong>OD #:</strong> ${odId}</span>
+                        <span><strong>OD #:</strong> ${window.formatOdId ? window.formatOdId(odId) : odId}</span>
                         <span><strong>From:</strong> ${fmtDate(fromDate)}</span>
                         <span><strong>To:</strong> ${fmtDate(toDate)}</span>
                         <span><strong>Days:</strong> ${numDays}</span>
@@ -2615,14 +2672,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const myDept = (localStorage.getItem('userDept')   || '').trim();
             const myYear = (localStorage.getItem('userYear')   || '').trim();
             const mySec  = (localStorage.getItem('userSection')|| '').trim();
+            const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
 
             const today = new Date();
             const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
-                const isWorking = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr) : true;
-                const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr, myDept, myYear, mySec) : null;
+                const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr, myDept, myYear, mySec, myCourse) : null;
+                const isWorking = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr, myDept, myYear, mySec, myCourse) : true;
                 const isHoliday = special && special.dayType === 'Holiday';
                 const isExam = special && special.dayType === 'Examination';
                 const isToday = dateStr === todayStr;

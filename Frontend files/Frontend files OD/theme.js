@@ -80,8 +80,9 @@
                 };
                 window.applyCalendarColors(colors);
                 localStorage.setItem('od_calendar_colors', JSON.stringify(colors));
-                if (settings.OdIdPrefix) {
-                    localStorage.setItem('od_id_prefix', settings.OdIdPrefix);
+                const prefix = settings.odIdPrefix || settings.OdIdPrefix;
+                if (prefix) {
+                    localStorage.setItem('od_id_prefix', prefix);
                 }
             }
         } catch (e) {
@@ -89,6 +90,21 @@
             window.applyCalendarColors(DEFAULT_CAL_COLORS);
         }
     }
+
+    /**
+     * Centralized OD ID formatter: applies the configured prefix (e.g. "OD-", "NEC-OD-", "ABC")
+     * to numeric/raw OD IDs across Student, Staff, HOD, Admin, and Print Report.
+     */
+    window.formatOdId = function(rawId, customPrefix) {
+        if (rawId === null || rawId === undefined || rawId === '') return '-';
+        const prefix = customPrefix || localStorage.getItem('od_id_prefix') || 'OD-';
+        const rawStr = String(rawId).trim();
+        // Extract numeric portion if it already had an existing prefix
+        const numericMatch = rawStr.match(/\d+/);
+        const idNum = numericMatch ? numericMatch[0] : rawStr;
+        const sep = prefix.endsWith('-') ? '' : '-';
+        return `${prefix}${sep}${idNum}`;
+    };
 
     // Wire up buttons once DOM is ready
     document.addEventListener('DOMContentLoaded', () => {

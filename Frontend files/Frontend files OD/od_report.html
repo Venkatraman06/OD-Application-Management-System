@@ -610,7 +610,8 @@
 
             document.title = `OD Report - ${studentName || odId}`;
 
-            setText('odRefNo', odId ? `#${odId}` : '#0000');
+            const formattedOdNo = window.formatOdId ? window.formatOdId(odId) : (odId ? `#${odId}` : '#0000');
+            setText('odRefNo', formattedOdNo);
             setText('appliedDate', fmtDate(appliedDate));
             setText('studentName', studentName);
             setText('registerNumber', registerNumber);

@@ -77,7 +77,6 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
             </button>
-            <button type="button" class="admin-logout-link" id="adminLogoutBtn">Log out</button>
         </div>
     </header>
 
@@ -124,28 +123,11 @@
                     <span>Contact Requests</span> <span class="tab-count" id="requestsTabCount">0</span>
                 </button>
 
-                <!-- Settings (expandable) -->
-                <div class="admin-nav-group" id="navGroupSettings">
-                    <button class="admin-nav-item admin-nav-parent" data-tab="settings" data-group="settings">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                        <span>Settings</span>
-                        <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="admin-nav-children" id="navChildrenSettings">
-                        <button class="admin-nav-child" data-tab="settings" data-settings-subtab="prefix">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-                            OD ID Prefix
-                        </button>
-                        <button class="admin-nav-child" data-tab="settings" data-settings-subtab="colors">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 5.5s-1.5 2.5-1.5 3.5"/></svg>
-                            Calendar Settings
-                        </button>
-                        <button class="admin-nav-child" data-tab="settings" data-settings-subtab="academic">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-                            Academic Config
-                        </button>
-                    </div>
-                </div>
+                <!-- Settings (single top-level tab; sub-tabs are inside Settings panel) -->
+                <button class="admin-nav-item" data-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Settings</span>
+                </button>
 
                 <button class="admin-nav-item" data-tab="accounts">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="19" cy="8" r="3"/><path d="M22 20c0-2.7-2-4.7-4.5-5"/></svg>
@@ -164,20 +146,6 @@
 
             <!-- ============== USER LOGIN (STUDENT, STAFF, HOD) ============== -->
             <section class="admin-panel active" id="panel-users">
-                <div class="sub-tabs-container main-sub-tabs">
-                    <button type="button" class="sub-tab-btn active" id="subtabUserStudent" data-user-type="students">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-                        Student Login <span class="tab-count" id="studentTabCount">0</span>
-                    </button>
-                    <button type="button" class="sub-tab-btn" id="subtabUserStaff" data-user-type="staff">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        Staff Login <span class="tab-count" id="staffTabCount">0</span>
-                    </button>
-                    <button type="button" class="sub-tab-btn" id="subtabUserHod" data-user-type="hod">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                        HOD Login <span class="tab-count" id="hodTabCount">0</span>
-                    </button>
-                </div>
 
                 <!-- ── Student Section ── -->
                 <div id="userSectionStudent" class="user-sub-section active">
@@ -729,61 +697,27 @@
             </div>
         </section>
 
-        <!-- ============== ACADEMIC CALENDAR ============== -->
-        <section class="admin-panel" id="panel-calendar">
-            <div class="admin-card" style="width:100%;">
-                <div class="list-card-header" style="margin-bottom:20px;">
-                    <div>
-                        <h2>Academic Calendar</h2>
-                        <p style="margin:4px 0 0;font-size:0.8rem;color:var(--surface-400);">View college working days, holidays, examinations, and events</p>
-                    </div>
-                    <div style="display:flex;gap:12px;align-items:center;">
-                        <button class="nav-btn" id="adminCalPrevBtn" type="button" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:white;border-radius:8px;padding:8px 14px;cursor:pointer;">&larr; Prev</button>
-                        <span id="adminCalMonthLabel" style="font-weight:700;font-size:1rem;color:white;min-width:140px;text-align:center;">Month</span>
-                        <button class="nav-btn" id="adminCalNextBtn" type="button" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:white;border-radius:8px;padding:8px 14px;cursor:pointer;">Next &rarr;</button>
-                        <button class="action-btn icon-btn" id="adminCalRefreshBtn" title="Current Month / Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                            <span>Today</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="calendar-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:0.8rem;">
-                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#34d399;"></span> Working Day</span>
-                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-weekend-color, #ef4444);"></span> Weekend</span>
-                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-holiday-color, #f97316);"></span> Holiday</span>
-                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-exam-color, #10b981);"></span> Examination</span>
-                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-today-color, #3b82f6);box-shadow:0 0 6px rgba(59,130,246,0.6);"></span> Today</span>
-                </div>
-
-                <div class="calendar-weekday-row" style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:0.75rem;font-weight:700;color:var(--surface-400);margin-bottom:8px;">
-                    <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
-                </div>
-                <div class="calendar-grid" id="adminCalendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
-                    <div style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">Loading calendar...</div>
-                </div>
-            </div>
-        </section>
-
         <!-- ============== SETTINGS (PREFIX, CALENDAR COLORS, ACADEMIC CONFIG & PROMOTION) ============== -->
         <section class="admin-panel" id="panel-settings">
-            <div class="sub-tabs-container">
-                <button type="button" class="sub-tab-btn active" id="subtabSettingsPrefix" data-settings-subtab="prefix">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-                    Fix OD ID Prefix
-                </button>
-                <button type="button" class="sub-tab-btn" id="subtabSettingsColors" data-settings-subtab="colors">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 5.5s-1.5 2.5-1.5 3.5"/></svg>
-                    Calendar Settings
-                </button>
-                <button type="button" class="sub-tab-btn" id="subtabSettingsAcademic" data-settings-subtab="academic">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-                    Academic Configuration
-                </button>
-            </div>
+            <div class="settings-layout">
+                <div class="settings-vertical-nav">
+                    <button type="button" class="settings-vtab-btn active" id="subtabSettingsPrefix" data-settings-subtab="prefix">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                        <span>OD ID Prefix</span>
+                    </button>
+                    <button type="button" class="settings-vtab-btn" id="subtabSettingsColors" data-settings-subtab="colors">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 5.5s-1.5 2.5-1.5 3.5"/></svg>
+                        <span>Calendar Settings</span>
+                    </button>
+                    <button type="button" class="settings-vtab-btn" id="subtabSettingsAcademic" data-settings-subtab="academic">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                        <span>Academic Config</span>
+                    </button>
+                </div>
 
-            <!-- Settings Subtab 1: Fix OD ID Prefix -->
-            <div id="subtabViewSettingsPrefix">
+                <div class="settings-content-area">
+                    <!-- Settings Subtab 1: Fix OD ID Prefix -->
+                    <div id="subtabViewSettingsPrefix">
                 <div class="admin-card" style="max-width:550px;">
                     <h2>OD ID Prefix Setting</h2>
                     <p style="font-size:0.85rem;color:var(--surface-400);margin-bottom:18px;">
@@ -961,6 +895,7 @@
                             </button>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </section>

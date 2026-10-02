@@ -981,7 +981,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="status-badge approved">Faculty ✓</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>OD #:</strong> ${od.odId}</p>
+                    <p><strong>OD #:</strong> ${window.formatOdId ? window.formatOdId(od.odId) : od.odId}</p>
                     <p><strong>Event:</strong> ${od.event || ''}</p>
                     <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
                     <p><strong>Dates:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)} &nbsp;|&nbsp; <strong>Days:</strong> ${od.numberOfDays || ''}</p>

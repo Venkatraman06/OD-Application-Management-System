@@ -1299,7 +1299,7 @@ function initAdminApp() {
             <tr>
                 <td style="color:var(--surface-400);font-size:0.78rem;">${idx + 1}</td>
                 <td>
-                    <div style="font-weight:600;color:white;">${esc(item.studentName || '-')}</div>
+                    <div style="font-weight:600;color:white;">${esc(item.studentName || '-')} <span style="font-size:0.75rem;color:var(--surface-400);font-weight:normal;">(${window.formatOdId ? window.formatOdId(odId) : '#' + odId})</span></div>
                     ${groupTag}
                 </td>
                 <td>${regDisplay}</td>

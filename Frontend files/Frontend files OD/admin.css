@@ -109,8 +109,13 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 /* ── Header ── */
 .admin-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 32px;
+    padding: 18px 32px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(20px);
 }
 .admin-brand { display: flex; align-items: center; gap: 14px; }
 .admin-logo {
@@ -137,23 +142,24 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 /* ── Layout with Sidebar ── */
 .admin-body-layout {
     display: flex;
-    min-height: calc(100vh - 85px);
+    min-height: calc(100vh - 81px);
 }
 
 .admin-sidebar {
     width: 240px;
     min-width: 240px;
-    background: rgba(15, 23, 42, 0.7);
+    background: rgba(15, 23, 42, 0.75);
     backdrop-filter: blur(20px);
     border-right: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 20px 12px 12px;
+    padding: 16px 12px 12px;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
     position: sticky;
-    top: 0;
-    height: 100vh;
+    top: 81px;
+    height: calc(100vh - 81px);
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .admin-sidebar-nav {
@@ -344,6 +350,67 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     background: rgba(245, 158, 11, 0.15);
     border-color: rgba(245, 158, 11, 0.35);
     color: #fcd34d;
+}
+
+/* ── Vertical Settings Layout & Tabs ── */
+.settings-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.settings-vertical-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 12px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-vtab-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--surface-400);
+    font-family: var(--font-family);
+    font-size: 0.86rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.settings-vtab-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.settings-vtab-btn:hover {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.05);
+}
+.settings-vtab-btn.active {
+    color: white;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+    border-color: rgba(99, 102, 241, 0.4);
+    font-weight: 600;
+}
+
+.settings-content-area {
+    min-width: 0;
+}
+
+@media (max-width: 800px) {
+    .settings-layout {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ── Main / panels ── */

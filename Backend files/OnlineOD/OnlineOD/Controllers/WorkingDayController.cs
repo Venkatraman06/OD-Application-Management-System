@@ -19,31 +19,73 @@ namespace OnlineOD.Controllers
             _context = context;
         }
 
-        // GET /api/WorkingDay?dept=...&year=...&section=...&course=...
+        // GET /api/WorkingDay?dept=...&year=...&section=...&course=...&category=...
         // Returns the current effective working-days list, override rows,
         // and configured special days (Holidays / Examinations) scoped to user/role.
         [AllowAnonymous]
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section, [FromQuery] string? course)
+        public async Task<IActionResult> GetAll([FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section, [FromQuery] string? course, [FromQuery] string? category)
         {
             var cleanDept = string.IsNullOrWhiteSpace(dept) ? null : dept.Trim();
             var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
             var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
-            var cleanCourse = string.IsNullOrWhiteSpace(course) ? null : course.Trim();
+            var cleanCourse = string.IsNullOrWhiteSpace(course) ? (string.IsNullOrWhiteSpace(category) ? null : category.Trim()) : course.Trim();
+
+            // If user is authenticated, derive or check claims
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                if (User.IsInRole("Staff"))
+                {
+                    var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(staffIdClaim, out var staffId))
+                    {
+                        var staff = await _context.Staffs.FindAsync(staffId);
+                        if (staff != null)
+                        {
+                            cleanDept ??= staff.Department;
+                            cleanYear ??= staff.Year;
+                            cleanSec ??= staff.Section;
+                            cleanCourse ??= staff.Category;
+                        }
+                    }
+                }
+                else if (User.IsInRole("HOD"))
+                {
+                    var hodIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(hodIdClaim, out var hodId))
+                    {
+                        var hod = await _context.Hods.FindAsync(hodId);
+                        if (hod != null)
+                        {
+                            cleanDept ??= hod.Department;
+                        }
+                    }
+                }
+            }
 
             var overridesQuery = _context.WorkingDayOverrides.AsNoTracking();
 
             if (!string.IsNullOrEmpty(cleanDept))
             {
-                overridesQuery = overridesQuery.Where(o => o.Department == null || o.Department == "" || o.Department == cleanDept || o.Department.Contains(cleanDept) || cleanDept.Contains(o.Department));
+                overridesQuery = overridesQuery.Where(o => o.Department == null || o.Department == "" || o.Department.ToLower() == cleanDept.ToLower() || cleanDept.ToLower().Contains(o.Department.ToLower()));
             }
+            else
+            {
+                // Unauthenticated request with no department specified: only return global/institution-wide overrides
+                overridesQuery = overridesQuery.Where(o => o.Department == null || o.Department == "");
+            }
+
             if (cleanYear.HasValue)
             {
                 overridesQuery = overridesQuery.Where(o => o.Year == null || o.Year == 0 || o.Year == cleanYear.Value);
             }
             if (!string.IsNullOrEmpty(cleanSec))
             {
-                overridesQuery = overridesQuery.Where(o => o.Section == null || o.Section == "" || o.Section == "All" || o.Section == cleanSec);
+                overridesQuery = overridesQuery.Where(o => o.Section == null || o.Section == "" || o.Section.ToLower() == "all" || o.Section.ToLower() == cleanSec.ToLower());
+            }
+            if (!string.IsNullOrEmpty(cleanCourse))
+            {
+                overridesQuery = overridesQuery.Where(o => o.Course == null || o.Course == "" || o.Course.ToLower() == cleanCourse.ToLower() || cleanCourse.ToLower().Contains(o.Course.ToLower()));
             }
 
             var overrides = await overridesQuery
@@ -57,13 +99,13 @@ namespace OnlineOD.Controllers
                 .Select(o =>
                 {
                     var matchedStaff = staffList.FirstOrDefault(s =>
-                        (!string.IsNullOrEmpty(o.Department) && (s.Department == o.Department || s.Department.Contains(o.Department) || o.Department.Contains(s.Department))) &&
+                        (!string.IsNullOrEmpty(o.Department) && (s.Department.ToLower() == o.Department.ToLower() || s.Department.ToLower().Contains(o.Department.ToLower()) || o.Department.ToLower().Contains(s.Department.ToLower()))) &&
                         (!o.Year.HasValue || o.Year == 0 || s.Year == o.Year) &&
-                        (string.IsNullOrEmpty(o.Section) || o.Section == "All" || s.Section == o.Section)
+                        (string.IsNullOrEmpty(o.Section) || o.Section == "All" || string.Equals(s.Section, o.Section, StringComparison.OrdinalIgnoreCase))
                     );
                     if (matchedStaff == null && !string.IsNullOrEmpty(o.Department))
                     {
-                        matchedStaff = staffList.FirstOrDefault(s => s.Department == o.Department || s.Department.Contains(o.Department) || o.Department.Contains(s.Department));
+                        matchedStaff = staffList.FirstOrDefault(s => s.Department.ToLower() == o.Department.ToLower() || s.Department.ToLower().Contains(o.Department.ToLower()) || o.Department.ToLower().Contains(s.Department.ToLower()));
                     }
                     return new SpecialDayItem
                     {
@@ -180,6 +222,7 @@ namespace OnlineOD.Controllers
                 dto.Department = authStaff.Department;
                 dto.Year = authStaff.Year;
                 dto.Section = authStaff.Section;
+                dto.Course = authStaff.Category ?? "UG";
             }
             else if (User.IsInRole("HOD"))
             {
@@ -192,6 +235,7 @@ namespace OnlineOD.Controllers
                     return StatusCode(403, new { message = "HOD account not found or deactivated." });
 
                 dto.Department = authHod.Department;
+                dto.Course = authHod.Category ?? "UG";
             }
 
             bool isWorking = dto.IsWorking ?? (!string.Equals(dto.DayType, "Holiday", StringComparison.OrdinalIgnoreCase));
@@ -303,6 +347,7 @@ namespace OnlineOD.Controllers
                 dto.Department = authStaff.Department;
                 dto.Year = authStaff.Year;
                 dto.Section = authStaff.Section;
+                dto.Course = authStaff.Category ?? "UG";
                 creatorName = authStaff.Name;
             }
             else if (User.IsInRole("HOD"))
@@ -316,6 +361,7 @@ namespace OnlineOD.Controllers
                     return StatusCode(403, new { message = "HOD account not found or deactivated." });
 
                 dto.Department = authHod.Department;
+                dto.Course = authHod.Category ?? "UG";
                 creatorName = authHod.Name;
             }
             else
