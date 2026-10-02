@@ -382,6 +382,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (studentResult.success) {
             localStorage.setItem('userType', 'student');
+            if (studentResult.data.token) {
+                localStorage.setItem('userToken', studentResult.data.token);
+            }
             localStorage.setItem('studentId', studentResult.data.studentId);
             localStorage.setItem('userName', studentResult.data.name);
             localStorage.setItem('userDept', studentResult.data.department);
@@ -408,6 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (facultyResult.success) {
             localStorage.setItem('userType', 'faculty');
+            if (facultyResult.data.token) {
+                localStorage.setItem('userToken', facultyResult.data.token);
+            }
             localStorage.setItem('facultyId', facultyResult.data.facultyId);
             localStorage.setItem('userName', facultyResult.data.name);
             localStorage.setItem('userRollNumber', facultyResult.data.rollNumber || '');
@@ -432,6 +438,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (hodResult.success) {
             localStorage.setItem('userType', 'hod');
+            if (hodResult.data.token) {
+                localStorage.setItem('userToken', hodResult.data.token);
+            }
             localStorage.setItem('hodId', hodResult.data.hodId);
             localStorage.setItem('userName', hodResult.data.name);
             localStorage.setItem('userRollNumber', hodResult.data.rollNumber || '');

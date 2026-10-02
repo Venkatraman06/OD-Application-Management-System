@@ -15,7 +15,8 @@
 */
 
 function requireStudent() {
-    if (!localStorage.getItem('studentId') ||
+    if (!localStorage.getItem('userToken') ||
+        !localStorage.getItem('studentId') ||
         !localStorage.getItem('userName') ||
         !localStorage.getItem('registerNumber')) {
         window.location.href = 'index.html';
@@ -23,7 +24,8 @@ function requireStudent() {
 }
 
 function requireFaculty() {
-    if (!localStorage.getItem('facultyId') ||
+    if (!localStorage.getItem('userToken') ||
+        !localStorage.getItem('facultyId') ||
         !localStorage.getItem('userName') ||
         !localStorage.getItem('userDept')) {
         window.location.href = 'index.html';
@@ -31,7 +33,8 @@ function requireFaculty() {
 }
 
 function requireHod() {
-    if (!localStorage.getItem('hodId') ||
+    if (!localStorage.getItem('userToken') ||
+        !localStorage.getItem('hodId') ||
         !localStorage.getItem('userName') ||
         !localStorage.getItem('userDept')) {
         window.location.href = 'index.html';
