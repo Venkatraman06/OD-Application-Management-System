@@ -28,12 +28,75 @@
     // Expose globally so inline onclick can call it too
     window.__odToggleTheme = toggleTheme;
 
+    // ── Global Calendar Color Settings ──
+    const DEFAULT_CAL_COLORS = {
+        weekendColor: '#ef4444',
+        holidayColor: '#f97316',
+        examColor: '#10b981',
+        todayColor: '#3b82f6'
+    };
+
+    window.applyCalendarColors = function(colors) {
+        if (!colors) return;
+        const root = document.documentElement;
+        if (colors.weekendColor || colors.CalendarWeekendColor) {
+            root.style.setProperty('--cal-weekend-color', colors.weekendColor || colors.CalendarWeekendColor);
+        }
+        if (colors.holidayColor || colors.CalendarHolidayColor) {
+            root.style.setProperty('--cal-holiday-color', colors.holidayColor || colors.CalendarHolidayColor);
+        }
+        if (colors.examColor || colors.CalendarExamColor) {
+            root.style.setProperty('--cal-exam-color', colors.examColor || colors.CalendarExamColor);
+        }
+        if (colors.todayColor || colors.CalendarTodayColor) {
+            root.style.setProperty('--cal-today-color', colors.todayColor || colors.CalendarTodayColor);
+        }
+    };
+
+    async function loadCalendarColors() {
+        // First apply from cache if available
+        try {
+            const cached = localStorage.getItem('od_calendar_colors');
+            if (cached) {
+                window.applyCalendarColors(JSON.parse(cached));
+            }
+        } catch (e) {}
+
+        const API_BASE = (typeof window !== 'undefined' && window.API_BASE)
+            ? window.API_BASE
+            : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? 'http://localhost:5000'
+                : 'https://od-application-backend.onrender.com';
+
+        try {
+            const res = await fetch(`${API_BASE}/api/Settings`);
+            if (res.ok) {
+                const settings = await res.json();
+                const colors = {
+                    weekendColor: settings.CalendarWeekendColor || DEFAULT_CAL_COLORS.weekendColor,
+                    holidayColor: settings.CalendarHolidayColor || DEFAULT_CAL_COLORS.holidayColor,
+                    examColor: settings.CalendarExamColor || DEFAULT_CAL_COLORS.examColor,
+                    todayColor: settings.CalendarTodayColor || DEFAULT_CAL_COLORS.todayColor
+                };
+                window.applyCalendarColors(colors);
+                localStorage.setItem('od_calendar_colors', JSON.stringify(colors));
+                if (settings.OdIdPrefix) {
+                    localStorage.setItem('od_id_prefix', settings.OdIdPrefix);
+                }
+            }
+        } catch (e) {
+            // Silently fall back to defaults
+            window.applyCalendarColors(DEFAULT_CAL_COLORS);
+        }
+    }
+
     // Wire up buttons once DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
         applyTheme(localStorage.getItem(STORAGE_KEY) || DARK);
         document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
             btn.addEventListener('click', toggleTheme);
         });
+        loadCalendarColors();
     });
 
     // ── Global Register Number Tooltip & Name Lookup (Requirement 7) ──

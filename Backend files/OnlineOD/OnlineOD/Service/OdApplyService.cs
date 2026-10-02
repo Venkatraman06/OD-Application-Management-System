@@ -312,6 +312,7 @@ namespace OnlineOD.Service
                 registerNumber = !string.IsNullOrWhiteSpace(applicant?.RegisterNumber) ? applicant.RegisterNumber : dto.registerNumber,
                 department = !string.IsNullOrWhiteSpace(applicant?.Department) ? applicant.Department : dto.department,
                 Section = !string.IsNullOrWhiteSpace(applicant?.Section) ? applicant.Section : dto.Section,
+                Category = applicant?.Category ?? "UG",
                 FromDate = dto.FromDate,
                 ToDate = dto.ToDate,
                 StartTime = dto.StartTime,

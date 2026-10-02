@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    OD Application - HOD Dashboard Styles
    ============================================ */
 
@@ -2829,25 +2829,39 @@ body {
 .calendar-legend .dot.cal-holiday-dot     { background: rgba(249,115,22,0.8); }
 .calendar-legend .dot.cal-examination-dot { background: rgba(16,185,129,0.8); }
 
+/* Calendar: Today highlight */
+.calendar-day.cal-today {
+    border: 2px solid var(--cal-today-color, #3b82f6) !important;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    position: relative;
+}
+.calendar-day.cal-today .today-tag {
+    color: var(--cal-today-color, #3b82f6) !important;
+    font-weight: 700;
+}
+.calendar-day.non-working:not(.cal-holiday) {
+    border-color: var(--cal-weekend-color, rgba(239, 68, 68, 0.15));
+}
+
 /* Calendar: Holiday cell (orange) */
 .calendar-day.cal-holiday {
     background: rgba(249,115,22,0.13) !important;
-    border-color: rgba(249,115,22,0.4) !important;
-    color: #fed7aa !important;
+    border-color: var(--cal-holiday-color, rgba(249,115,22,0.4)) !important;
+    color: var(--cal-holiday-color, #fed7aa) !important;
 }
 .calendar-day.cal-holiday:hover {
     background: rgba(249,115,22,0.22) !important;
-    border-color: rgba(249,115,22,0.6) !important;
+    border-color: var(--cal-holiday-color, rgba(249,115,22,0.6)) !important;
 }
 /* Calendar: Examination cell (green) */
 .calendar-day.cal-examination {
     background: rgba(16,185,129,0.12) !important;
-    border-color: rgba(16,185,129,0.35) !important;
-    color: #6ee7b7 !important;
+    border-color: var(--cal-exam-color, rgba(16,185,129,0.35)) !important;
+    color: var(--cal-exam-color, #6ee7b7) !important;
 }
 .calendar-day.cal-examination:hover {
     background: rgba(16,185,129,0.2) !important;
-    border-color: rgba(16,185,129,0.55) !important;
+    border-color: var(--cal-exam-color, rgba(16,185,129,0.55)) !important;
 }
 .calendar-day .cal-special-label {
     font-size: 0.48rem;

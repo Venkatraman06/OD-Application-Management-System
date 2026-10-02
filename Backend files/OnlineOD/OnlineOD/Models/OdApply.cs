@@ -16,6 +16,9 @@ namespace OnlineOD.Models
         // staff assigned to this Department + Section.
         public string? Section { get; set; }
 
+        // Category (e.g. "UG", "PG") — used to scope OD requests and calendar
+        public string? Category { get; set; } = "UG";
+
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
         public string? StartTime { get; set; }

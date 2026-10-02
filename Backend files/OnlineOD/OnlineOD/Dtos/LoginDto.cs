@@ -20,6 +20,7 @@ namespace OnlineOD.Dtos
         public string Department { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string? Password { get; set; }
+        public string Category { get; set; } = "UG";
     }
 
     public class AdminLoginDto

@@ -1891,8 +1891,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const appliedCount  = covering.length;
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
+            const isToday = dateStr === todayStr;
+            const todayClass = isToday ? ' cal-today' : '';
 
-            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}"
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}${todayClass}"
                         data-date="${dateStr}"
                         ${tooltipHtml ? `data-tooltip="${encodeURIComponent(tooltipHtml)}"` : ''}>
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
@@ -1903,6 +1905,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="cal-count-applied">${appliedCount}</span>${rejectedCount ? `/<span class="cal-count-rejected">${rejectedCount}</span>` : ''}
                         </span>` : ''}
                      </div>`;
+        }
+
+        // Pad trailing empty cells so grid always has 35 or 42 cells (consistent vertical height)
+        const totalCells = firstDow + daysInMonth;
+        const targetCells = totalCells <= 35 ? 35 : 42;
+        for (let i = totalCells; i < targetCells; i++) {
+            html += '<div class="calendar-day empty"></div>';
         }
 
         grid.innerHTML = html;
@@ -1955,6 +1964,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('calendarNextBtn')?.addEventListener('click', () => {
         if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
+    });
+    document.getElementById('calendarRefreshBtn')?.addEventListener('click', () => {
+        const todayKey = new Date().toISOString().slice(0, 7);
+        const idx = calMonthKeys.indexOf(todayKey);
+        if (idx >= 0) {
+            calMonthIndex = idx;
+        }
+        renderCalendarMonth();
     });
 
     let editingOriginalData = null;

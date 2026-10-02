@@ -25,6 +25,8 @@ namespace OnlineOD.Data
         public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
         public DbSet<Event> Events { get; set; }
         public DbSet<Admin> Admins { get; set; }
+        public DbSet<SystemSetting> SystemSettings { get; set; }
+        public DbSet<AcademicSemester> AcademicSemesters { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

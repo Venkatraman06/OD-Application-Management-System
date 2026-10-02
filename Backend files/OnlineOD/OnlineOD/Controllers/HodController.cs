@@ -36,6 +36,7 @@ namespace OnlineOD.Controllers
                 name = h.Name,
                 rollNumber = h.RollNumber,
                 department = h.Department,
+                category = h.Category ?? "UG",
                 email = h.Email,
                 isActive = h.IsActive
             });
@@ -66,6 +67,7 @@ namespace OnlineOD.Controllers
                 name = hod.Name,
                 rollNumber = hod.RollNumber,
                 department = hod.Department,
+                category = hod.Category ?? "UG",
                 email = hod.Email,
                 isActive = hod.IsActive
             });
@@ -78,11 +80,13 @@ namespace OnlineOD.Controllers
         public async Task<IActionResult> AddHod([FromBody] HodDto dto)
         {
             if (dto == null) return BadRequest("HOD data is required");
+            var cat = string.IsNullOrWhiteSpace(dto.Category) ? "UG" : dto.Category.Trim().ToUpper();
             var hod = new Hod
             {
                 Name = dto.Name,
                 RollNumber = dto.RollNumber,
                 Department = dto.Department,
+                Category = cat,
                 Email = dto.Email,
                 Password = dto.Password ?? string.Empty
             };
@@ -93,6 +97,7 @@ namespace OnlineOD.Controllers
                 name = added.Name,
                 rollNumber = added.RollNumber,
                 department = added.Department,
+                category = added.Category ?? "UG",
                 email = added.Email,
                 isActive = added.IsActive
             });
@@ -198,6 +203,7 @@ namespace OnlineOD.Controllers
                 name = hod.Name,
                 rollNumber = hod.RollNumber,
                 department = hod.Department,
+                category = hod.Category ?? "UG",
                 token = token
             });
         }

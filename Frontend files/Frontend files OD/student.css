@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    OD Application - Student Dashboard Styles
    ============================================ */
 
@@ -2749,13 +2749,25 @@ select.cert-text-input {
 }
 .student-cal-modal .calendar-day.cal-holiday {
     background: rgba(249, 115, 22, 0.18) !important;
-    border-color: rgba(249, 115, 22, 0.5) !important;
-    color: #fb923c !important;
+    border-color: var(--cal-holiday-color, rgba(249, 115, 22, 0.5)) !important;
+    color: var(--cal-holiday-color, #fb923c) !important;
 }
 .student-cal-modal .calendar-day.cal-examination {
     background: rgba(16, 185, 129, 0.18) !important;
-    border-color: rgba(16, 185, 129, 0.5) !important;
-    color: #34d399 !important;
+    border-color: var(--cal-exam-color, rgba(16, 185, 129, 0.5)) !important;
+    color: var(--cal-exam-color, #34d399) !important;
+}
+.student-cal-modal .calendar-day.cal-today {
+    border: 2px solid var(--cal-today-color, #3b82f6) !important;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    position: relative;
+}
+.student-cal-modal .calendar-day.cal-today .today-tag {
+    color: var(--cal-today-color, #3b82f6) !important;
+    font-weight: 700;
+}
+.student-cal-modal .calendar-day.non-working:not(.cal-holiday) {
+    border-color: var(--cal-weekend-color, rgba(239, 68, 68, 0.18));
 }
 .student-cal-modal .calendar-day span:first-child {
     line-height: 1.2;

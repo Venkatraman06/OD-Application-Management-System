@@ -38,6 +38,8 @@ namespace OnlineOD.Models
 
         public string? Email { get; set; }
 
+        public string Category { get; set; } = "UG";
+
         public bool IsActive { get; set; } = true;
     }
 }

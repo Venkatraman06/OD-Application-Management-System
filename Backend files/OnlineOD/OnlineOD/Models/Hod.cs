@@ -17,6 +17,8 @@ namespace OnlineOD.Models
         [JsonIgnore]
         public string Password { get; set; }
 
+        public string Category { get; set; } = "UG";
+
         public bool IsActive { get; set; } = true;
     }
 }

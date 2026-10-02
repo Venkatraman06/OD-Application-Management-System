@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OnlineOD.Dtos;
 using OnlineOD.Models;
 using OnlineOD.Service;
@@ -15,13 +16,15 @@ namespace OnlineOD.Controllers
         private readonly IStaffService _staffService;
         private readonly IHodService _hodService;
         private readonly IJwtTokenService _jwtTokenService;
+        private readonly OnlineOD.Data.ApplicationDbContext _context;
 
-        public StudentController(IStudentService studentService, IStaffService staffService, IHodService hodService, IJwtTokenService jwtTokenService)
+        public StudentController(IStudentService studentService, IStaffService staffService, IHodService hodService, IJwtTokenService jwtTokenService, OnlineOD.Data.ApplicationDbContext context)
         {
             _studentService = studentService;
             _staffService = staffService;
             _hodService = hodService;
             _jwtTokenService = jwtTokenService;
+            _context = context;
         }
 
         // GET /api/Student - Student lookup and Admin student management
@@ -42,6 +45,7 @@ namespace OnlineOD.Controllers
                     section = s.Section,
                     year = s.Year,
                     semester = s.semester,
+                    category = s.Category ?? "UG",
                     dob = s.DOB,
                     email = s.Email,
                     isActive = s.IsActive
@@ -57,6 +61,7 @@ namespace OnlineOD.Controllers
                 department = s.Department,
                 section = s.Section,
                 year = s.Year,
+                category = s.Category ?? "UG",
                 isActive = s.IsActive
             });
             return Ok(lookupList);
@@ -80,6 +85,22 @@ namespace OnlineOD.Controllers
             var student = await _studentService.GetStudentByIdAsync(id);
             if (student == null) return NotFound();
 
+            // Automatic semester resolution based on academic configuration
+            var cat = (student.Category ?? "UG").Trim().ToUpper();
+            var todayStr = DateTime.Today.ToString("yyyy-MM-dd");
+            var academicSemesters = await _context.AcademicSemesters
+                .Where(a => a.Category.ToUpper() == cat && a.Year == student.Year)
+                .ToListAsync();
+
+            var academicMatch = academicSemesters
+                .FirstOrDefault(a => string.Compare(a.StartDate, todayStr, StringComparison.OrdinalIgnoreCase) <= 0 && string.Compare(a.EndDate, todayStr, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (academicMatch != null && academicMatch.Semester != student.semester)
+            {
+                student.semester = academicMatch.Semester;
+                await _context.SaveChangesAsync();
+            }
+
             return Ok(new
             {
                 studentId = student.StudentId,
@@ -90,6 +111,7 @@ namespace OnlineOD.Controllers
                 year = student.Year,
                 dob = student.DOB,
                 semester = student.semester,
+                category = student.Category ?? "UG",
                 email = student.Email,
                 isActive = student.IsActive
             });
@@ -122,6 +144,7 @@ namespace OnlineOD.Controllers
         public async Task<IActionResult> AddStudent([FromBody] Student student)
         {
             if (student == null) return BadRequest();
+            if (string.IsNullOrWhiteSpace(student.Category)) student.Category = "UG";
             var added = await _studentService.AddStudentAsync(student);
             var safeAdded = new
             {
@@ -133,6 +156,7 @@ namespace OnlineOD.Controllers
                 year = added.Year,
                 dob = added.DOB,
                 semester = added.semester,
+                category = added.Category ?? "UG",
                 email = added.Email,
                 isActive = added.IsActive
             };
@@ -168,6 +192,7 @@ namespace OnlineOD.Controllers
                     Section = existing.Section,               // Locked
                     Year = existing.Year,                     // Locked
                     semester = existing.semester,             // Locked
+                    Category = existing.Category,             // Locked
                     IsActive = existing.IsActive,             // Locked
                     DOB = student.DOB != default(DateTime) ? student.DOB : existing.DOB,
                     Email = !string.IsNullOrWhiteSpace(student.Email) ? student.Email.Trim() : existing.Email,
@@ -185,6 +210,7 @@ namespace OnlineOD.Controllers
                     year = updated.Year,
                     dob = updated.DOB,
                     semester = updated.semester,
+                    category = updated.Category ?? "UG",
                     email = updated.Email,
                     isActive = updated.IsActive
                 });
@@ -192,6 +218,7 @@ namespace OnlineOD.Controllers
             else
             {
                 if (student.StudentId != id) return BadRequest();
+                if (string.IsNullOrWhiteSpace(student.Category)) student.Category = "UG";
                 var updated = await _studentService.UpdateStudentAsync(student);
                 if (updated == null) return NotFound();
                 return Ok(new
@@ -204,6 +231,7 @@ namespace OnlineOD.Controllers
                     year = updated.Year,
                     dob = updated.DOB,
                     semester = updated.semester,
+                    category = updated.Category ?? "UG",
                     email = updated.Email,
                     isActive = updated.IsActive
                 });
@@ -354,6 +382,7 @@ namespace OnlineOD.Controllers
                 year = student.Year,
                 dob = student.DOB,
                 semester = student.semester,
+                category = student.Category ?? "UG",
                 email = student.Email,
                 isActive = student.IsActive,
                 token = token

@@ -809,21 +809,121 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // ── Filter buttons ──
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            filterCards(btn.dataset.filter);
-        });
-    });
-
-    function filterCards(filter) {
-        document.querySelectorAll('.od-status-card').forEach(card => {
-            card.style.display = (filter === 'all' || card.dataset.overall === filter) ? '' : 'none';
-        });
+    // ── Filter & Search controls ──
+    function odHasStarted(od) {
+        const fromDate = od.FromDate ?? od.fromDate;
+        if (!fromDate) return false;
+        const from = new Date(fromDate);
+        if (isNaN(from.getTime())) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        return today >= from;
     }
 
+    function filterCards() {
+        const statusFilter = (document.getElementById('odStatusSelect')?.value || 'all').toLowerCase();
+        const typeFilter   = (document.getElementById('odTypeSelect')?.value || 'all').toLowerCase();
+        const q            = (document.getElementById('odSearchInput')?.value || '').trim().toLowerCase();
+        const odList       = window.currentOdList || [];
+
+        let visibleCount = 0;
+        document.querySelectorAll('.od-status-card').forEach(card => {
+            const odId = card.dataset.odid;
+            const od = odList.find(o => String(o.OdId ?? o.odId ?? '') === String(odId));
+            if (!od) {
+                card.style.display = 'none';
+                return;
+            }
+
+            const myFacultyStatus = getMyFacultyStatus(od);
+            const hodStatus = od.HodStatus ?? od.hodStatus ?? 'Pending';
+            const iAmRejected = myFacultyStatus === 'Rejected';
+            const isGroup = od.IsGroupOd ?? od.isGroupOd ?? false;
+            const started = odHasStarted(od);
+
+            // 1. Status filter
+            let matchStatus = false;
+            if (statusFilter === 'all') {
+                matchStatus = true;
+            } else if (statusFilter === 'pending') {
+                matchStatus = (myFacultyStatus === 'Pending' && !started);
+            } else if (statusFilter === 'all-pending') {
+                matchStatus = ((myFacultyStatus === 'Pending' || (myFacultyStatus === 'Approved' && hodStatus === 'Pending')) && !started);
+            } else if (statusFilter === 'hod-pending') {
+                matchStatus = (myFacultyStatus === 'Approved' && hodStatus === 'Pending' && !started);
+            } else if (statusFilter === 'all-approved') {
+                matchStatus = (myFacultyStatus === 'Approved' && hodStatus === 'Approved');
+            } else if (statusFilter === 'staff-approved') {
+                matchStatus = (myFacultyStatus === 'Approved');
+            } else if (statusFilter === 'all-rejected') {
+                matchStatus = (iAmRejected || hodStatus === 'Rejected');
+            } else if (statusFilter === 'staff-rejected') {
+                matchStatus = iAmRejected;
+            } else if (statusFilter === 'hod-rejected') {
+                matchStatus = (hodStatus === 'Rejected');
+            } else if (statusFilter === 'noaction') {
+                matchStatus = ((myFacultyStatus === 'Pending' || (myFacultyStatus === 'Approved' && hodStatus === 'Pending')) && started);
+            }
+
+            // 2. OD Type filter
+            let matchType = false;
+            if (typeFilter === 'all') {
+                matchType = true;
+            } else if (typeFilter === 'individual') {
+                matchType = !isGroup;
+            } else if (typeFilter === 'group') {
+                matchType = isGroup;
+            }
+
+            // 3. Search query filter
+            let matchQuery = true;
+            if (q) {
+                const sOdId = String(od.OdId ?? od.odId ?? '').toLowerCase();
+                const sEvent = (od.Event ?? od.event ?? '').toLowerCase();
+                const sCollege = (od.CollegeIndustry ?? od.collegeIndustry ?? '').toLowerCase();
+                const sReason = (od.Reason ?? od.reason ?? '').toLowerCase();
+                const sReg = (od.registerNumber ?? od.RegisterNumber ?? '').toLowerCase();
+                const sRegs = (od.RegisterNumbers ?? od.registerNumbers ?? '').toLowerCase();
+                const sGroup = (od.GroupName ?? od.groupName ?? '').toLowerCase();
+
+                matchQuery = sOdId.includes(q) ||
+                    sEvent.includes(q) ||
+                    sCollege.includes(q) ||
+                    sReason.includes(q) ||
+                    sReg.includes(q) ||
+                    sRegs.includes(q) ||
+                    sGroup.includes(q);
+            }
+
+            const isVisible = matchStatus && matchType && matchQuery;
+            card.style.display = isVisible ? '' : 'none';
+            if (isVisible) visibleCount++;
+        });
+
+        const empty = document.getElementById('emptyState');
+        if (empty) {
+            if (odList.length > 0 && visibleCount === 0) {
+                empty.style.display = 'flex';
+                const h3 = empty.querySelector('h3');
+                const p = empty.querySelector('p');
+                if (h3) h3.textContent = 'No Matching OD Applications';
+                if (p) p.textContent = 'Try adjusting your status, search, or OD type filters.';
+            } else if (odList.length === 0) {
+                empty.style.display = 'flex';
+                const h3 = empty.querySelector('h3');
+                const p = empty.querySelector('p');
+                if (h3) h3.textContent = 'No OD Applications Found';
+                if (p) p.textContent = "You haven't submitted any OD requests yet.";
+            } else {
+                empty.style.display = 'none';
+            }
+        }
+    }
+
+    document.getElementById('odSearchInput')?.addEventListener('input', filterCards);
+    document.getElementById('odStatusSelect')?.addEventListener('change', filterCards);
+    document.getElementById('odTypeSelect')?.addEventListener('change', filterCards);
     document.getElementById('refreshBtn')?.addEventListener('click', loadODStatus);
 
 
@@ -2289,8 +2389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>`;
             }).join('');
 
-            const activeFilter = document.querySelector('.filter-btn.active');
-            if (activeFilter) filterCards(activeFilter.dataset.filter);
+            filterCards();
 
         } catch (err) {
             console.error('loadODStatus error:', err);
@@ -2453,6 +2552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = document.getElementById('studentCalMonthLabel');
         const prevBtn = document.getElementById('studentCalPrevBtn');
         const nextBtn = document.getElementById('studentCalNextBtn');
+        const refreshBtn = document.getElementById('studentCalRefreshBtn');
 
         if (!openBtn || !modal) return;
 
@@ -2519,30 +2619,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             const myYear = (localStorage.getItem('userYear')   || '').trim();
             const mySec  = (localStorage.getItem('userSection')|| '').trim();
 
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
                 const isWorking = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr) : true;
                 const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr, myDept, myYear, mySec) : null;
                 const isHoliday = special && special.dayType === 'Holiday';
                 const isExam = special && special.dayType === 'Examination';
+                const isToday = dateStr === todayStr;
                 const specialName = special ? (special.name || special.dayType) : '';
 
                 const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
 
+                let classNames = 'calendar-day';
                 if (!isWorking || isHoliday) {
-                    const tooltip = isHoliday ? `${formattedDate}\nHoliday\n${specialName}` : `Non-working day (${formattedDate})`;
-                    html += `<div class="calendar-day non-working${isHoliday ? ' cal-holiday' : ''}" title="${escHtml(tooltip)}">
-                        <span>${day}</span>
-                        ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
-                    </div>`;
+                    classNames += ' non-working';
+                    if (isHoliday) classNames += ' cal-holiday';
                 } else {
-                    const tooltip = isExam ? `${formattedDate}\nExamination\n${specialName}` : `Working day (${formattedDate})`;
-                    html += `<div class="calendar-day working${isExam ? ' cal-examination' : ''}" title="${escHtml(tooltip)}">
-                        <span>${day}</span>
-                        ${isExam && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
-                    </div>`;
+                    classNames += ' working';
+                    if (isExam) classNames += ' cal-examination';
                 }
+                if (isToday) classNames += ' cal-today';
+
+                let tooltip = '';
+                if (isToday) tooltip += `[Today] `;
+                if (isHoliday) tooltip += `${formattedDate}\nHoliday\n${specialName}`;
+                else if (!isWorking) tooltip += `Non-working day (${formattedDate})`;
+                else if (isExam) tooltip += `${formattedDate}\nExamination\n${specialName}`;
+                else tooltip += `Working day (${formattedDate})`;
+
+                html += `<div class="${classNames}" title="${escHtml(tooltip)}">
+                    <span>${day}</span>
+                    ${specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : (isToday ? '<span class="cal-special-label today-tag">Today</span>' : '')}
+                </div>`;
             }
+
+            // Fixed height: pad empty cells up to total 35 or 42 cells so month height does not jump
+            const totalCells = firstDow + daysInMonth;
+            const targetCells = totalCells > 35 ? 42 : 35;
+            for (let i = totalCells; i < targetCells; i++) {
+                html += '<div class="calendar-day empty"></div>';
+            }
+
             grid.innerHTML = html;
         }
 
@@ -2567,6 +2687,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if (nextBtn) nextBtn.addEventListener('click', () => {
             if (calIdx < calKeys.length - 1) { calIdx++; renderMonth(); }
+        });
+        if (refreshBtn) refreshBtn.addEventListener('click', () => {
+            loadData();
         });
     }
 

@@ -44,6 +44,7 @@ namespace OnlineOD.Controllers
                 department = s.Department,
                 section = s.Section,
                 year = s.Year,
+                category = s.Category ?? "UG",
                 email = s.Email,
                 isActive = s.IsActive
             });
@@ -74,6 +75,7 @@ namespace OnlineOD.Controllers
                 department = staff.Department,
                 section = staff.Section,
                 year = staff.Year,
+                category = staff.Category ?? "UG",
                 email = staff.Email,
                 isActive = staff.IsActive
             });
@@ -83,6 +85,7 @@ namespace OnlineOD.Controllers
         [HttpPost]
         public async Task<IActionResult> AddStaff([FromBody] Staff staff)
         {
+            if (staff != null && string.IsNullOrWhiteSpace(staff.Category)) staff.Category = "UG";
             var added = await _staffService.AddStaffAsync(staff);
             return Ok(new
             {
@@ -92,6 +95,7 @@ namespace OnlineOD.Controllers
                 department = added.Department,
                 section = added.Section,
                 year = added.Year,
+                category = added.Category ?? "UG",
                 email = added.Email,
                 isActive = added.IsActive
             });
@@ -220,6 +224,7 @@ namespace OnlineOD.Controllers
                 department = staff.Department,
                 section = staff.Section,
                 year = staff.Year,
+                category = staff.Category ?? "UG",
                 token = token
             });
         }

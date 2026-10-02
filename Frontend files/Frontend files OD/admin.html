@@ -81,152 +81,432 @@
         </div>
     </header>
 
-    <nav class="admin-tabs">
-        <button class="admin-tab active" data-tab="students">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-            Students <span class="tab-count" id="studentTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="staff">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Staff <span class="tab-count" id="staffTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="hod">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            HOD <span class="tab-count" id="hodTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="requests">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Requests <span class="tab-count" id="requestsTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="odrequests">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            OD Request <span class="tab-count" id="odRequestsTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="certificates">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15l-2 5l9-5l-9-5l2 5zm0 0l-7 2l2-7l7 2l-2 3z"/><path d="M12 2l3.09 6.26L22 9.27l-5 4.87l1.18 6.88L12 17.77l-6.18 3.25L7 14.14L2 9.27l6.91-1.01L12 2z"/></svg>
-            Certificates <span class="tab-count" id="certificatesTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="events">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            Events <span class="tab-count" id="eventsTabCount">0</span>
-        </button>
-        <button class="admin-tab" data-tab="accounts">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="19" cy="8" r="3"/><path d="M22 20c0-2.7-2-4.7-4.5-5"/></svg>
-            Admin Accounts <span class="tab-count" id="accountsTabCount">0</span>
-        </button>
-    </nav>
-
-    <main class="admin-main">
-
-        <!-- ============== STUDENTS ============== -->
-        <section class="admin-panel active" id="panel-students">
-            <div class="sub-tabs-container">
-                <button type="button" class="sub-tab-btn active" id="subtabAllStudents">
+    <div class="admin-body-layout">
+        <aside class="admin-sidebar">
+            <nav class="admin-sidebar-nav">
+                <button class="admin-nav-item active" data-tab="users">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    All Students
+                    <span>User Login</span>
                 </button>
-                <button type="button" class="sub-tab-btn" id="subtabOdHistory">
+                <button class="admin-nav-item" data-tab="odrequests">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    OD History
+                    <span>OD Requests</span> <span class="tab-count" id="odRequestsTabCount">0</span>
                 </button>
-            </div>
+                <button class="admin-nav-item" data-tab="certificates">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15l-2 5l9-5l-9-5l2 5zm0 0l-7 2l2-7l7 2l-2 3z"/><path d="M12 2l3.09 6.26L22 9.27l-5 4.87l1.18 6.88L12 17.77l-6.18 3.25L7 14.14L2 9.27l6.91-1.01L12 2z"/></svg>
+                    <span>Certificates</span> <span class="tab-count" id="certificatesTabCount">0</span>
+                </button>
+                <button class="admin-nav-item" data-tab="events">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span>Events</span> <span class="tab-count" id="eventsTabCount">0</span>
+                </button>
+                <button class="admin-nav-item" data-tab="requests">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>Contact Requests</span> <span class="tab-count" id="requestsTabCount">0</span>
+                </button>
+                <button class="admin-nav-item" data-tab="calendar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Academic Calendar</span>
+                </button>
+                <button class="admin-nav-item" data-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Settings</span>
+                </button>
+                <button class="admin-nav-item" data-tab="accounts">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><circle cx="19" cy="8" r="3"/><path d="M22 20c0-2.7-2-4.7-4.5-5"/></svg>
+                    <span>Admin Accounts</span> <span class="tab-count" id="accountsTabCount">0</span>
+                </button>
+            </nav>
+        </aside>
 
-            <div id="subtabViewAllStudents">
-                <div class="admin-grid">
-                    <div class="admin-card form-card">
-                        <h2>Add Student</h2>
-                        <form id="studentForm" class="admin-form" novalidate>
-                            <input type="hidden" id="studentId" value="">
-                            <div class="form-row">
-                                <label>Name</label>
-                                <input type="text" id="studentName" required placeholder="Full name">
-                            </div>
-                            <div class="form-row">
-                                <label>Register Number</label>
-                                <input type="text" id="studentRegNo" required placeholder="e.g. 21CS045">
-                            </div>
-                            <div class="form-row two-col">
-                                <div>
-                                    <label>Department</label>
-                                    <input type="text" id="studentDept" list="deptList" required placeholder="e.g. CSE">
-                                </div>
-                                <div>
-                                    <label>Section</label>
-                                    <input type="text" id="studentSection" placeholder="e.g. A">
-                                </div>
-                            </div>
-                            <div class="form-row two-col">
-                                <div>
-                                    <label>Year</label>
-                                    <input type="number" id="studentYear" min="1" max="5" required placeholder="1-5">
-                                </div>
-                                <div>
-                                    <label>Semester</label>
-                                    <input type="number" id="studentSemester" min="1" max="10" required placeholder="1-10">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <label>Date of Birth</label>
-                                <input type="date" id="studentDob" required>
-                            </div>
-                            <div class="form-row">
-                                <label>Email</label>
-                                <input type="email" id="studentEmail" placeholder="student@college.edu">
-                            </div>
-                            <div class="form-row">
-                                <label>Password</label>
-                                <input type="text" id="studentPassword" required placeholder="Login password">
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn-secondary" id="studentResetBtn">Clear</button>
-                                <button type="submit" class="btn-primary" id="studentSubmitBtn">Add Student</button>
-                            </div>
-                        </form>
+        <main class="admin-main">
+
+            <!-- ============== USER LOGIN (STUDENT, STAFF, HOD) ============== -->
+            <section class="admin-panel active" id="panel-users">
+                <div class="sub-tabs-container main-sub-tabs">
+                    <button type="button" class="sub-tab-btn active" id="subtabUserStudent" data-user-type="students">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                        Student Login <span class="tab-count" id="studentTabCount">0</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="subtabUserStaff" data-user-type="staff">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Staff Login <span class="tab-count" id="staffTabCount">0</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="subtabUserHod" data-user-type="hod">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                        HOD Login <span class="tab-count" id="hodTabCount">0</span>
+                    </button>
+                </div>
+
+                <!-- ── Student Section ── -->
+                <div id="userSectionStudent" class="user-sub-section active">
+                    <div class="sub-tabs-container nested-sub-tabs">
+                        <button type="button" class="sub-tab-btn active" id="subtabAllStudents">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            All Students
+                        </button>
+                        <button type="button" class="sub-tab-btn" id="subtabOdHistory">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            OD History
+                        </button>
                     </div>
 
-                    <div class="admin-card list-card">
-                        <div class="list-card-header">
-                            <h2>All Students</h2>
-                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                                <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / reg no. / email..." style="min-width:200px;">
-                                <select id="studentDeptFilter" class="admin-search" style="min-width:130px;cursor:pointer;" title="Filter by Department">
-                                    <option value="">All Depts</option>
-                                </select>
-                                <select id="studentYearFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Year">
-                                    <option value="">All Years</option>
-                                    <option value="1">Year 1</option>
-                                    <option value="2">Year 2</option>
-                                    <option value="3">Year 3</option>
-                                    <option value="4">Year 4</option>
-                                </select>
-                                <select id="studentSectionFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Section">
-                                    <option value="">All Sections</option>
-                                </select>
+                    <div id="subtabViewAllStudents">
+                        <div class="admin-grid">
+                            <div class="admin-card form-card">
+                                <h2>Add Student</h2>
+                                <form id="studentForm" class="admin-form" novalidate>
+                                    <input type="hidden" id="studentId" value="">
+                                    <div class="form-row">
+                                        <label>Name</label>
+                                        <input type="text" id="studentName" required placeholder="Full name">
+                                    </div>
+                                    <div class="form-row two-col">
+                                        <div>
+                                            <label>Register Number</label>
+                                            <input type="text" id="studentRegNo" required placeholder="e.g. 21CS045">
+                                        </div>
+                                        <div>
+                                            <label>Category (UG / PG)</label>
+                                            <select id="studentCategory" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                                <option value="UG" selected>UG</option>
+                                                <option value="PG">PG</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row two-col">
+                                        <div>
+                                            <label>Department</label>
+                                            <input type="text" id="studentDept" list="deptList" required placeholder="e.g. CSE">
+                                        </div>
+                                        <div>
+                                            <label>Section</label>
+                                            <input type="text" id="studentSection" placeholder="e.g. A">
+                                        </div>
+                                    </div>
+                                    <div class="form-row two-col">
+                                        <div>
+                                            <label>Year</label>
+                                            <input type="number" id="studentYear" min="1" max="5" required placeholder="1-5">
+                                        </div>
+                                        <div>
+                                            <label>Semester</label>
+                                            <input type="number" id="studentSemester" min="1" max="10" required placeholder="1-10">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <label>Date of Birth</label>
+                                        <input type="date" id="studentDob" required>
+                                    </div>
+                                    <div class="form-row">
+                                        <label>Email</label>
+                                        <input type="email" id="studentEmail" placeholder="student@college.edu">
+                                    </div>
+                                    <div class="form-row">
+                                        <label>Password</label>
+                                        <input type="text" id="studentPassword" required placeholder="Login password">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" class="btn-secondary" id="studentResetBtn">Clear</button>
+                                        <button type="submit" class="btn-primary" id="studentSubmitBtn">Add Student</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="admin-card list-card">
+                                <div class="list-card-header">
+                                    <h2>All Students</h2>
+                                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                        <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / reg no. / email..." style="min-width:180px;">
+                                        <select id="studentCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
+                                            <option value="">All Categories</option>
+                                            <option value="UG">UG</option>
+                                            <option value="PG">PG</option>
+                                        </select>
+                                        <select id="studentDeptFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Department">
+                                            <option value="">All Depts</option>
+                                        </select>
+                                        <select id="studentYearFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Year">
+                                            <option value="">All Years</option>
+                                            <option value="1">Year 1</option>
+                                            <option value="2">Year 2</option>
+                                            <option value="3">Year 3</option>
+                                            <option value="4">Year 4</option>
+                                        </select>
+                                        <select id="studentSectionFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Section">
+                                            <option value="">All Sections</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table class="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th><th>Reg. No.</th><th>Category</th><th>Dept</th><th>Sec</th><th>Year</th><th>Sem</th><th>Email</th><th>Status</th><th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="studentTableBody">
+                                            <tr><td colspan="10" class="table-empty">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                        <div class="table-wrap">
-                            <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th><th>Reg. No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Sem</th><th>Email</th><th>Status</th><th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="studentTableBody">
-                                    <tr><td colspan="9" class="table-empty">Loading...</td></tr>
-                                </tbody>
-                            </table>
+                    </div>
+
+                    <div id="subtabViewOdHistory" style="display:none">
+                        <div class="admin-card list-card" style="width:100%">
+                            <div class="list-card-header">
+                                <h2>Student OD History</h2>
+                                <div style="display:flex;gap:10px;align-items:center;">
+                                    <input type="text" class="admin-search" id="odHistorySearch" placeholder="Search name / reg no / dept / section...">
+                                    <button class="action-btn icon-btn" id="refreshOdHistoryBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student Name</th>
+                                            <th>Register Number</th>
+                                            <th>Category</th>
+                                            <th>Class</th>
+                                            <th>Section</th>
+                                            <th>Year</th>
+                                            <th style="text-align:center">Total OD Count</th>
+                                            <th style="text-align:center">Approved Count</th>
+                                            <th style="text-align:center">Rejected Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="odHistoryTableBody">
+                                        <tr><td colspan="9" class="table-empty">Loading OD history...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div id="subtabViewOdHistory" style="display:none">
-                <div class="admin-card list-card" style="width:100%">
+                <!-- ── Staff Section ── -->
+                <div id="userSectionStaff" class="user-sub-section" style="display:none;">
+                    <div class="admin-grid">
+                        <div class="admin-card form-card">
+                            <h2>Add Staff</h2>
+                            <form id="staffForm" class="admin-form" novalidate>
+                                <input type="hidden" id="staffId" value="">
+                                <div class="form-row">
+                                    <label>Name</label>
+                                    <input type="text" id="staffName" required placeholder="Full name">
+                                </div>
+                                <div class="form-row two-col">
+                                    <div>
+                                        <label>Roll / Staff Number</label>
+                                        <input type="text" id="staffRollNumber" required placeholder="e.g. STF1023">
+                                    </div>
+                                    <div>
+                                        <label>Category (UG / PG)</label>
+                                        <select id="staffCategory" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                            <option value="UG" selected>UG</option>
+                                            <option value="PG">PG</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row two-col">
+                                    <div>
+                                        <label>Department</label>
+                                        <input type="text" id="staffDept" list="deptList" required placeholder="e.g. CSE">
+                                    </div>
+                                    <div>
+                                        <label>Section</label>
+                                        <input type="text" id="staffSection" placeholder="e.g. A">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <label>Year (Class Advisor Year)</label>
+                                    <input type="number" id="staffYear" min="1" max="5" placeholder="e.g. 2">
+                                </div>
+                                <div class="form-row">
+                                    <label>Email</label>
+                                    <input type="email" id="staffEmail" required placeholder="name@college.edu">
+                                </div>
+                                <div class="form-row">
+                                    <label>Password</label>
+                                    <input type="text" id="staffPassword" required placeholder="Login password">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn-secondary" id="staffResetBtn">Clear</button>
+                                    <button type="submit" class="btn-primary" id="staffSubmitBtn">Add Staff</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="admin-card list-card">
+                            <div class="list-card-header">
+                                <h2>All Staff</h2>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="text" class="admin-search" id="staffSearch" placeholder="Search name / roll no. / email..." style="min-width:180px;">
+                                    <select id="staffCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
+                                        <option value="">All Categories</option>
+                                        <option value="UG">UG</option>
+                                        <option value="PG">PG</option>
+                                    </select>
+                                    <select id="staffDeptFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Department">
+                                        <option value="">All Depts</option>
+                                    </select>
+                                    <select id="staffYearFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Year">
+                                        <option value="">All Years</option>
+                                        <option value="1">Year 1</option>
+                                        <option value="2">Year 2</option>
+                                        <option value="3">Year 3</option>
+                                        <option value="4">Year 4</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th><th>Roll No.</th><th>Category</th><th>Dept</th><th>Sec</th><th>Year</th><th>Email</th><th>Status</th><th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="staffTableBody">
+                                        <tr><td colspan="9" class="table-empty">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── HOD Section ── -->
+                <div id="userSectionHod" class="user-sub-section" style="display:none;">
+                    <div class="admin-grid">
+                        <div class="admin-card form-card">
+                            <h2>Add HOD</h2>
+                            <form id="hodForm" class="admin-form" novalidate>
+                                <input type="hidden" id="hodId" value="">
+                                <div class="form-row">
+                                    <label>Name</label>
+                                    <input type="text" id="hodName" required placeholder="Full name">
+                                </div>
+                                <div class="form-row two-col">
+                                    <div>
+                                        <label>Roll / Staff Number</label>
+                                        <input type="text" id="hodRollNumber" placeholder="e.g. HOD1001">
+                                    </div>
+                                    <div>
+                                        <label>Category (UG / PG)</label>
+                                        <select id="hodCategory" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                            <option value="UG" selected>UG</option>
+                                            <option value="PG">PG</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <label>Department</label>
+                                    <input type="text" id="hodDeptInput" list="deptList" required placeholder="e.g. CSE">
+                                </div>
+                                <div class="form-row">
+                                    <label>Email</label>
+                                    <input type="email" id="hodEmail" required placeholder="name@college.edu">
+                                </div>
+                                <div class="form-row">
+                                    <label>Password</label>
+                                    <input type="text" id="hodPassword" required placeholder="Login password">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn-secondary" id="hodResetBtn">Clear</button>
+                                    <button type="submit" class="btn-primary" id="hodSubmitBtn">Add HOD</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="admin-card list-card">
+                            <div class="list-card-header">
+                                <h2>All HODs</h2>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="text" class="admin-search" id="hodSearch" placeholder="Search name / roll no. / email..." style="min-width:180px;">
+                                    <select id="hodCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
+                                        <option value="">All Categories</option>
+                                        <option value="UG">UG</option>
+                                        <option value="PG">PG</option>
+                                    </select>
+                                    <select id="hodDeptFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Department">
+                                        <option value="">All Depts</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th><th>Roll No.</th><th>Category</th><th>Dept</th><th>Email</th><th>Status</th><th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hodTableBody">
+                                        <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============== CONTACT ADMIN REQUESTS ============== -->
+            <section class="admin-panel" id="panel-requests">
+                <div class="admin-card list-card requests-full">
                     <div class="list-card-header">
-                        <h2>Student OD History</h2>
+                        <h2>Contact Admin Requests</h2>
+                        <input type="text" class="admin-search" id="requestsSearch" placeholder="Search reg/staff no. / role...">
+                    </div>
+                    <div class="table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Reg/Staff No.</th><th>Role</th><th>DOB</th><th>Report</th><th>Submitted</th><th>Status</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody">
+                                <tr><td colspan="7" class="table-empty">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============== OD REQUESTS ============== -->
+            <section class="admin-panel" id="panel-odrequests">
+                <div class="sub-tabs-container">
+                    <button type="button" class="sub-tab-btn active" id="subtabOdPending" data-od-subtab="pending">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Pending <span class="tab-count" id="odSubtabPendingCount">0</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="subtabOdApproved" data-od-subtab="approved">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Approved <span class="tab-count" id="odSubtabApprovedCount">0</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="subtabOdRejected" data-od-subtab="rejected">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        Rejected <span class="tab-count" id="odSubtabRejectedCount">0</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="subtabOdNoAction" data-od-subtab="noaction">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        No Action <span class="tab-count" id="odSubtabNoActionCount">0</span>
+                    </button>
+                </div>
+
+                <div class="admin-card list-card requests-full">
+                    <div class="list-card-header">
+                        <div>
+                            <h2 id="odRequestsListTitle">Pending OD Requests</h2>
+                            <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);" id="odRequestsListSub">Review, edit, undo decision, or manage OD requests</p>
+                        </div>
                         <div style="display:flex;gap:10px;align-items:center;">
-                            <input type="text" class="admin-search" id="odHistorySearch" placeholder="Search name / reg no / dept / section...">
-                            <button class="action-btn icon-btn" id="refreshOdHistoryBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                            <input type="text" class="admin-search" id="odRequestsSearch" placeholder="Search student / reg no / event / dept...">
+                            <button class="action-btn icon-btn" id="refreshOdRequestsBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                             </button>
                         </div>
@@ -235,270 +515,54 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>Student Name</th>
-                                    <th>Register Number</th>
-                                    <th>Class</th>
-                                    <th>Section</th>
+                                    <th>Reg. No.</th>
+                                    <th>Dept</th>
+                                    <th>Sec</th>
                                     <th>Year</th>
-                                    <th style="text-align:center">Total OD Count</th>
-                                    <th style="text-align:center">Approved Count</th>
-                                    <th style="text-align:center">Rejected Count</th>
+                                    <th>Event Name</th>
+                                    <th>College / Industry</th>
+                                    <th>OD Type</th>
+                                    <th>Dates</th>
+                                    <th>Applied</th>
+                                    <th>Status</th>
+                                    <th>Certification</th>
+                                    <th style="text-align:center;">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="odHistoryTableBody">
-                                <tr><td colspan="8" class="table-empty">Loading OD history...</td></tr>
+                            <tbody id="odRequestsTableBody">
+                                <tr><td colspan="14" class="table-empty">Loading OD requests...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- ============== STAFF ============== -->
-        <section class="admin-panel" id="panel-staff">
-            <div class="admin-grid">
-                <div class="admin-card form-card">
-                    <h2>Add Staff</h2>
-                    <form id="staffForm" class="admin-form" novalidate>
-                        <input type="hidden" id="staffId" value="">
-                        <div class="form-row">
-                            <label>Name</label>
-                            <input type="text" id="staffName" required placeholder="Full name">
-                        </div>
-                        <div class="form-row">
-                            <label>Roll / Staff Number</label>
-                            <input type="text" id="staffRollNumber" required placeholder="e.g. STF1023">
-                        </div>
-                        <div class="form-row two-col">
+            <!-- ============== CERTIFICATES ============== -->
+            <section class="admin-panel" id="panel-certificates">
+                <div class="sub-tabs-container">
+                    <button type="button" class="sub-tab-btn active" id="subtabCertPending" data-cert-subtab="pending">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Pending Certificates <span class="tab-count" id="certPendingTabCount">0</span>
+                    </button>
+                    <button type="button" class="sub-tab-btn" id="subtabCertSubmitted" data-cert-subtab="submitted">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Submitted Certificates <span class="tab-count" id="certSubmittedTabCount">0</span>
+                    </button>
+                </div>
+
+                <!-- Subtab A: Pending Certificates -->
+                <div id="subtabViewCertPending">
+                    <div class="admin-card list-card requests-full">
+                        <div class="list-card-header">
                             <div>
-                                <label>Department</label>
-                                <input type="text" id="staffDept" list="deptList" required placeholder="e.g. CSE">
+                                <h2>Pending Certificates (OD Completed)</h2>
+                                <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);">Students with completed ODs who have not yet submitted certificates</p>
                             </div>
-                            <div>
-                                <label>Section</label>
-                                <input type="text" id="staffSection" placeholder="e.g. A">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <label>Year (Class Advisor Year)</label>
-                            <input type="number" id="staffYear" min="1" max="5" placeholder="e.g. 2">
-                        </div>
-                        <div class="form-row">
-                            <label>Email</label>
-                            <input type="email" id="staffEmail" required placeholder="name@college.edu">
-                        </div>
-                        <div class="form-row">
-                            <label>Password</label>
-                            <input type="text" id="staffPassword" required placeholder="Login password">
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn-secondary" id="staffResetBtn">Clear</button>
-                            <button type="submit" class="btn-primary" id="staffSubmitBtn">Add Staff</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="admin-card list-card">
-                    <div class="list-card-header">
-                        <h2>All Staff</h2>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                            <input type="text" class="admin-search" id="staffSearch" placeholder="Search name / roll no. / email..." style="min-width:200px;">
-                            <select id="staffDeptFilter" class="admin-search" style="min-width:130px;cursor:pointer;" title="Filter by Department">
-                                <option value="">All Depts</option>
-                            </select>
-                            <select id="staffYearFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Year">
-                                <option value="">All Years</option>
-                                <option value="1">Year 1</option>
-                                <option value="2">Year 2</option>
-                                <option value="3">Year 3</option>
-                                <option value="4">Year 4</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-wrap">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Sec</th><th>Year</th><th>Email</th><th>Status</th><th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="staffTableBody">
-                                <tr><td colspan="8" class="table-empty">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ============== HOD ============== -->
-        <section class="admin-panel" id="panel-hod">
-            <div class="admin-grid">
-                <div class="admin-card form-card">
-                    <h2>Add HOD</h2>
-                    <form id="hodForm" class="admin-form" novalidate>
-                        <input type="hidden" id="hodId" value="">
-                        <div class="form-row">
-                            <label>Name</label>
-                            <input type="text" id="hodName" required placeholder="Full name">
-                        </div>
-                        <div class="form-row">
-                            <label>Roll / Staff Number</label>
-                            <input type="text" id="hodRollNumber" placeholder="e.g. HOD1001">
-                        </div>
-                        <div class="form-row">
-                            <label>Department</label>
-                            <input type="text" id="hodDeptInput" list="deptList" required placeholder="e.g. CSE">
-                        </div>
-                        <div class="form-row">
-                            <label>Email</label>
-                            <input type="email" id="hodEmail" required placeholder="name@college.edu">
-                        </div>
-                        <div class="form-row">
-                            <label>Password</label>
-                            <input type="text" id="hodPassword" required placeholder="Login password">
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn-secondary" id="hodResetBtn">Clear</button>
-                            <button type="submit" class="btn-primary" id="hodSubmitBtn">Add HOD</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="admin-card list-card">
-                    <div class="list-card-header">
-                        <h2>All HODs</h2>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                            <input type="text" class="admin-search" id="hodSearch" placeholder="Search name / roll no. / email..." style="min-width:200px;">
-                            <select id="hodDeptFilter" class="admin-search" style="min-width:130px;cursor:pointer;" title="Filter by Department">
-                                <option value="">All Depts</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-wrap">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th><th>Roll No.</th><th>Dept</th><th>Email</th><th>Status</th><th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="hodTableBody">
-                                <tr><td colspan="6" class="table-empty">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ============== CONTACT ADMIN REQUESTS ============== -->
-        <section class="admin-panel" id="panel-requests">
-            <div class="admin-card list-card requests-full">
-                <div class="list-card-header">
-                    <h2>Contact Admin Requests</h2>
-                    <input type="text" class="admin-search" id="requestsSearch" placeholder="Search reg/staff no. / role...">
-                </div>
-                <div class="table-wrap">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Reg/Staff No.</th><th>Role</th><th>DOB</th><th>Report</th><th>Submitted</th><th>Status</th><th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="requestsTableBody">
-                            <tr><td colspan="7" class="table-empty">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- ============== OD REQUESTS ============== -->
-        <section class="admin-panel" id="panel-odrequests">
-            <div class="sub-tabs-container">
-                <button type="button" class="sub-tab-btn active" id="subtabOdPending" data-od-subtab="pending">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Pending <span class="tab-count" id="odSubtabPendingCount">0</span>
-                </button>
-                <button type="button" class="sub-tab-btn" id="subtabOdApproved" data-od-subtab="approved">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    Approved <span class="tab-count" id="odSubtabApprovedCount">0</span>
-                </button>
-                <button type="button" class="sub-tab-btn" id="subtabOdRejected" data-od-subtab="rejected">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                    Rejected <span class="tab-count" id="odSubtabRejectedCount">0</span>
-                </button>
-                <button type="button" class="sub-tab-btn" id="subtabOdNoAction" data-od-subtab="noaction">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                    No Action <span class="tab-count" id="odSubtabNoActionCount">0</span>
-                </button>
-            </div>
-
-            <div class="admin-card list-card requests-full">
-                <div class="list-card-header">
-                    <div>
-                        <h2 id="odRequestsListTitle">Pending OD Requests</h2>
-                        <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);" id="odRequestsListSub">Review, edit, undo decision, or manage OD requests</p>
-                    </div>
-                    <div style="display:flex;gap:10px;align-items:center;">
-                        <input type="text" class="admin-search" id="odRequestsSearch" placeholder="Search student / reg no / event / dept...">
-                        <button class="action-btn icon-btn" id="refreshOdRequestsBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="table-wrap">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Student Name</th>
-                                <th>Reg. No.</th>
-                                <th>Dept</th>
-                                <th>Sec</th>
-                                <th>Year</th>
-                                <th>Event Name</th>
-                                <th>College / Industry</th>
-                                <th>OD Type</th>
-                                <th>Dates</th>
-                                <th>Applied</th>
-                                <th>Status</th>
-                                <th>Certification</th>
-                                <th style="text-align:center;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="odRequestsTableBody">
-                            <tr><td colspan="14" class="table-empty">Loading OD requests...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- ============== CERTIFICATES ============== -->
-        <section class="admin-panel" id="panel-certificates">
-            <div class="sub-tabs-container">
-                <button type="button" class="sub-tab-btn active" id="subtabCertPending" data-cert-subtab="pending">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Pending Certificates <span class="tab-count" id="certPendingTabCount">0</span>
-                </button>
-                <button type="button" class="sub-tab-btn" id="subtabCertSubmitted" data-cert-subtab="submitted">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    Submitted Certificates <span class="tab-count" id="certSubmittedTabCount">0</span>
-                </button>
-            </div>
-
-            <!-- Subtab A: Pending Certificates -->
-            <div id="subtabViewCertPending">
-                <div class="admin-card list-card requests-full">
-                    <div class="list-card-header">
-                        <div>
-                            <h2>Pending Certificates (OD Completed)</h2>
-                            <p style="margin:4px 0 0;font-size:0.78rem;color:var(--surface-400);">Students with completed ODs who have not yet submitted certificates</p>
-                        </div>
-                        <div style="display:flex;gap:10px;align-items:center;">
-                            <input type="text" class="admin-search" id="certPendingSearch" placeholder="Search student / reg no / event / dept...">
-                            <button class="action-btn icon-btn" id="refreshCertPendingBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
+                            <div style="display:flex;gap:10px;align-items:center;">
+                                <input type="text" class="admin-search" id="certPendingSearch" placeholder="Search student / reg no / event / dept...">
+                                <button class="action-btn icon-btn" id="refreshCertPendingBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                             </button>
                         </div>
@@ -623,6 +687,254 @@
                 </div>
             </div>
         </section>
+
+        <!-- ============== ACADEMIC CALENDAR ============== -->
+        <section class="admin-panel" id="panel-calendar">
+            <div class="admin-card" style="width:100%;">
+                <div class="list-card-header" style="margin-bottom:20px;">
+                    <div>
+                        <h2>Academic Calendar</h2>
+                        <p style="margin:4px 0 0;font-size:0.8rem;color:var(--surface-400);">View college working days, holidays, examinations, and events</p>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center;">
+                        <button class="nav-btn" id="adminCalPrevBtn" type="button" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:white;border-radius:8px;padding:8px 14px;cursor:pointer;">&larr; Prev</button>
+                        <span id="adminCalMonthLabel" style="font-weight:700;font-size:1rem;color:white;min-width:140px;text-align:center;">Month</span>
+                        <button class="nav-btn" id="adminCalNextBtn" type="button" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:white;border-radius:8px;padding:8px 14px;cursor:pointer;">Next &rarr;</button>
+                        <button class="action-btn icon-btn" id="adminCalRefreshBtn" title="Current Month / Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            <span>Today</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="calendar-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:0.8rem;">
+                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#34d399;"></span> Working Day</span>
+                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-weekend-color, #ef4444);"></span> Weekend</span>
+                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-holiday-color, #f97316);"></span> Holiday</span>
+                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-exam-color, #10b981);"></span> Examination</span>
+                    <span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--cal-today-color, #3b82f6);box-shadow:0 0 6px rgba(59,130,246,0.6);"></span> Today</span>
+                </div>
+
+                <div class="calendar-weekday-row" style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:0.75rem;font-weight:700;color:var(--surface-400);margin-bottom:8px;">
+                    <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+                </div>
+                <div class="calendar-grid" id="adminCalendarGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">
+                    <div style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">Loading calendar...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============== SETTINGS (PREFIX, CALENDAR COLORS, ACADEMIC CONFIG & PROMOTION) ============== -->
+        <section class="admin-panel" id="panel-settings">
+            <div class="sub-tabs-container">
+                <button type="button" class="sub-tab-btn active" id="subtabSettingsPrefix" data-settings-subtab="prefix">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                    Fix OD ID Prefix
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabSettingsColors" data-settings-subtab="colors">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 5.5s-1.5 2.5-1.5 3.5"/></svg>
+                    Calendar Settings
+                </button>
+                <button type="button" class="sub-tab-btn" id="subtabSettingsAcademic" data-settings-subtab="academic">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                    Academic Configuration
+                </button>
+            </div>
+
+            <!-- Settings Subtab 1: Fix OD ID Prefix -->
+            <div id="subtabViewSettingsPrefix">
+                <div class="admin-card" style="max-width:550px;">
+                    <h2>OD ID Prefix Setting</h2>
+                    <p style="font-size:0.85rem;color:var(--surface-400);margin-bottom:18px;">
+                        Configure the default prefix used for generated OD numbers (e.g. <code>OD-</code> or <code>NEC-OD-</code>).
+                    </p>
+                    <form id="odPrefixForm" class="admin-form" novalidate>
+                        <div class="form-row">
+                            <label>OD ID Prefix</label>
+                            <input type="text" id="settingOdPrefix" placeholder="e.g. OD-" required value="OD-">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary" id="saveOdPrefixBtn">Save Prefix</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Settings Subtab 2: Calendar Settings -->
+            <div id="subtabViewSettingsColors" style="display:none;">
+                <div class="admin-card" style="max-width:620px;">
+                    <h2>Calendar Color Settings</h2>
+                    <p style="font-size:0.85rem;color:var(--surface-400);margin-bottom:18px;">
+                        Customize the highlight colors for calendar days across Student, Staff, HOD, and Admin portals.
+                    </p>
+                    <form id="calendarColorsForm" class="admin-form" novalidate>
+                        <div class="form-row two-col">
+                            <div>
+                                <label>Weekends Color</label>
+                                <div style="display:flex;gap:10px;align-items:center;">
+                                    <input type="color" id="settingCalWeekend" value="#ef4444" style="height:42px;padding:2px;cursor:pointer;width:55px;">
+                                    <input type="text" id="settingCalWeekendText" value="#ef4444" style="flex:1;">
+                                </div>
+                            </div>
+                            <div>
+                                <label>Holidays Color</label>
+                                <div style="display:flex;gap:10px;align-items:center;">
+                                    <input type="color" id="settingCalHoliday" value="#f97316" style="height:42px;padding:2px;cursor:pointer;width:55px;">
+                                    <input type="text" id="settingCalHolidayText" value="#f97316" style="flex:1;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row two-col">
+                            <div>
+                                <label>Examinations Color</label>
+                                <div style="display:flex;gap:10px;align-items:center;">
+                                    <input type="color" id="settingCalExam" value="#10b981" style="height:42px;padding:2px;cursor:pointer;width:55px;">
+                                    <input type="text" id="settingCalExamText" value="#10b981" style="flex:1;">
+                                </div>
+                            </div>
+                            <div>
+                                <label>Today Highlight Color</label>
+                                <div style="display:flex;gap:10px;align-items:center;">
+                                    <input type="color" id="settingCalToday" value="#3b82f6" style="height:42px;padding:2px;cursor:pointer;width:55px;">
+                                    <input type="text" id="settingCalTodayText" value="#3b82f6" style="flex:1;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" id="resetCalColorsBtn">Reset to Defaults</button>
+                            <button type="submit" class="btn-primary" id="saveCalColorsBtn">Save Colors</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Settings Subtab 3: Academic Configuration & Promotion -->
+            <div id="subtabViewSettingsAcademic" style="display:none;">
+                <div class="admin-grid" style="grid-template-columns: 380px 1fr; margin-bottom: 24px;">
+                    <!-- Academic Semester Form -->
+                    <div class="admin-card form-card">
+                        <h2>Configure Academic Semester</h2>
+                        <form id="academicSemesterForm" class="admin-form" novalidate>
+                            <div class="form-row two-col">
+                                <div>
+                                    <label>Category</label>
+                                    <select id="academicCategory" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                        <option value="UG" selected>UG</option>
+                                        <option value="PG">PG</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Year</label>
+                                    <input type="number" id="academicYear" min="1" max="5" value="1" required placeholder="1-5">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>Semester Number</label>
+                                <input type="number" id="academicSemester" min="1" max="10" value="1" required placeholder="1-10">
+                            </div>
+                            <div class="form-row two-col">
+                                <div>
+                                    <label>Start Date</label>
+                                    <input type="date" id="academicStartDate" required>
+                                </div>
+                                <div>
+                                    <label>End Date</label>
+                                    <input type="date" id="academicEndDate" required>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary" id="addAcademicSemesterBtn">Add Semester</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Configured Semesters Table -->
+                    <div class="admin-card list-card">
+                        <div class="list-card-header">
+                            <h2>Configured Semesters</h2>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Year</th>
+                                        <th>Semester</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Status</th>
+                                        <th style="text-align:center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="academicSemestersTableBody">
+                                    <tr><td colspan="7" class="table-empty">Loading semesters...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Promotion Section -->
+                <div class="admin-card" style="width:100%;">
+                    <h2>Student Promotion</h2>
+                    <p style="font-size:0.85rem;color:var(--surface-400);margin-bottom:16px;">
+                        Promote students from one academic year to the next by category. Their semester will automatically be updated based on the active Academic Semester configuration.
+                    </p>
+                    <form id="studentPromotionForm" class="admin-form" style="max-width:700px;" novalidate>
+                        <div class="form-row" style="display:grid;grid-template-columns: repeat(3, 1fr);gap:14px;">
+                            <div>
+                                <label>Category</label>
+                                <select id="promoteCategory" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                    <option value="UG" selected>UG</option>
+                                    <option value="PG">PG</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Current Year</label>
+                                <select id="promoteFromYear" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                    <option value="1">1st Year</option>
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Promote To Year</label>
+                                <select id="promoteToYear" style="width:100%;padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:#0f172a;color:white;font-size:0.85rem;">
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                    <option value="5">Completed / Alum</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin:16px 0;padding:12px 16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:8px;font-size:0.85rem;display:flex;align-items:center;justify-content:space-between;">
+                            <span>Eligible Students: <strong id="promoteCountDisplay" style="color:#c7d2fe;">0 students found</strong></span>
+                            <button type="button" class="btn-secondary" id="checkPromoteCountBtn" style="padding:6px 14px;font-size:0.8rem;">Refresh Count</button>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn-primary" id="promoteStudentsBtn" style="background:linear-gradient(135deg, #10b981, #059669);">
+                                Promote Students &amp; Update Semester
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Promotion Confirmation Modal -->
+        <div class="modal-overlay" id="promoteConfirmOverlay">
+            <div class="modal-box">
+                <h3>Confirm Student Promotion</h3>
+                <p id="promoteConfirmText">Are you sure you want to promote eligible students?</p>
+                <div class="modal-box-actions">
+                    <button type="button" class="btn-secondary" id="promoteCancelBtn">Cancel</button>
+                    <button type="button" class="btn-primary" id="promoteConfirmDoBtn" style="background:linear-gradient(135deg, #10b981, #059669);">Confirm &amp; Promote</button>
+                </div>
+            </div>
+        </div>
 
         <!-- ============== ADMIN ACCOUNTS ============== -->
         <section class="admin-panel" id="panel-accounts">

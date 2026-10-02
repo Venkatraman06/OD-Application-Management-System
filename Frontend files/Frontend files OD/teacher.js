@@ -2079,6 +2079,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const firstDow = new Date(yearNum, month, 1).getDay();
         const daysInMonth = new Date(yearNum, month + 1, 0).getDate();
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
         let html = '';
         for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
@@ -2087,6 +2089,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
             const isWorking = isEffectiveWorkingDay(dateStr);
             const wasEdited = Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr);
+            const isToday   = dateStr === todayStr;
+            const todayClass = isToday ? ' cal-today' : '';
 
             // Check for special day (Holiday / Examination)
             const specialDay = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
@@ -2101,10 +2105,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!isWorking || isHoliday) {
                 const tooltipText = isHoliday
-                    ? `Holiday: ${specialName} (${formattedDate})`
-                    : wasEdited ? 'Marked non-working' : 'Holiday / non-working day';
+                    ? `Holiday: ${specialName} (${formattedDate})${isToday ? ' [Today]' : ''}`
+                    : wasEdited ? `Marked non-working${isToday ? ' [Today]' : ''}` : `Holiday / non-working day${isToday ? ' [Today]' : ''}`;
                 const extraClass = isHoliday ? ' cal-holiday' : '';
-                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}" data-date="${dateStr}" title="${escHtml(tooltipText)}">
+                html += `<div class="calendar-day non-working${wasEdited ? ' cal-edited' : ''}${extraClass}${todayClass}" data-date="${dateStr}" title="${escHtml(tooltipText)}">
                             <span class="cal-day-num">${day}</span>
                             ${isHoliday && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
                             ${wasEdited ? '<span class="cal-edit-dot" title="Edited day"></span>' : ''}
@@ -2117,9 +2121,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const appliedCount  = covering.length;
             const rejectedCount = covering.filter(isOdRowRejected).length;
             const hasActivity = appliedCount > 0;
-            const dayTitle = isExamination ? `Examination: ${specialName} (${formattedDate})` : dateStr;
+            const dayTitle = isExamination ? `Examination: ${specialName} (${formattedDate})${isToday ? ' [Today]' : ''}` : `${dateStr}${isToday ? ' [Today]' : ''}`;
 
-            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}" data-date="${dateStr}" title="${escHtml(dayTitle)}">
+            html += `<div class="calendar-day working${wasEdited ? ' cal-edited' : ''}${examinationClass}${todayClass}" data-date="${dateStr}" title="${escHtml(dayTitle)}">
                         ${hasActivity ? '<span class="cal-dot"></span>' : ''}
                         <span class="cal-day-num">${day}</span>
                         ${isExamination && specialName ? `<span class="cal-special-label">${escHtml(specialName)}</span>` : ''}
@@ -2130,6 +2134,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                      </div>`;
         }
 
+        // Pad trailing empty cells so grid always has 35 or 42 cells (consistent vertical height)
+        const totalCells = firstDow + daysInMonth;
+        const targetCells = totalCells <= 35 ? 35 : 42;
+        for (let i = totalCells; i < targetCells; i++) {
+            html += '<div class="calendar-day empty"></div>';
+        }
+
         grid.innerHTML = html;
     }
 
@@ -2138,6 +2149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('calendarNextBtn')?.addEventListener('click', () => {
         if (calMonthIndex < calMonthKeys.length - 1) { calMonthIndex++; renderCalendarMonth(); }
+    });
+    document.getElementById('calendarRefreshBtn')?.addEventListener('click', () => {
+        const todayKey = new Date().toISOString().slice(0, 7);
+        const idx = calMonthKeys.indexOf(todayKey);
+        if (idx >= 0) {
+            calMonthIndex = idx;
+        }
+        renderCalendarMonth();
     });
 
     let editingOriginalData = null;

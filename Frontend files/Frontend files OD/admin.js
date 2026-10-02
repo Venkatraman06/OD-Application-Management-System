@@ -124,7 +124,7 @@ function initAdminApp() {
     let staff = [];
     let hods = [];
 
-    // ── Tabs ──
+    // ── Tabs / Side Navigation ──
     const adminTabsNav = document.querySelector('.admin-tabs');
     if (adminTabsNav) {
         adminTabsNav.addEventListener('wheel', (e) => {
@@ -140,25 +140,69 @@ function initAdminApp() {
         logoutAdmin();
     });
 
-    document.querySelectorAll('.admin-tab').forEach(btn => {
+    document.querySelectorAll('.admin-nav-item, .admin-tab').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.admin-nav-item, .admin-tab').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
-            btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
-            document.getElementById(`panel-${btn.dataset.tab}`)?.classList.add('active');
 
             const tab = btn.dataset.tab;
-            if (tab === 'students') loadStudents();
+            const panel = document.getElementById(`panel-${tab}`);
+            if (panel) panel.classList.add('active');
+
+            if (tab === 'users') {
+                loadStudents();
+                loadStaff();
+                loadHods();
+            }
+            else if (tab === 'students') loadStudents();
             else if (tab === 'staff') loadStaff();
             else if (tab === 'hod') loadHods();
             else if (tab === 'requests') loadRequests();
             else if (tab === 'odrequests') loadOdRequests();
             else if (tab === 'certificates') loadCertificates();
             else if (tab === 'events') loadEvents();
+            else if (tab === 'calendar') loadAdminCalendar();
+            else if (tab === 'settings') loadAdminSettings();
             else if (tab === 'accounts') loadAdminAccounts();
         });
     });
+
+    // ── User Login Sub-Tabs (Student, Staff, HOD) ──
+    const subtabUserStudent = document.getElementById('subtabUserStudent');
+    const subtabUserStaff = document.getElementById('subtabUserStaff');
+    const subtabUserHod = document.getElementById('subtabUserHod');
+    const userSectionStudent = document.getElementById('userSectionStudent');
+    const userSectionStaff = document.getElementById('userSectionStaff');
+    const userSectionHod = document.getElementById('userSectionHod');
+
+    function switchUserSubSection(type) {
+        [subtabUserStudent, subtabUserStaff, subtabUserHod].forEach(b => b?.classList.remove('active'));
+        [userSectionStudent, userSectionStaff, userSectionHod].forEach(s => {
+            if (s) {
+                s.style.display = 'none';
+                s.classList.remove('active');
+            }
+        });
+
+        if (type === 'students' || type === 'student') {
+            subtabUserStudent?.classList.add('active');
+            if (userSectionStudent) { userSectionStudent.style.display = 'block'; userSectionStudent.classList.add('active'); }
+            loadStudents();
+        } else if (type === 'staff') {
+            subtabUserStaff?.classList.add('active');
+            if (userSectionStaff) { userSectionStaff.style.display = 'block'; userSectionStaff.classList.add('active'); }
+            loadStaff();
+        } else if (type === 'hod') {
+            subtabUserHod?.classList.add('active');
+            if (userSectionHod) { userSectionHod.style.display = 'block'; userSectionHod.classList.add('active'); }
+            loadHods();
+        }
+    }
+
+    subtabUserStudent?.addEventListener('click', () => switchUserSubSection('students'));
+    subtabUserStaff?.addEventListener('click', () => switchUserSubSection('staff'));
+    subtabUserHod?.addEventListener('click', () => switchUserSubSection('hod'));
 
     // ── Toast ──
     function showToast(type, msg) {
@@ -275,7 +319,7 @@ function initAdminApp() {
 
     async function loadOdHistory() {
         const tbody = document.getElementById('odHistoryTableBody');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Loading OD history...</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="table-empty">Loading OD history...</td></tr>';
         try {
             const res = await adminFetch(API_BASE + '/api/Student/OdHistory?_=' + Date.now(), { cache: 'no-store' });
             odHistoryList = res.ok ? await res.json() : [];
@@ -291,16 +335,18 @@ function initAdminApp() {
         const tbody = document.getElementById('odHistoryTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No OD history found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No OD history found.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(s => {
             const total = s.totalOdCount ?? s.TotalOdCount ?? 0;
             const approved = s.approvedCount ?? s.ApprovedCount ?? 0;
             const rejected = s.rejectedCount ?? s.RejectedCount ?? 0;
+            const cat = s.category ?? s.Category ?? 'UG';
             return '<tr>' +
                 '<td style="font-weight:600">' + esc(s.studentName ?? s.StudentName ?? s.name ?? s.Name) + '</td>' +
                 '<td>' + esc(s.registerNumber ?? s.RegisterNumber) + '</td>' +
+                '<td><span class="badge-category ' + (cat === 'PG' ? 'badge-pg' : '') + '">' + esc(cat) + '</span></td>' +
                 '<td>' + esc(s.class ?? s.Class ?? s.department ?? s.Department) + '</td>' +
                 '<td>' + esc(s.section ?? s.Section ?? '-') + '</td>' +
                 '<td>' + esc(s.year ?? s.Year) + '</td>' +
@@ -317,6 +363,7 @@ function initAdminApp() {
         renderOdHistory(odHistoryList.filter(s =>
             (s.studentName ?? s.StudentName ?? s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
             (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) ||
+            (s.category ?? s.Category ?? '').toLowerCase().includes(q) ||
             (s.class ?? s.Class ?? s.department ?? s.Department ?? '').toLowerCase().includes(q) ||
             (s.section ?? s.Section ?? '').toLowerCase().includes(q)
         ));
@@ -354,19 +401,21 @@ function initAdminApp() {
         const tbody = document.getElementById('studentTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No students yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="table-empty">No students yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(s => {
             const id = s.studentId ?? s.StudentId;
             const sName = s.name ?? s.Name ?? '';
             const sReg = s.registerNumber ?? s.RegisterNumber ?? '';
+            const cat = s.category ?? s.Category ?? 'UG';
             const active = (s.isActive ?? s.IsActive) !== false;
             const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="student" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
                 <td>${esc(sName)}</td>
                 <td>${window.renderRegHover(sReg, sName)}</td>
+                <td><span class="badge-category ${cat === 'PG' ? 'badge-pg' : ''}">${esc(cat)}</span></td>
                 <td>${esc(s.department ?? s.Department)}</td>
                 <td>${esc(s.section ?? s.Section ?? '-')}</td>
                 <td>${esc(s.year ?? s.Year)}</td>
@@ -406,11 +455,13 @@ function initAdminApp() {
 
     function applyStudentFilters() {
         const q    = (document.getElementById('studentSearch')?.value ?? '').trim().toLowerCase();
+        const cat  = (document.getElementById('studentCategoryFilter')?.value ?? '').trim().toUpperCase();
         const dept = (document.getElementById('studentDeptFilter')?.value ?? '').trim().toLowerCase();
         const year = (document.getElementById('studentYearFilter')?.value ?? '').trim();
         const sec  = (document.getElementById('studentSectionFilter')?.value ?? '').trim().toLowerCase();
         let list = students;
         if (q)    list = list.filter(s => (s.name ?? s.Name ?? '').toLowerCase().includes(q) || (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) || (s.email ?? s.Email ?? '').toLowerCase().includes(q));
+        if (cat)  list = list.filter(s => (s.category ?? s.Category ?? 'UG').toUpperCase() === cat);
         if (dept) list = list.filter(s => (s.department ?? s.Department ?? '').trim().toLowerCase() === dept);
         if (year) list = list.filter(s => String(s.year ?? s.Year ?? '') === year);
         if (sec)  list = list.filter(s => (s.section ?? s.Section ?? '').trim().toLowerCase() === sec);
@@ -418,6 +469,7 @@ function initAdminApp() {
     }
 
     document.getElementById('studentSearch')?.addEventListener('input', applyStudentFilters);
+    document.getElementById('studentCategoryFilter')?.addEventListener('change', applyStudentFilters);
     document.getElementById('studentDeptFilter')?.addEventListener('change', applyStudentFilters);
     document.getElementById('studentYearFilter')?.addEventListener('change', applyStudentFilters);
     document.getElementById('studentSectionFilter')?.addEventListener('change', applyStudentFilters);
@@ -447,6 +499,8 @@ function initAdminApp() {
         studentIdEl.value = s.studentId ?? s.StudentId ?? '';
         document.getElementById('studentName').value = s.name ?? s.Name ?? '';
         document.getElementById('studentRegNo').value = s.registerNumber ?? s.RegisterNumber ?? '';
+        const catEl = document.getElementById('studentCategory');
+        if (catEl) catEl.value = s.category ?? s.Category ?? 'UG';
         document.getElementById('studentDept').value = s.department ?? s.Department ?? '';
         document.getElementById('studentSection').value = s.section ?? s.Section ?? '';
         document.getElementById('studentYear').value = s.year ?? s.Year ?? '';
@@ -456,12 +510,14 @@ function initAdminApp() {
         document.getElementById('studentEmail').value = s.email ?? s.Email ?? '';
         document.getElementById('studentPassword').value = ''; // never prefill a password
         studentSubmitBtn.textContent = 'Update Student';
-        document.getElementById('panel-students').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     document.getElementById('studentResetBtn')?.addEventListener('click', () => {
         studentForm.reset();
         studentIdEl.value = '';
+        const catEl = document.getElementById('studentCategory');
+        if (catEl) catEl.value = 'UG';
         studentSubmitBtn.textContent = 'Add Student';
     });
 
@@ -473,6 +529,7 @@ function initAdminApp() {
         const payload = {
             name: document.getElementById('studentName').value.trim(),
             registerNumber: document.getElementById('studentRegNo').value.trim(),
+            category: document.getElementById('studentCategory')?.value || 'UG',
             department: document.getElementById('studentDept').value.trim(),
             section: document.getElementById('studentSection').value.trim(),
             year: parseInt(document.getElementById('studentYear').value, 10),
@@ -518,6 +575,8 @@ function initAdminApp() {
             showToast('success', isEdit ? 'Student updated.' : 'Student added.');
             studentForm.reset();
             studentIdEl.value = '';
+            const catEl = document.getElementById('studentCategory');
+            if (catEl) catEl.value = 'UG';
             studentSubmitBtn.textContent = 'Add Student';
             loadStudents();
         } catch (err) {
@@ -553,17 +612,19 @@ function initAdminApp() {
         const tbody = document.getElementById('staffTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No staff yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No staff yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(s => {
             const id = s.staffId ?? s.StaffId;
+            const cat = s.category ?? s.Category ?? 'UG';
             const active = (s.isActive ?? s.IsActive) !== false;
             const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="staff" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
                 <td>${esc(s.name ?? s.Name)}</td>
                 <td>${esc(s.rollNumber ?? s.RollNumber)}</td>
+                <td><span class="badge-category ${cat === 'PG' ? 'badge-pg' : ''}">${esc(cat)}</span></td>
                 <td>${esc(s.department ?? s.Department)}</td>
                 <td>${esc(s.section ?? s.Section ?? '-')}</td>
                 <td>${esc(s.year ?? s.Year ?? '-')}</td>
@@ -595,16 +656,19 @@ function initAdminApp() {
 
     function applyStaffFilters() {
         const q    = (document.getElementById('staffSearch')?.value ?? '').trim().toLowerCase();
+        const cat  = (document.getElementById('staffCategoryFilter')?.value ?? '').trim().toUpperCase();
         const dept = (document.getElementById('staffDeptFilter')?.value ?? '').trim().toLowerCase();
         const year = (document.getElementById('staffYearFilter')?.value ?? '').trim();
         let list = staff;
         if (q)    list = list.filter(s => (s.name ?? s.Name ?? '').toLowerCase().includes(q) || (s.rollNumber ?? s.RollNumber ?? '').toLowerCase().includes(q) || (s.email ?? s.Email ?? '').toLowerCase().includes(q));
+        if (cat)  list = list.filter(s => (s.category ?? s.Category ?? 'UG').toUpperCase() === cat);
         if (dept) list = list.filter(s => (s.department ?? s.Department ?? '').trim().toLowerCase() === dept);
         if (year) list = list.filter(s => String(s.year ?? s.Year ?? '') === year);
         renderStaff(list);
     }
 
     document.getElementById('staffSearch')?.addEventListener('input', applyStaffFilters);
+    document.getElementById('staffCategoryFilter')?.addEventListener('change', applyStaffFilters);
     document.getElementById('staffDeptFilter')?.addEventListener('change', applyStaffFilters);
     document.getElementById('staffYearFilter')?.addEventListener('change', applyStaffFilters);
 
@@ -633,18 +697,22 @@ function initAdminApp() {
         staffIdEl.value = s.staffId ?? s.StaffId ?? '';
         document.getElementById('staffName').value = s.name ?? s.Name ?? '';
         document.getElementById('staffRollNumber').value = s.rollNumber ?? s.RollNumber ?? '';
+        const catEl = document.getElementById('staffCategory');
+        if (catEl) catEl.value = s.category ?? s.Category ?? 'UG';
         document.getElementById('staffDept').value = s.department ?? s.Department ?? '';
         document.getElementById('staffSection').value = s.section ?? s.Section ?? '';
         document.getElementById('staffYear').value = s.year ?? s.Year ?? '';
         document.getElementById('staffEmail').value = s.email ?? s.Email ?? '';
         document.getElementById('staffPassword').value = '';
         staffSubmitBtn.textContent = 'Update Staff';
-        document.getElementById('panel-staff').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     document.getElementById('staffResetBtn')?.addEventListener('click', () => {
         staffForm.reset();
         staffIdEl.value = '';
+        const catEl = document.getElementById('staffCategory');
+        if (catEl) catEl.value = 'UG';
         staffSubmitBtn.textContent = 'Add Staff';
     });
 
@@ -657,6 +725,7 @@ function initAdminApp() {
         const payload = {
             name: document.getElementById('staffName').value.trim(),
             rollNumber: document.getElementById('staffRollNumber').value.trim(),
+            category: document.getElementById('staffCategory')?.value || 'UG',
             department: document.getElementById('staffDept').value.trim(),
             section: document.getElementById('staffSection').value.trim(),
             year: yearVal ? parseInt(yearVal, 10) : null,
@@ -701,6 +770,8 @@ function initAdminApp() {
             showToast('success', isEdit ? 'Staff updated.' : 'Staff added.');
             staffForm.reset();
             staffIdEl.value = '';
+            const catEl = document.getElementById('staffCategory');
+            if (catEl) catEl.value = 'UG';
             staffSubmitBtn.textContent = 'Add Staff';
             loadStaff();
         } catch (err) {
@@ -736,17 +807,19 @@ function initAdminApp() {
         const tbody = document.getElementById('hodTableBody');
         if (!tbody) return;
         if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No HODs yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No HODs yet.</td></tr>';
             return;
         }
         tbody.innerHTML = list.map(h => {
             const id = h.hodId ?? h.HodId;
+            const cat = h.category ?? h.Category ?? 'UG';
             const active = (h.isActive ?? h.IsActive) !== false;
             const statusBtn = `<button type="button" class="account-toggle-switch ${active ? 'active' : 'inactive'}" data-toggle-id="${id}" data-role="hod" title="Status: ${active ? 'Active (ON)' : 'Deactivated (OFF)'}. Click to turn ${active ? 'OFF' : 'ON'}"><span class="toggle-slider"></span><span class="toggle-text">${active ? 'ON' : 'OFF'}</span></button>`;
             return `
             <tr>
                 <td>${esc(h.name ?? h.Name)}</td>
                 <td>${esc(h.rollNumber ?? h.RollNumber ?? '-')}</td>
+                <td><span class="badge-category ${cat === 'PG' ? 'badge-pg' : ''}">${esc(cat)}</span></td>
                 <td>${esc(h.department ?? h.Department)}</td>
                 <td>${esc(h.email ?? h.Email ?? '-')}</td>
                 <td>${statusBtn}</td>
@@ -776,14 +849,17 @@ function initAdminApp() {
 
     function applyHodFilters() {
         const q    = (document.getElementById('hodSearch')?.value ?? '').trim().toLowerCase();
+        const cat  = (document.getElementById('hodCategoryFilter')?.value ?? '').trim().toUpperCase();
         const dept = (document.getElementById('hodDeptFilter')?.value ?? '').trim().toLowerCase();
         let list = hods;
         if (q)    list = list.filter(h => (h.name ?? h.Name ?? '').toLowerCase().includes(q) || (h.rollNumber ?? h.RollNumber ?? '').toLowerCase().includes(q) || (h.email ?? h.Email ?? '').toLowerCase().includes(q));
+        if (cat)  list = list.filter(h => (h.category ?? h.Category ?? 'UG').toUpperCase() === cat);
         if (dept) list = list.filter(h => (h.department ?? h.Department ?? '').trim().toLowerCase() === dept);
         renderHods(list);
     }
 
     document.getElementById('hodSearch')?.addEventListener('input', applyHodFilters);
+    document.getElementById('hodCategoryFilter')?.addEventListener('change', applyHodFilters);
     document.getElementById('hodDeptFilter')?.addEventListener('change', applyHodFilters);
 
     document.getElementById('hodTableBody')?.addEventListener('click', (e) => {
@@ -811,16 +887,20 @@ function initAdminApp() {
         hodIdEl.value = h.hodId ?? h.HodId ?? '';
         document.getElementById('hodName').value = h.name ?? h.Name ?? '';
         document.getElementById('hodRollNumber').value = h.rollNumber ?? h.RollNumber ?? '';
+        const catEl = document.getElementById('hodCategory');
+        if (catEl) catEl.value = h.category ?? h.Category ?? 'UG';
         document.getElementById('hodDeptInput').value = h.department ?? h.Department ?? '';
         document.getElementById('hodEmail').value = h.email ?? h.Email ?? '';
         document.getElementById('hodPassword').value = ''; // Hod.Password is [JsonIgnore]d anyway
         hodSubmitBtn.textContent = 'Update HOD';
-        document.getElementById('panel-hod').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     document.getElementById('hodResetBtn')?.addEventListener('click', () => {
         hodForm.reset();
         hodIdEl.value = '';
+        const catEl = document.getElementById('hodCategory');
+        if (catEl) catEl.value = 'UG';
         hodSubmitBtn.textContent = 'Add HOD';
     });
 
@@ -832,6 +912,7 @@ function initAdminApp() {
         const payload = {
             name: document.getElementById('hodName').value.trim(),
             rollNumber: document.getElementById('hodRollNumber').value.trim(),
+            category: document.getElementById('hodCategory')?.value || 'UG',
             department: document.getElementById('hodDeptInput').value.trim(),
             email: document.getElementById('hodEmail').value.trim(),
             password: document.getElementById('hodPassword').value
@@ -879,6 +960,8 @@ function initAdminApp() {
             showToast('success', isEdit ? 'HOD updated.' : 'HOD added.');
             hodForm.reset();
             hodIdEl.value = '';
+            const catEl = document.getElementById('hodCategory');
+            if (catEl) catEl.value = 'UG';
             hodSubmitBtn.textContent = 'Add HOD';
             loadHods();
         } catch (err) {
@@ -2016,6 +2099,536 @@ function initAdminApp() {
             showToast('error', 'Network error — could not save admin account.');
         } finally {
             if (accountSubmitBtn) accountSubmitBtn.disabled = false;
+        }
+    });
+
+    // ============================================
+    // ACADEMIC CALENDAR MANAGEMENT (ADMIN)
+    // ============================================
+    let adminCalKeys = [];
+    let adminCalIdx = 0;
+
+    function buildAdminCalKeys() {
+        if (typeof CollegeWorkingDays === 'undefined') return;
+        const seen = new Set();
+        CollegeWorkingDays.list.forEach(d => seen.add(d.slice(0, 7)));
+        adminCalKeys = [...seen].sort();
+    }
+
+    async function loadAdminCalendar() {
+        const grid = document.getElementById('adminCalendarGrid');
+        const label = document.getElementById('adminCalMonthLabel');
+        const prevBtn = document.getElementById('adminCalPrevBtn');
+        const nextBtn = document.getElementById('adminCalNextBtn');
+
+        if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.7;">Loading calendar…</div>';
+        if (label) label.textContent = '…';
+
+        if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
+            await CollegeWorkingDays.syncWithBackend(API_BASE);
+        }
+
+        adminCalKeys = [];
+        buildAdminCalKeys();
+        if (!adminCalKeys.length) {
+            if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;opacity:0.6;">Calendar data not available.</div>';
+            return;
+        }
+
+        const todayKey = new Date().toISOString().slice(0, 7);
+        const idx = adminCalKeys.indexOf(todayKey);
+        adminCalIdx = idx >= 0 ? idx : 0;
+
+        renderAdminCalendarMonth();
+    }
+
+    function renderAdminCalendarMonth() {
+        const grid = document.getElementById('adminCalendarGrid');
+        const label = document.getElementById('adminCalMonthLabel');
+        const prevBtn = document.getElementById('adminCalPrevBtn');
+        const nextBtn = document.getElementById('adminCalNextBtn');
+
+        if (!grid || !adminCalKeys.length) return;
+        const monthKey = adminCalKeys[adminCalIdx];
+        const [yearStr, monStr] = monthKey.split('-');
+        const yearNum = parseInt(yearStr, 10);
+        const monthNum = parseInt(monStr, 10) - 1;
+
+        if (label) {
+            label.textContent = new Date(yearNum, monthNum, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        if (prevBtn) prevBtn.disabled = adminCalIdx <= 0;
+        if (nextBtn) nextBtn.disabled = adminCalIdx >= adminCalKeys.length - 1;
+
+        const firstDow = new Date(yearNum, monthNum, 1).getDay();
+        const daysInMonth = new Date(yearNum, monthNum + 1, 0).getDate();
+
+        let html = '';
+        for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${yearStr}-${monStr}-${String(day).padStart(2, '0')}`;
+            const isWorking = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr) : true;
+            const special = typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.getSpecialDay(dateStr) : null;
+            const isHoliday = special && special.dayType === 'Holiday';
+            const isExam = special && special.dayType === 'Examination';
+            const isToday = dateStr === todayStr;
+            const specialName = special ? (special.name || special.dayType) : '';
+
+            const formattedDate = `${String(day).padStart(2, '0')}-${monStr}-${yearStr}`;
+
+            let classNames = 'calendar-day';
+            if (!isWorking || isHoliday) {
+                classNames += ' non-working';
+                if (isHoliday) classNames += ' cal-holiday';
+            } else {
+                classNames += ' working';
+                if (isExam) classNames += ' cal-examination';
+            }
+            if (isToday) classNames += ' cal-today';
+
+            let tooltip = '';
+            if (isToday) tooltip += `[Today] `;
+            if (isHoliday) tooltip += `${formattedDate}\nHoliday\n${specialName}`;
+            else if (!isWorking) tooltip += `Non-working day (${formattedDate})`;
+            else if (isExam) tooltip += `${formattedDate}\nExamination\n${specialName}`;
+            else tooltip += `Working day (${formattedDate})`;
+
+            html += `<div class="${classNames}" title="${esc(tooltip)}">
+                <span>${day}</span>
+                ${specialName ? `<span class="cal-special-label">${esc(specialName)}</span>` : (isToday ? '<span class="cal-special-label today-tag">Today</span>' : '')}
+            </div>`;
+        }
+
+        const totalCells = firstDow + daysInMonth;
+        const targetCells = totalCells > 35 ? 42 : 35;
+        for (let i = totalCells; i < targetCells; i++) {
+            html += '<div class="calendar-day empty"></div>';
+        }
+
+        grid.innerHTML = html;
+    }
+
+    document.getElementById('adminCalPrevBtn')?.addEventListener('click', () => {
+        if (adminCalIdx > 0) {
+            adminCalIdx--;
+            renderAdminCalendarMonth();
+        }
+    });
+
+    document.getElementById('adminCalNextBtn')?.addEventListener('click', () => {
+        if (adminCalIdx < adminCalKeys.length - 1) {
+            adminCalIdx++;
+            renderAdminCalendarMonth();
+        }
+    });
+
+    document.getElementById('adminCalRefreshBtn')?.addEventListener('click', () => {
+        loadAdminCalendar();
+    });
+
+    // ============================================
+    // SETTINGS MANAGEMENT (OD PREFIX, CALENDAR COLORS, ACADEMIC CONFIG & PROMOTION)
+    // ============================================
+    let academicSemestersList = [];
+
+    // Settings Sub-Tabs
+    const subtabSettingsPrefix = document.getElementById('subtabSettingsPrefix');
+    const subtabSettingsColors = document.getElementById('subtabSettingsColors');
+    const subtabSettingsAcademic = document.getElementById('subtabSettingsAcademic');
+    const subtabViewSettingsPrefix = document.getElementById('subtabViewSettingsPrefix');
+    const subtabViewSettingsColors = document.getElementById('subtabViewSettingsColors');
+    const subtabViewSettingsAcademic = document.getElementById('subtabViewSettingsAcademic');
+
+    function switchSettingsSubtab(type) {
+        [subtabSettingsPrefix, subtabSettingsColors, subtabSettingsAcademic].forEach(b => b?.classList.remove('active'));
+        if (subtabViewSettingsPrefix) subtabViewSettingsPrefix.style.display = 'none';
+        if (subtabViewSettingsColors) subtabViewSettingsColors.style.display = 'none';
+        if (subtabViewSettingsAcademic) subtabViewSettingsAcademic.style.display = 'none';
+
+        if (type === 'prefix') {
+            subtabSettingsPrefix?.classList.add('active');
+            if (subtabViewSettingsPrefix) subtabViewSettingsPrefix.style.display = 'block';
+        } else if (type === 'colors') {
+            subtabSettingsColors?.classList.add('active');
+            if (subtabViewSettingsColors) subtabViewSettingsColors.style.display = 'block';
+        } else if (type === 'academic') {
+            subtabSettingsAcademic?.classList.add('active');
+            if (subtabViewSettingsAcademic) subtabViewSettingsAcademic.style.display = 'block';
+            loadAcademicSemesters();
+            checkPromoteCount();
+        }
+    }
+
+    subtabSettingsPrefix?.addEventListener('click', () => switchSettingsSubtab('prefix'));
+    subtabSettingsColors?.addEventListener('click', () => switchSettingsSubtab('colors'));
+    subtabSettingsAcademic?.addEventListener('click', () => switchSettingsSubtab('academic'));
+
+    async function loadAdminSettings() {
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Settings?_=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+                const settings = await res.json();
+                // OD Prefix
+                if (document.getElementById('settingOdPrefix')) {
+                    document.getElementById('settingOdPrefix').value = settings.OdIdPrefix || 'OD-';
+                }
+                // Colors
+                const weekend = settings.CalendarWeekendColor || '#ef4444';
+                const holiday = settings.CalendarHolidayColor || '#f97316';
+                const exam = settings.CalendarExamColor || '#10b981';
+                const today = settings.CalendarTodayColor || '#3b82f6';
+
+                setCalColorField('settingCalWeekend', 'settingCalWeekendText', weekend);
+                setCalColorField('settingCalHoliday', 'settingCalHolidayText', holiday);
+                setCalColorField('settingCalExam', 'settingCalExamText', exam);
+                setCalColorField('settingCalToday', 'settingCalTodayText', today);
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Failed to load system settings.');
+        }
+
+        loadAcademicSemesters();
+        checkPromoteCount();
+    }
+
+    function setCalColorField(pickerId, textId, val) {
+        const picker = document.getElementById(pickerId);
+        const text = document.getElementById(textId);
+        if (picker && val) picker.value = val;
+        if (text && val) text.value = val;
+    }
+
+    // Two-way sync for color pickers and text inputs
+    ['settingCalWeekend', 'settingCalHoliday', 'settingCalExam', 'settingCalToday'].forEach(baseId => {
+        const picker = document.getElementById(baseId);
+        const text = document.getElementById(`${baseId}Text`);
+        picker?.addEventListener('input', () => { if (text) text.value = picker.value; });
+        text?.addEventListener('input', () => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(text.value.trim())) {
+                if (picker) picker.value = text.value.trim();
+            }
+        });
+    });
+
+    // Reset Calendar Colors to default
+    document.getElementById('resetCalColorsBtn')?.addEventListener('click', () => {
+        setCalColorField('settingCalWeekend', 'settingCalWeekendText', '#ef4444');
+        setCalColorField('settingCalHoliday', 'settingCalHolidayText', '#f97316');
+        setCalColorField('settingCalExam', 'settingCalExamText', '#10b981');
+        setCalColorField('settingCalToday', 'settingCalTodayText', '#3b82f6');
+    });
+
+    // Save OD ID Prefix
+    document.getElementById('odPrefixForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const prefix = (document.getElementById('settingOdPrefix')?.value || '').trim();
+        if (!prefix) {
+            showToast('error', 'Please enter a valid OD ID prefix.');
+            return;
+        }
+
+        const btn = document.getElementById('saveOdPrefixBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ OdIdPrefix: prefix })
+            });
+            if (res.ok) {
+                localStorage.setItem('od_id_prefix', prefix);
+                showToast('success', 'OD ID prefix saved successfully.');
+            } else {
+                const text = await res.text();
+                showToast('error', text || 'Failed to save prefix.');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error saving prefix.');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    });
+
+    // Save Calendar Colors
+    document.getElementById('calendarColorsForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            CalendarWeekendColor: (document.getElementById('settingCalWeekendText')?.value || '#ef4444').trim(),
+            CalendarHolidayColor: (document.getElementById('settingCalHolidayText')?.value || '#f97316').trim(),
+            CalendarExamColor: (document.getElementById('settingCalExamText')?.value || '#10b981').trim(),
+            CalendarTodayColor: (document.getElementById('settingCalTodayText')?.value || '#3b82f6').trim()
+        };
+
+        const btn = document.getElementById('saveCalColorsBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                if (window.applyCalendarColors) {
+                    window.applyCalendarColors(payload);
+                }
+                localStorage.setItem('od_calendar_colors', JSON.stringify(payload));
+                showToast('success', 'Calendar colors updated successfully across all portals.');
+                renderAdminCalendarMonth();
+            } else {
+                const text = await res.text();
+                showToast('error', text || 'Failed to save calendar colors.');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error saving calendar colors.');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    });
+
+    // ── Academic Semesters List & Management ──
+    async function loadAcademicSemesters() {
+        const tbody = document.getElementById('academicSemestersTableBody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Loading academic semesters…</td></tr>';
+
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Settings/Academic?_=${Date.now()}`, { cache: 'no-store' });
+            academicSemestersList = res.ok ? await res.json() : [];
+        } catch (err) {
+            console.error(err);
+            academicSemestersList = [];
+            showToast('error', 'Failed to load academic semesters.');
+        }
+        renderAcademicSemesters(academicSemestersList);
+    }
+
+    function renderAcademicSemesters(list) {
+        const tbody = document.getElementById('academicSemestersTableBody');
+        if (!tbody) return;
+        if (!list.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No academic semesters configured yet.</td></tr>';
+            return;
+        }
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        tbody.innerHTML = list.map(item => {
+            const id = item.id ?? item.Id;
+            const cat = item.category ?? item.Category ?? 'UG';
+            const yr = item.year ?? item.Year;
+            const sem = item.semester ?? item.Semester;
+            const sDate = item.startDate ? String(item.startDate).slice(0, 10) : '';
+            const eDate = item.endDate ? String(item.endDate).slice(0, 10) : '';
+
+            let statusLabel = 'Upcoming';
+            let statusBadgeClass = 'badge-upcoming';
+            if (todayStr >= sDate && todayStr <= eDate) {
+                statusLabel = 'Active';
+                statusBadgeClass = 'badge-active';
+            } else if (todayStr > eDate) {
+                statusLabel = 'Completed';
+                statusBadgeClass = 'badge-expired';
+            }
+
+            return `
+            <tr>
+                <td><span class="badge-category ${cat === 'PG' ? 'badge-pg' : ''}">${esc(cat)}</span></td>
+                <td><b>Year ${yr}</b></td>
+                <td><b>Semester ${sem}</b></td>
+                <td>${fmtOdDate(sDate)}</td>
+                <td>${fmtOdDate(eDate)}</td>
+                <td><span class="${statusBadgeClass}">${statusLabel}</span></td>
+                <td style="text-align:center;">
+                    <button class="row-btn delete-academic-btn" title="Delete Semester" data-id="${id}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('.delete-academic-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                if (!confirm('Are you sure you want to delete this configured semester?')) return;
+                try {
+                    const res = await adminFetch(`${API_BASE}/api/Settings/Academic/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        showToast('success', 'Academic semester deleted.');
+                        loadAcademicSemesters();
+                    } else {
+                        const t = await res.text();
+                        showToast('error', t || 'Failed to delete semester.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('error', 'Network error deleting semester.');
+                }
+            });
+        });
+    }
+
+    // Add Academic Semester Form
+    document.getElementById('academicSemesterForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            category: document.getElementById('academicCategory').value,
+            year: parseInt(document.getElementById('academicYear').value, 10),
+            semester: parseInt(document.getElementById('academicSemester').value, 10),
+            startDate: document.getElementById('academicStartDate').value,
+            endDate: document.getElementById('academicEndDate').value
+        };
+
+        if (!payload.category || !payload.year || !payload.semester || !payload.startDate || !payload.endDate) {
+            showToast('error', 'Please fill all fields.');
+            return;
+        }
+
+        if (payload.startDate >= payload.endDate) {
+            showToast('error', 'End Date must be after Start Date.');
+            return;
+        }
+
+        const btn = document.getElementById('addAcademicSemesterBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Settings/Academic`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                let msg = 'Failed to save academic semester.';
+                try {
+                    const p = JSON.parse(text);
+                    if (p.message) msg = p.message;
+                } catch {
+                    if (text && text.length < 150) msg = text;
+                }
+                showToast('error', msg);
+                return;
+            }
+
+            showToast('success', 'Academic semester configuration added.');
+            document.getElementById('academicSemesterForm').reset();
+            loadAcademicSemesters();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error saving semester.');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    });
+
+    // ── Student Promotion Handlers ──
+    async function checkPromoteCount() {
+        const cat = document.getElementById('promoteCategory')?.value || 'UG';
+        const fromYr = parseInt(document.getElementById('promoteFromYear')?.value || '1', 10);
+        const display = document.getElementById('promoteCountDisplay');
+
+        if (display) display.textContent = 'Checking…';
+
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Admin/PromoteEligibleCount?category=${encodeURIComponent(cat)}&fromYear=${fromYr}&_=${Date.now()}`, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                const count = data.count ?? 0;
+                if (display) display.textContent = `${count} active student${count === 1 ? '' : 's'} eligible`;
+            } else {
+                if (display) display.textContent = 'Could not fetch count';
+            }
+        } catch (err) {
+            console.error(err);
+            if (display) display.textContent = 'Error fetching count';
+        }
+    }
+
+    document.getElementById('promoteCategory')?.addEventListener('change', checkPromoteCount);
+    document.getElementById('promoteFromYear')?.addEventListener('change', () => {
+        const fromYr = parseInt(document.getElementById('promoteFromYear').value, 10);
+        const toYrSel = document.getElementById('promoteToYear');
+        if (toYrSel) {
+            toYrSel.value = String(fromYr + 1);
+        }
+        checkPromoteCount();
+    });
+    document.getElementById('checkPromoteCountBtn')?.addEventListener('click', checkPromoteCount);
+
+    const promoteConfirmOverlay = document.getElementById('promoteConfirmOverlay');
+    const promoteConfirmText = document.getElementById('promoteConfirmText');
+
+    function openPromoteModal() {
+        const cat = document.getElementById('promoteCategory')?.value || 'UG';
+        const fromYr = document.getElementById('promoteFromYear')?.value || '1';
+        const toYr = document.getElementById('promoteToYear')?.value || '2';
+        const countText = document.getElementById('promoteCountDisplay')?.textContent || '';
+
+        if (promoteConfirmText) {
+            promoteConfirmText.textContent = `Are you sure you want to promote all eligible ${cat} Year ${fromYr} students to Year ${toYr}? (${countText}). Their semester will automatically be updated based on configured dates.`;
+        }
+        if (promoteConfirmOverlay) promoteConfirmOverlay.classList.add('active');
+    }
+
+    function closePromoteModal() {
+        if (promoteConfirmOverlay) promoteConfirmOverlay.classList.remove('active');
+    }
+
+    document.getElementById('promoteStudentsBtn')?.addEventListener('click', openPromoteModal);
+    document.getElementById('promoteCancelBtn')?.addEventListener('click', closePromoteModal);
+    promoteConfirmOverlay?.addEventListener('click', (e) => {
+        if (e.target === promoteConfirmOverlay) closePromoteModal();
+    });
+
+    document.getElementById('promoteConfirmDoBtn')?.addEventListener('click', async () => {
+        closePromoteModal();
+        const payload = {
+            category: document.getElementById('promoteCategory')?.value || 'UG',
+            fromYear: parseInt(document.getElementById('promoteFromYear')?.value || '1', 10),
+            toYear: parseInt(document.getElementById('promoteToYear')?.value || '2', 10)
+        };
+
+        const btn = document.getElementById('promoteStudentsBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await adminFetch(`${API_BASE}/api/Admin/PromoteStudents`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                let msg = 'Promotion failed.';
+                try {
+                    const p = JSON.parse(text);
+                    if (p.message) msg = p.message;
+                } catch {
+                    if (text && text.length < 150) msg = text;
+                }
+                showToast('error', msg);
+                return;
+            }
+
+            const data = await res.json();
+            showToast('success', data.message || 'Students promoted successfully.');
+            checkPromoteCount();
+            loadStudents();
+        } catch (err) {
+            console.error(err);
+            showToast('error', 'Network error during student promotion.');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     });
 }

@@ -238,6 +238,33 @@ using (var scope = app.Services.CreateScope())
                     ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Course"" text;
                     ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Year"" integer;
                     ALTER TABLE ""WorkingDayOverrides"" ADD COLUMN IF NOT EXISTS ""Section"" text;
+
+                    ALTER TABLE ""Students"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
+                    ALTER TABLE ""Staffs"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
+                    ALTER TABLE ""Hods"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
+                    ALTER TABLE ""OdApplies"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
+
+                    UPDATE ""Students"" SET ""Category"" = 'UG' WHERE ""Category"" IS NULL OR ""Category"" = '';
+                    UPDATE ""Staffs"" SET ""Category"" = 'UG' WHERE ""Category"" IS NULL OR ""Category"" = '';
+                    UPDATE ""Hods"" SET ""Category"" = 'UG' WHERE ""Category"" IS NULL OR ""Category"" = '';
+                    UPDATE ""OdApplies"" SET ""Category"" = 'UG' WHERE ""Category"" IS NULL OR ""Category"" = '';
+
+                    CREATE TABLE IF NOT EXISTS ""SystemSettings"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""Key"" text NOT NULL UNIQUE,
+                        ""Value"" text NOT NULL,
+                        ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT NOW()
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""AcademicSemesters"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""Category"" text NOT NULL DEFAULT 'UG',
+                        ""Year"" integer NOT NULL,
+                        ""Semester"" integer NOT NULL,
+                        ""StartDate"" text NOT NULL,
+                        ""EndDate"" text NOT NULL,
+                        ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT NOW()
+                    );
                 ");
             }
             else
@@ -264,12 +291,52 @@ using (var scope = app.Services.CreateScope())
                         ALTER TABLE [WorkingDayOverrides] ADD [Year] int NULL;
                     IF COL_LENGTH('WorkingDayOverrides', 'Section') IS NULL
                         ALTER TABLE [WorkingDayOverrides] ADD [Section] nvarchar(max) NULL;
+
+                    IF COL_LENGTH('Students', 'Category') IS NULL
+                    BEGIN
+                        ALTER TABLE [Students] ADD [Category] nvarchar(50) NOT NULL CONSTRAINT DF_Students_Category DEFAULT 'UG';
+                    END
+                    IF COL_LENGTH('Staffs', 'Category') IS NULL
+                    BEGIN
+                        ALTER TABLE [Staffs] ADD [Category] nvarchar(50) NOT NULL CONSTRAINT DF_Staffs_Category DEFAULT 'UG';
+                    END
+                    IF COL_LENGTH('Hods', 'Category') IS NULL
+                    BEGIN
+                        ALTER TABLE [Hods] ADD [Category] nvarchar(50) NOT NULL CONSTRAINT DF_Hods_Category DEFAULT 'UG';
+                    END
+                    IF COL_LENGTH('OdApplies', 'Category') IS NULL
+                    BEGIN
+                        ALTER TABLE [OdApplies] ADD [Category] nvarchar(50) NOT NULL CONSTRAINT DF_OdApplies_Category DEFAULT 'UG';
+                    END
+
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SystemSettings')
+                    BEGIN
+                        CREATE TABLE [SystemSettings] (
+                            [Id] int IDENTITY(1,1) PRIMARY KEY,
+                            [Key] nvarchar(255) NOT NULL UNIQUE,
+                            [Value] nvarchar(max) NOT NULL,
+                            [UpdatedAt] datetime2 NOT NULL DEFAULT GETUTCDATE()
+                        );
+                    END
+
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AcademicSemesters')
+                    BEGIN
+                        CREATE TABLE [AcademicSemesters] (
+                            [Id] int IDENTITY(1,1) PRIMARY KEY,
+                            [Category] nvarchar(50) NOT NULL DEFAULT 'UG',
+                            [Year] int NOT NULL,
+                            [Semester] int NOT NULL,
+                            [StartDate] nvarchar(50) NOT NULL,
+                            [EndDate] nvarchar(50) NOT NULL,
+                            [CreatedAt] datetime2 NOT NULL DEFAULT GETUTCDATE()
+                        );
+                    END
                 ");
             }
         }
         catch (Exception colEx)
         {
-            Console.WriteLine($"[Startup] WorkingDayOverrides schema check: {colEx.Message}");
+            Console.WriteLine($"[Startup] Schema check: {colEx.Message}");
         }
 
         var overrides = db.WorkingDayOverrides.AsNoTracking().ToList();

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -635,14 +635,31 @@
                         </div>
                     </div>
 
-                    <div class="status-filter-row">
-                        <div class="status-filter" id="statusFilter">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="pending">Pending</button>
-                            <button class="filter-btn" data-filter="approved">Approved</button>
-                            <button class="filter-btn" data-filter="rejected">Rejected</button>
+                    <div class="status-filter-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:16px;">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;min-width:260px;">
+                            <div class="search-box-wrapper" style="position:relative;flex:1;min-width:200px;">
+                                <input type="text" id="odSearchInput" class="student-search-input" placeholder="Search OD ID / Event / College / Reason / Reg No..." style="width:100%;padding:10px 14px 10px 36px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:white;font-size:0.86rem;outline:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--surface-400);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            </div>
+                            <select id="odStatusSelect" class="student-filter-select" style="padding:10px 14px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.12);background:rgba(30,41,59,0.9);color:white;font-size:0.86rem;cursor:pointer;outline:none;" title="Filter by Status">
+                                <option value="all">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="all-pending">All Pending</option>
+                                <option value="hod-pending">HOD Pending</option>
+                                <option value="all-approved">All Approved</option>
+                                <option value="staff-approved">Staff Approved</option>
+                                <option value="all-rejected">All Rejected</option>
+                                <option value="staff-rejected">Staff Rejected</option>
+                                <option value="hod-rejected">HOD Rejected</option>
+                                <option value="noaction">No Action</option>
+                            </select>
+                            <select id="odTypeSelect" class="student-filter-select" style="padding:10px 14px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.12);background:rgba(30,41,59,0.9);color:white;font-size:0.86rem;cursor:pointer;outline:none;" title="Filter by OD Type">
+                                <option value="all">All OD</option>
+                                <option value="individual">Individual OD</option>
+                                <option value="group">Group OD</option>
+                            </select>
                         </div>
-                        <button class="refresh-btn" id="refreshBtn" title="Refresh status">
+                        <button class="refresh-btn" id="refreshBtn" title="Refresh status" type="button">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="23 4 23 10 17 10"/>
                                 <polyline points="1 20 1 14 7 14"/>
@@ -957,6 +974,13 @@
                     <button type="button" class="calendar-nav-btn" id="studentCalNextBtn" title="Next month">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                             <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="calendar-nav-btn" id="studentCalRefreshBtn" title="Return to current month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                         </svg>
                     </button>
                 </div>
