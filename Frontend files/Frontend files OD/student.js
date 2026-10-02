@@ -2069,7 +2069,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Fetching OD status from:', url);
 
         try {
-            const res = await fetch(url, {
+            const res = await authFetch(url, {
                 cache: 'no-store',
                 headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
             });

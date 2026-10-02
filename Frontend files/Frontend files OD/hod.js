@@ -2574,7 +2574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if (!ok) return;
         try {
-            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/HodOverrideMember?registerNumber=${encodeURIComponent(reg)}`, {
+            const res = await authFetch(`${API_BASE}/api/OdApply/${odId}/HodOverrideMember?registerNumber=${encodeURIComponent(reg)}`, {
                 method: 'PUT'
             });
             if (res.ok) { showToast('success', `${reg} approved by HOD override`); loadODs(); }

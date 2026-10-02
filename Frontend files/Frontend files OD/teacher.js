@@ -1849,7 +1849,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         if (!ok) return;
         try {
-            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/RejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
+            const res = await authFetch(`${API_BASE}/api/OdApply/${odId}/RejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
                 method: 'PUT'
             });
             if (res.ok) { showToast('success', `${reg} rejected`); loadODs(); }
@@ -1862,7 +1862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.unrejectMember = async (odId, reg) => {
         try {
-            const res = await fetch(`${API_BASE}/api/OdApply/${odId}/UnrejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
+            const res = await authFetch(`${API_BASE}/api/OdApply/${odId}/UnrejectMember?registerNumber=${encodeURIComponent(reg)}&staffId=${facultyId}`, {
                 method: 'PUT'
             });
             if (res.ok) { showToast('success', `${reg} rejection undone`); loadODs(); }
@@ -2789,7 +2789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         checkbox.disabled = true;
 
         try {
-            const res = await fetch(`${API_BASE}/api/Student/${studentId}/ToggleStatus?staffId=${facultyId}`, {
+            const res = await authFetch(`${API_BASE}/api/Student/${studentId}/ToggleStatus?staffId=${facultyId}`, {
                 method: 'PUT'
             });
             if (!res.ok) {
