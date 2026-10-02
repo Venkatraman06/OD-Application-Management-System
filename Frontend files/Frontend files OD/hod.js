@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 function getOrdinal(n) {
     const num = parseInt(n, 10) || 0;
@@ -981,6 +981,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="status-badge approved">Faculty ✓</span>
                 </div>
                 <div class="card-body">
+                    <p><strong>OD #:</strong> ${od.odId}</p>
                     <p><strong>Event:</strong> ${od.event || ''}</p>
                     <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
                     <p><strong>Dates:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)} &nbsp;|&nbsp; <strong>Days:</strong> ${od.numberOfDays || ''}</p>

@@ -388,13 +388,14 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('studentId', studentResult.data.studentId);
             localStorage.setItem('userName', studentResult.data.name);
             localStorage.setItem('userDept', studentResult.data.department);
-            // Class section (e.g. "A", "B") — used to route this student's OD
-            // requests to only the staff assigned to the same section.
             localStorage.setItem('userSection', studentResult.data.section || '');
             localStorage.setItem('userEmail', studentResult.data.email || '');
             localStorage.setItem('registerNumber', studentResult.data.registerNumber);
+            if (studentResult.data.year) localStorage.setItem('userYear', String(studentResult.data.year));
+            if (studentResult.data.semester) localStorage.setItem('userSemester', String(studentResult.data.semester));
+            if (studentResult.data.dob) localStorage.setItem('userDob', String(studentResult.data.dob));
             showToast('success', 'Student login successful!');
-            setTimeout(() => window.location.href = 'student.html', 1200);
+            setTimeout(() => window.location.href = 'student.html', 300);
             return;
         }
 
@@ -421,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userSection', facultyResult.data.section || '');
             localStorage.setItem('userYear', facultyResult.data.year || '');
             showToast('success', 'Faculty login successful!');
-            setTimeout(() => window.location.href = 'teacher.html', 1200);
+            setTimeout(() => window.location.href = 'teacher.html', 300);
             return;
         }
 
@@ -446,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userRollNumber', hodResult.data.rollNumber || '');
             localStorage.setItem('userDept', hodResult.data.department);
             showToast('success', 'HOD login successful!');
-            setTimeout(() => window.location.href = 'hod.html', 1200);
+            setTimeout(() => window.location.href = 'hod.html', 300);
             return;
         }
 

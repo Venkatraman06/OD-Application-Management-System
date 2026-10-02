@@ -187,7 +187,22 @@
                     <div class="admin-card list-card">
                         <div class="list-card-header">
                             <h2>All Students</h2>
-                            <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / register no. / dept...">
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / reg no. / email..." style="min-width:200px;">
+                                <select id="studentDeptFilter" class="admin-search" style="min-width:130px;cursor:pointer;" title="Filter by Department">
+                                    <option value="">All Depts</option>
+                                </select>
+                                <select id="studentYearFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Year">
+                                    <option value="">All Years</option>
+                                    <option value="1">Year 1</option>
+                                    <option value="2">Year 2</option>
+                                    <option value="3">Year 3</option>
+                                    <option value="4">Year 4</option>
+                                </select>
+                                <select id="studentSectionFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Section">
+                                    <option value="">All Sections</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="table-wrap">
                             <table class="admin-table">
@@ -286,7 +301,19 @@
                 <div class="admin-card list-card">
                     <div class="list-card-header">
                         <h2>All Staff</h2>
-                        <input type="text" class="admin-search" id="staffSearch" placeholder="Search name / dept / section...">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <input type="text" class="admin-search" id="staffSearch" placeholder="Search name / roll no. / email..." style="min-width:200px;">
+                            <select id="staffDeptFilter" class="admin-search" style="min-width:130px;cursor:pointer;" title="Filter by Department">
+                                <option value="">All Depts</option>
+                            </select>
+                            <select id="staffYearFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Year">
+                                <option value="">All Years</option>
+                                <option value="1">Year 1</option>
+                                <option value="2">Year 2</option>
+                                <option value="3">Year 3</option>
+                                <option value="4">Year 4</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="table-wrap">
                         <table class="admin-table">
@@ -341,7 +368,12 @@
                 <div class="admin-card list-card">
                     <div class="list-card-header">
                         <h2>All HODs</h2>
-                        <input type="text" class="admin-search" id="hodSearch" placeholder="Search name / dept...">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <input type="text" class="admin-search" id="hodSearch" placeholder="Search name / roll no. / email..." style="min-width:200px;">
+                            <select id="hodDeptFilter" class="admin-search" style="min-width:130px;cursor:pointer;" title="Filter by Department">
+                                <option value="">All Depts</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="table-wrap">
                         <table class="admin-table">

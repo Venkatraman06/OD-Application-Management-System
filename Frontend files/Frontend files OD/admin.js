@@ -347,6 +347,7 @@ function initAdminApp() {
         }
         setEl('studentTabCount', students.length);
         renderStudents(students);
+        populateStudentFilterDropdowns();
     }
 
     function renderStudents(list) {
@@ -386,15 +387,40 @@ function initAdminApp() {
         }).join('');
     }
 
-    document.getElementById('studentSearch')?.addEventListener('input', (e) => {
-        const q = e.target.value.trim().toLowerCase();
-        if (!q) { renderStudents(students); return; }
-        renderStudents(students.filter(s =>
-            (s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
-            (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) ||
-            (s.department ?? s.Department ?? '').toLowerCase().includes(q)
-        ));
-    });
+    function populateStudentFilterDropdowns() {
+        const depts = [...new Set(students.map(s => (s.department ?? s.Department ?? '').trim()).filter(Boolean))].sort();
+        const secs  = [...new Set(students.map(s => (s.section ?? s.Section ?? '').trim()).filter(Boolean))].sort();
+        const deptSel = document.getElementById('studentDeptFilter');
+        const secSel  = document.getElementById('studentSectionFilter');
+        if (deptSel) {
+            const prev = deptSel.value;
+            deptSel.innerHTML = '<option value="">All Depts</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            if (prev) deptSel.value = prev;
+        }
+        if (secSel) {
+            const prev = secSel.value;
+            secSel.innerHTML = '<option value="">All Sections</option>' + secs.map(s => `<option value="${s}">Sec ${s}</option>`).join('');
+            if (prev) secSel.value = prev;
+        }
+    }
+
+    function applyStudentFilters() {
+        const q    = (document.getElementById('studentSearch')?.value ?? '').trim().toLowerCase();
+        const dept = (document.getElementById('studentDeptFilter')?.value ?? '').trim().toLowerCase();
+        const year = (document.getElementById('studentYearFilter')?.value ?? '').trim();
+        const sec  = (document.getElementById('studentSectionFilter')?.value ?? '').trim().toLowerCase();
+        let list = students;
+        if (q)    list = list.filter(s => (s.name ?? s.Name ?? '').toLowerCase().includes(q) || (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) || (s.email ?? s.Email ?? '').toLowerCase().includes(q));
+        if (dept) list = list.filter(s => (s.department ?? s.Department ?? '').trim().toLowerCase() === dept);
+        if (year) list = list.filter(s => String(s.year ?? s.Year ?? '') === year);
+        if (sec)  list = list.filter(s => (s.section ?? s.Section ?? '').trim().toLowerCase() === sec);
+        renderStudents(list);
+    }
+
+    document.getElementById('studentSearch')?.addEventListener('input', applyStudentFilters);
+    document.getElementById('studentDeptFilter')?.addEventListener('change', applyStudentFilters);
+    document.getElementById('studentYearFilter')?.addEventListener('change', applyStudentFilters);
+    document.getElementById('studentSectionFilter')?.addEventListener('change', applyStudentFilters);
 
     document.getElementById('studentTableBody')?.addEventListener('click', (e) => {
         const toggleBtn = e.target.closest('[data-toggle-id]');
@@ -520,6 +546,7 @@ function initAdminApp() {
         }
         setEl('staffTabCount', staff.length);
         renderStaff(staff);
+        populateStaffFilterDropdowns();
     }
 
     function renderStaff(list) {
@@ -556,15 +583,30 @@ function initAdminApp() {
         }).join('');
     }
 
-    document.getElementById('staffSearch')?.addEventListener('input', (e) => {
-        const q = e.target.value.trim().toLowerCase();
-        if (!q) { renderStaff(staff); return; }
-        renderStaff(staff.filter(s =>
-            (s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
-            (s.department ?? s.Department ?? '').toLowerCase().includes(q) ||
-            (s.section ?? s.Section ?? '').toLowerCase().includes(q)
-        ));
-    });
+    function populateStaffFilterDropdowns() {
+        const depts = [...new Set(staff.map(s => (s.department ?? s.Department ?? '').trim()).filter(Boolean))].sort();
+        const deptSel = document.getElementById('staffDeptFilter');
+        if (deptSel) {
+            const prev = deptSel.value;
+            deptSel.innerHTML = '<option value="">All Depts</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            if (prev) deptSel.value = prev;
+        }
+    }
+
+    function applyStaffFilters() {
+        const q    = (document.getElementById('staffSearch')?.value ?? '').trim().toLowerCase();
+        const dept = (document.getElementById('staffDeptFilter')?.value ?? '').trim().toLowerCase();
+        const year = (document.getElementById('staffYearFilter')?.value ?? '').trim();
+        let list = staff;
+        if (q)    list = list.filter(s => (s.name ?? s.Name ?? '').toLowerCase().includes(q) || (s.rollNumber ?? s.RollNumber ?? '').toLowerCase().includes(q) || (s.email ?? s.Email ?? '').toLowerCase().includes(q));
+        if (dept) list = list.filter(s => (s.department ?? s.Department ?? '').trim().toLowerCase() === dept);
+        if (year) list = list.filter(s => String(s.year ?? s.Year ?? '') === year);
+        renderStaff(list);
+    }
+
+    document.getElementById('staffSearch')?.addEventListener('input', applyStaffFilters);
+    document.getElementById('staffDeptFilter')?.addEventListener('change', applyStaffFilters);
+    document.getElementById('staffYearFilter')?.addEventListener('change', applyStaffFilters);
 
     document.getElementById('staffTableBody')?.addEventListener('click', (e) => {
         const toggleBtn = e.target.closest('[data-toggle-id]');
@@ -687,6 +729,7 @@ function initAdminApp() {
         }
         setEl('hodTabCount', hods.length);
         renderHods(hods);
+        populateHodFilterDropdowns();
     }
 
     function renderHods(list) {
@@ -721,15 +764,27 @@ function initAdminApp() {
         }).join('');
     }
 
-    document.getElementById('hodSearch')?.addEventListener('input', (e) => {
-        const q = e.target.value.trim().toLowerCase();
-        if (!q) { renderHods(hods); return; }
-        renderHods(hods.filter(h =>
-            (h.name ?? h.Name ?? '').toLowerCase().includes(q) ||
-            (h.rollNumber ?? h.RollNumber ?? '').toLowerCase().includes(q) ||
-            (h.department ?? h.Department ?? '').toLowerCase().includes(q)
-        ));
-    });
+    function populateHodFilterDropdowns() {
+        const depts = [...new Set(hods.map(h => (h.department ?? h.Department ?? '').trim()).filter(Boolean))].sort();
+        const deptSel = document.getElementById('hodDeptFilter');
+        if (deptSel) {
+            const prev = deptSel.value;
+            deptSel.innerHTML = '<option value="">All Depts</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            if (prev) deptSel.value = prev;
+        }
+    }
+
+    function applyHodFilters() {
+        const q    = (document.getElementById('hodSearch')?.value ?? '').trim().toLowerCase();
+        const dept = (document.getElementById('hodDeptFilter')?.value ?? '').trim().toLowerCase();
+        let list = hods;
+        if (q)    list = list.filter(h => (h.name ?? h.Name ?? '').toLowerCase().includes(q) || (h.rollNumber ?? h.RollNumber ?? '').toLowerCase().includes(q) || (h.email ?? h.Email ?? '').toLowerCase().includes(q));
+        if (dept) list = list.filter(h => (h.department ?? h.Department ?? '').trim().toLowerCase() === dept);
+        renderHods(list);
+    }
+
+    document.getElementById('hodSearch')?.addEventListener('input', applyHodFilters);
+    document.getElementById('hodDeptFilter')?.addEventListener('change', applyHodFilters);
 
     document.getElementById('hodTableBody')?.addEventListener('click', (e) => {
         const toggleBtn = e.target.closest('[data-toggle-id]');

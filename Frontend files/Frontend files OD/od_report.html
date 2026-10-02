@@ -450,10 +450,6 @@
                 <span class="box-label">HOD Approval</span>
                 <span class="status-value status-pending" id="hodStatus">Pending</span>
             </div>
-            <div class="status-box">
-                <span class="box-label">Principal Approval</span>
-                <span class="status-value status-pending" id="principalStatus">Pending</span>
-            </div>
         </div>
 
         <!-- ===== Signature Section ===== -->
@@ -466,7 +462,7 @@
             <div class="sign-block">
                 <div class="sign-line"></div>
                 <div class="sign-label">HOD Signature</div>
-                <div class="sign-sub">Head of Department</div>
+                <div class="sign-sub" id="signHodName">HOD</div>
             </div>
             <div class="sign-block">
                 <div class="sign-line"></div>
@@ -531,19 +527,37 @@
 
         const API_BASE = 'https://od-application-backend.onrender.com';
 
-        // Looks up the actual class staff (advisor) assigned to this
-        // Department + Section, so the Staff Signature line shows a real
-        // name (e.g. "John B") instead of just the department.
+        // Looks up the actual class staff (advisor) assigned to this Department + Section
         async function fetchClassStaffName(department, section) {
             try {
                 const params = new URLSearchParams({ department });
                 if (section) params.set('section', section);
-                const res = await fetch(`${API_BASE}/api/Faculty/ByDepartmentSection?${params.toString()}`);
+                const token = localStorage.getItem('userToken') || sessionStorage.getItem('adminToken');
+                const headers = {};
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+                const res = await fetch(`${API_BASE}/api/Faculty/ByDepartmentSection?${params.toString()}`, { headers });
                 if (!res.ok) return null;
                 const data = await res.json();
                 return data.name || null;
             } catch (err) {
                 console.error('Failed to fetch class staff name:', err);
+                return null;
+            }
+        }
+
+        // Looks up the actual HOD assigned to this Department
+        async function fetchHodName(department) {
+            try {
+                if (!department) return null;
+                const token = localStorage.getItem('userToken') || sessionStorage.getItem('adminToken');
+                const headers = {};
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+                const res = await fetch(`${API_BASE}/api/Hod/ByDepartment?department=${encodeURIComponent(department)}`, { headers });
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.name || null;
+            } catch (err) {
+                console.error('Failed to fetch HOD name:', err);
                 return null;
             }
         }
@@ -621,13 +635,22 @@
             setText('numberOfDays', numberOfDays);
             setText('reason', reason);
 
-            // Staff Signature line was incorrectly showing the STUDENT's name.
-            // Show a department fallback immediately, then replace it with the
-            // real class staff (advisor) name once the lookup resolves — this
-            // is the same staff assigned to this student's Department+Section.
+            // Staff Signature line lookup
             setText('signStaffName', department ? `${department} Department` : 'Class Advisor');
             const staffName = await fetchClassStaffName(department, section);
             if (staffName) setText('signStaffName', staffName);
+
+            // HOD Signature line lookup with Dr. prefix
+            const hodName = await fetchHodName(department);
+            if (hodName) {
+                const cleanName = hodName.replace(/^dr\.?\s+/i, '');
+                const signHodEl = document.getElementById('signHodName');
+                if (signHodEl) {
+                    signHodEl.innerHTML = `Dr. ${escHtml(cleanName)}<br><span style="font-size:10px;font-weight:normal;opacity:0.8">HOD</span>`;
+                }
+            } else {
+                setText('signHodName', department ? `${department} HOD` : 'HOD');
+            }
 
             // Report generated date = today, whenever this report is opened/printed
             const today = new Date();
@@ -638,9 +661,6 @@
 
             const hodEl = document.getElementById('hodStatus');
             if (hodEl) { hodEl.textContent = hodStatus; hodEl.className = `status-value ${statusClass(hodStatus)}`; }
-
-            const principalEl = document.getElementById('principalStatus');
-            if (principalEl) { principalEl.textContent = principalStatus; principalEl.className = `status-value ${statusClass(principalStatus)}`; }
 
             const groupSection = document.getElementById('groupMembersSection');
             const groupBody = document.getElementById('groupMembersBody');

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OnlineOD.Models;
@@ -26,8 +26,9 @@ namespace OnlineOD.Service
         private static HashSet<string> GenerateSeedWorkingDays()
         {
             var set = new HashSet<string>();
-            var start = new DateTime(DateTime.Today.Year, 1, 1); // Start from Jan 1 so past months render correctly
-            var end = new DateTime(DateTime.Today.Year, 12, 31);
+            var currentYear = DateTime.Today.Year;
+            var start = new DateTime(currentYear - 10, 1, 1);
+            var end = new DateTime(currentYear + 10, 12, 31);
 
             for (var d = start; d <= end; d = d.AddDays(1))
             {

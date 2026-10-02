@@ -8,11 +8,9 @@
 
 function generateWorkingDays() {
   const days = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const start = new Date(today.getFullYear(), 0, 1); // Jan 1 of current year
-  const end = new Date(today.getFullYear(), 11, 31); // Dec 31 of current year
+  const currentYear = new Date().getFullYear();
+  const start = new Date(currentYear - 10, 0, 1);
+  const end = new Date(currentYear + 10, 11, 31);
 
   const d = new Date(start);
   while (d <= end) {
@@ -71,7 +69,7 @@ const CollegeWorkingDays = (() => {
     /** true if dateStr falls before the calendar's first day or after its last day */
     function isOutsideCalendar(dateStr) {
         if (!dateStr) return true;
-        return dateStr < minDate || dateStr > maxDate;
+        return false; // Support arbitrary historical & future dates
     }
 
     /** returns primary special day info if configured for dateStr (Holiday | Examination), optionally matching scope */

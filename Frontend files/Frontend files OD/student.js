@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 // Register number → student name lookup, used to show real names next to
 // register numbers in the Group Members list (group OD data only ever
@@ -2241,6 +2241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="badge-${overall}">${iAmRejected ? 'Rejected' : overallLabel(myFacultyStatus, hodStatus)}</span>
                     </div>
                     <div class="card-meta">
+                        <span><strong>OD #:</strong> ${odId}</span>
                         <span><strong>From:</strong> ${fmtDate(fromDate)}</span>
                         <span><strong>To:</strong> ${fmtDate(toDate)}</span>
                         <span><strong>Days:</strong> ${numDays}</span>

@@ -232,6 +232,25 @@ namespace OnlineOD.Controllers
             return Ok(withCerts);
         }
 
+        // GET /api/Hod/ByDepartment?department=CS
+        // Finds the HOD assigned to a specific Department. Used by the printed
+        // OD report to show the actual HOD's name in the HOD Signature line.
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
+        [HttpGet("ByDepartment")]
+        public async Task<IActionResult> GetByDepartment([FromQuery] string department)
+        {
+            if (string.IsNullOrWhiteSpace(department))
+                return BadRequest("department is required");
+
+            var allHods = await _hodService.GetAllHodAsync();
+            var dept = department.Trim().ToLower();
+
+            var match = allHods.FirstOrDefault(h => (h.Department ?? "").Trim().ToLower() == dept && h.IsActive);
+            if (match == null) return NotFound();
+
+            return Ok(new { name = match.Name, department = match.Department, rollNumber = match.RollNumber });
+        }
+
 
         // this will update the HOD approval status of the OD request and return the updated OD request details
         [Authorize(Roles = "HOD")]

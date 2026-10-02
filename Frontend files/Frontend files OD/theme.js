@@ -158,15 +158,15 @@
 
         const isAllGroupMissing = isGroup && totalGroupMembersCount > 0 && distinctMissingMembers.size >= totalGroupMembersCount;
 
-        let titleText = '⚠ Missing Previous Certificate Warning';
+        let titleText = 'Missing Previous Certificate Warning';
         if (isGroup) {
             if (isAllGroupMissing) {
-                titleText = '⚠ All group members have not submitted their previous certificates.';
+                titleText = 'All group members have not submitted their previous certificates.';
             } else {
-                titleText = `⚠ Missing Previous Certificate Warning (${distinctMissingMembers.size} member${distinctMissingMembers.size > 1 ? 's' : ''} with unsubmitted certificates)`;
+                titleText = `Missing Previous Certificate Warning (${distinctMissingMembers.size} member${distinctMissingMembers.size > 1 ? 's' : ''} with unsubmitted certificates)`;
             }
         } else {
-            titleText = `⚠ Missing Previous Certificate Warning (${missingCerts.length} completed OD${missingCerts.length > 1 ? 's' : ''} pending certificate submission)`;
+            titleText = `Missing Previous Certificate Warning (${missingCerts.length} completed OD${missingCerts.length > 1 ? 's' : ''} pending certificate submission)`;
         }
 
         let itemsHtml = '';

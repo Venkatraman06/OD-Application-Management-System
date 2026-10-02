@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const facultyId = localStorage.getItem('facultyId');
@@ -645,7 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
 
         if (!list || list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="15" class="report-empty-cell">No matching OD records found.</td></tr>';
+            tbody.innerHTML = '\u003ctr\u003e\u003ctd colspan="16" class="report-empty-cell"\u003eNo matching OD records found.\u003c/td\u003e\u003c/tr\u003e';
             return;
         }
 
@@ -679,6 +679,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `
                 <tr>
                     <td class="cell-index">${idx + 1}</td>
+                    <td style="font-size:11px;color:#94a3b8">#${item.odId || item.OdId || '-'}</td>
                     <td>
                         <div class="cell-student-name">
                             <b>${escHtml(item.studentName || '-')}</b>
@@ -1074,6 +1075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="status-badge ${bdg(od.facultyStatus)}">${od.facultyStatus || 'Pending'}</span>
                 </div>
                 <div class="card-body">
+                    <p><strong>OD #:</strong> ${od.odId}</p>
                     <p><strong>Event:</strong> ${od.event || ''}</p>
                     <p><strong>College:</strong> ${od.collegeIndustry || ''}</p>
                     <p><strong>Dates:</strong> ${fmtDate(od.fromDate)} → ${fmtDate(od.toDate)} &nbsp;|&nbsp; <strong>Days:</strong> ${od.numberOfDays || ''}</p>
