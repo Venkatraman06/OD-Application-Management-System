@@ -2797,8 +2797,8 @@ select.cert-text-input {
 }
 .student-cal-modal .dot.working { background: #34d399; }
 .student-cal-modal .dot.non-working { background: #f87171; }
-.student-cal-modal .dot.cal-holiday-dot { background: #f97316; }
-.student-cal-modal .dot.cal-examination-dot { background: #10b981; }
+.student-cal-modal .dot.cal-holiday-dot { background: var(--cal-holiday-color, #f97316); }
+.student-cal-modal .dot.cal-examination-dot { background: var(--cal-exam-color, #10b981); }
 
 [data-theme="light"] .student-cal-modal {
     background: #ffffff !important;

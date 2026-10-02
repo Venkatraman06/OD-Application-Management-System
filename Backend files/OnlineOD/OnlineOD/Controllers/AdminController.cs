@@ -839,17 +839,20 @@ namespace OnlineOD.Controllers
         {
             public string Category { get; set; } = "UG";
             public int CurrentYear { get; set; }
+            public int? FromYear { get; set; }
+            public int? ToYear { get; set; }
         }
 
-        // GET /api/Admin/PromoteEligibleCount?category=UG&currentYear=1
+        // GET /api/Admin/PromoteEligibleCount?category=UG&fromYear=1
         [HttpGet("PromoteEligibleCount")]
-        public async Task<IActionResult> GetPromoteEligibleCount([FromQuery] string category = "UG", [FromQuery] int currentYear = 1)
+        public async Task<IActionResult> GetPromoteEligibleCount([FromQuery] string category = "UG", [FromQuery] int? fromYear = null, [FromQuery] int currentYear = 1)
         {
             var cat = (category ?? "UG").Trim().ToUpper();
+            int yr = fromYear.HasValue && fromYear.Value > 0 ? fromYear.Value : currentYear;
             var count = await _context.Students
-                .CountAsync(s => s.Category.ToUpper() == cat && s.Year == currentYear && s.IsActive);
+                .CountAsync(s => s.Category.ToUpper() == cat && s.Year == yr && s.IsActive);
 
-            return Ok(new { count, category = cat, currentYear });
+            return Ok(new { count, category = cat, currentYear = yr, fromYear = yr });
         }
 
         // POST /api/Admin/PromoteStudents
@@ -862,18 +865,19 @@ namespace OnlineOD.Controllers
             if (cat != "UG" && cat != "PG")
                 return BadRequest("Category must be UG or PG.");
 
-            if (dto.CurrentYear < 1 || dto.CurrentYear > 4)
-                return BadRequest("Current year must be between 1 and 4.");
+            int fromYr = dto.FromYear.HasValue && dto.FromYear.Value > 0 ? dto.FromYear.Value : dto.CurrentYear;
+            if (fromYr < 1 || fromYr > 4)
+                return BadRequest("From year must be between 1 and 4.");
 
-            var newYear = dto.CurrentYear + 1;
+            int newYear = dto.ToYear.HasValue && dto.ToYear.Value > 0 ? dto.ToYear.Value : (fromYr + 1);
 
             var eligibleStudents = await _context.Students
-                .Where(s => s.Category.ToUpper() == cat && s.Year == dto.CurrentYear && s.IsActive)
+                .Where(s => s.Category.ToUpper() == cat && s.Year == fromYr && s.IsActive)
                 .ToListAsync();
 
             if (eligibleStudents.Count == 0)
             {
-                return Ok(new { count = 0, message = $"No active {cat} Year {dto.CurrentYear} students found to promote." });
+                return Ok(new { count = 0, message = $"No active {cat} Year {fromYr} students found to promote." });
             }
 
             var todayStr = DateTime.Today.ToString("yyyy-MM-dd");
@@ -884,7 +888,7 @@ namespace OnlineOD.Controllers
                 .ToListAsync();
 
             var currentSemesterConfig = academicSemesters
-                .FirstOrDefault(a => string.Compare(a.StartDate, todayStr) <= 0 && string.Compare(a.EndDate, todayStr) >= 0);
+                .FirstOrDefault(a => string.Compare(a.StartDate, todayStr, StringComparison.OrdinalIgnoreCase) <= 0 && string.Compare(a.EndDate, todayStr, StringComparison.OrdinalIgnoreCase) >= 0);
 
             int fallbackSemester = (newYear - 1) * 2 + 1;
             int targetSemester = currentSemesterConfig?.Semester ?? fallbackSemester;
@@ -901,10 +905,10 @@ namespace OnlineOD.Controllers
             {
                 count = eligibleStudents.Count,
                 category = cat,
-                fromYear = dto.CurrentYear,
+                fromYear = fromYr,
                 toYear = newYear,
                 semester = targetSemester,
-                message = $"Successfully promoted {eligibleStudents.Count} {cat} students from Year {dto.CurrentYear} to Year {newYear}."
+                message = $"Successfully promoted {eligibleStudents.Count} {cat} students from Year {fromYr} to Year {newYear}."
             });
         }
     }

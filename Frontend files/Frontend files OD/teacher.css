@@ -3258,8 +3258,8 @@ body {
 .calendar-legend .dot.has-od      { background: var(--primary-500, #6366f1); }
 .calendar-legend .dot.non-working { background: rgba(239,68,68,0.35); }
 .calendar-legend .dot.outside     { background: transparent; border: 1px dashed rgba(255,255,255,0.2); }
-.calendar-legend .dot.cal-holiday-dot   { background: rgba(249,115,22,0.8); }
-.calendar-legend .dot.cal-examination-dot { background: rgba(16,185,129,0.8); }
+.calendar-legend .dot.cal-holiday-dot   { background: var(--cal-holiday-color, rgba(249,115,22,0.8)); }
+.calendar-legend .dot.cal-examination-dot { background: var(--cal-exam-color, rgba(16,185,129,0.8)); }
 
 /* Calendar: Today highlight */
 .calendar-day.cal-today {

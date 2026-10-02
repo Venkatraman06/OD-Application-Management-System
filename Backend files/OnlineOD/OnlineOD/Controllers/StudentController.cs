@@ -370,6 +370,23 @@ namespace OnlineOD.Controllers
             if (!student.IsActive)
                 return StatusCode(403, new { message = "Your account has been deactivated. Please contact the administrator." });
 
+            // Automatic semester resolution based on academic configuration (same as GetStudentById)
+            var cat = (student.Category ?? "UG").Trim().ToUpper();
+            var todayStr = DateTime.Today.ToString("yyyy-MM-dd");
+            var academicSemesters = await _context.AcademicSemesters
+                .Where(a => a.Category.ToUpper() == cat && a.Year == student.Year)
+                .ToListAsync();
+
+            var academicMatch = academicSemesters
+                .FirstOrDefault(a => string.Compare(a.StartDate, todayStr, StringComparison.OrdinalIgnoreCase) <= 0
+                                  && string.Compare(a.EndDate, todayStr, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (academicMatch != null && academicMatch.Semester != student.semester)
+            {
+                student.semester = academicMatch.Semester;
+                await _context.SaveChangesAsync();
+            }
+
             var token = _jwtTokenService.GenerateStudentToken(student);
 
             return Ok(new

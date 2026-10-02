@@ -73,10 +73,10 @@
             if (res.ok) {
                 const settings = await res.json();
                 const colors = {
-                    weekendColor: settings.CalendarWeekendColor || DEFAULT_CAL_COLORS.weekendColor,
-                    holidayColor: settings.CalendarHolidayColor || DEFAULT_CAL_COLORS.holidayColor,
-                    examColor: settings.CalendarExamColor || DEFAULT_CAL_COLORS.examColor,
-                    todayColor: settings.CalendarTodayColor || DEFAULT_CAL_COLORS.todayColor
+                    weekendColor: settings.calendarWeekendColor || settings.CalendarWeekendColor || DEFAULT_CAL_COLORS.weekendColor,
+                    holidayColor: settings.calendarHolidayColor || settings.CalendarHolidayColor || DEFAULT_CAL_COLORS.holidayColor,
+                    examColor: settings.calendarExamColor || settings.CalendarExamColor || DEFAULT_CAL_COLORS.examColor,
+                    todayColor: settings.calendarTodayColor || settings.CalendarTodayColor || DEFAULT_CAL_COLORS.todayColor
                 };
                 window.applyCalendarColors(colors);
                 localStorage.setItem('od_calendar_colors', JSON.stringify(colors));

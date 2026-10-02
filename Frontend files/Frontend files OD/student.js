@@ -848,8 +848,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 matchStatus = true;
             } else if (statusFilter === 'pending') {
                 matchStatus = (myFacultyStatus === 'Pending' && !started);
-            } else if (statusFilter === 'all-pending') {
-                matchStatus = ((myFacultyStatus === 'Pending' || (myFacultyStatus === 'Approved' && hodStatus === 'Pending')) && !started);
             } else if (statusFilter === 'hod-pending') {
                 matchStatus = (myFacultyStatus === 'Approved' && hodStatus === 'Pending' && !started);
             } else if (statusFilter === 'all-approved') {
@@ -863,7 +861,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (statusFilter === 'hod-rejected') {
                 matchStatus = (hodStatus === 'Rejected');
             } else if (statusFilter === 'noaction') {
-                matchStatus = ((myFacultyStatus === 'Pending' || (myFacultyStatus === 'Approved' && hodStatus === 'Pending')) && started);
+                // No Action: both staff and HOD are still Pending AND the OD's toDate is in the past
+                const toDateStr = od.ToDate ?? od.toDate ?? od.FromDate ?? od.fromDate ?? '';
+                const toDatePast = toDateStr ? (new Date(toDateStr) < new Date(new Date().toDateString())) : false;
+                matchStatus = (myFacultyStatus === 'Pending' && hodStatus === 'Pending' && toDatePast);
             }
 
             // 2. OD Type filter
@@ -903,19 +904,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const empty = document.getElementById('emptyState');
         if (empty) {
-            if (odList.length > 0 && visibleCount === 0) {
-                empty.style.display = 'flex';
-                const h3 = empty.querySelector('h3');
-                const p = empty.querySelector('p');
-                if (h3) h3.textContent = 'No Matching OD Applications';
-                if (p) p.textContent = 'Try adjusting your status, search, or OD type filters.';
-            } else if (odList.length === 0) {
+            if (odList.length === 0) {
+                // No ODs at all — show the "You haven't submitted any" state
                 empty.style.display = 'flex';
                 const h3 = empty.querySelector('h3');
                 const p = empty.querySelector('p');
                 if (h3) h3.textContent = 'No OD Applications Found';
                 if (p) p.textContent = "You haven't submitted any OD requests yet.";
             } else {
+                // ODs exist but filter gave 0 results — just hide, no message
                 empty.style.display = 'none';
             }
         }

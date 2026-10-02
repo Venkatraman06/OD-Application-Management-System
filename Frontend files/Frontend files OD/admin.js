@@ -135,54 +135,100 @@ function initAdminApp() {
         }, { passive: false });
     }
 
-    // ── Logout button ──
-    document.getElementById('adminLogoutBtn')?.addEventListener('click', () => {
-        logoutAdmin();
-    });
+    // ── Logout buttons (header + sidebar) ──
+    document.getElementById('adminLogoutBtn')?.addEventListener('click', () => logoutAdmin());
+    document.getElementById('adminSidebarLogoutBtn')?.addEventListener('click', () => logoutAdmin());
 
-    document.querySelectorAll('.admin-nav-item, .admin-tab').forEach(btn => {
+    // ── Nested sidebar nav ──
+    function activateTabPanel(tab) {
+        document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById(`panel-${tab}`);
+        if (panel) panel.classList.add('active');
+        if (tab === 'users')         { loadStudents(); loadStaff(); loadHods(); }
+        else if (tab === 'requests')       loadRequests();
+        else if (tab === 'odrequests')     loadOdRequests();
+        else if (tab === 'certificates')   loadCertificates();
+        else if (tab === 'events')         loadEvents();
+        else if (tab === 'settings')       loadAdminSettings();
+        else if (tab === 'accounts')       loadAdminAccounts();
+    }
+
+    // Parent (group header) buttons — toggle children open/closed
+    document.querySelectorAll('.admin-nav-parent').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.admin-nav-item, .admin-tab').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
+            const group = btn.dataset.group;
+            const capGroup = group.charAt(0).toUpperCase() + group.slice(1);
+            const childrenEl = document.getElementById(`navChildren${capGroup}`);
+            const isOpen = childrenEl?.classList.contains('open');
 
-            const tab = btn.dataset.tab;
-            const panel = document.getElementById(`panel-${tab}`);
-            if (panel) panel.classList.add('active');
+            // Close all groups first
+            document.querySelectorAll('.admin-nav-parent').forEach(other => {
+                const og = other.dataset.group;
+                const oc = document.getElementById(`navChildren${og.charAt(0).toUpperCase() + og.slice(1)}`);
+                if (oc) oc.classList.remove('open');
+                other.classList.remove('group-open', 'active');
+            });
+            document.querySelectorAll('.admin-nav-item:not(.admin-nav-parent)').forEach(b => b.classList.remove('active'));
 
-            if (tab === 'users') {
-                loadStudents();
-                loadStaff();
-                loadHods();
+            if (!isOpen) {
+                if (childrenEl) childrenEl.classList.add('open');
+                btn.classList.add('group-open', 'active');
+                activateTabPanel(btn.dataset.tab);
             }
-            else if (tab === 'students') loadStudents();
-            else if (tab === 'staff') loadStaff();
-            else if (tab === 'hod') loadHods();
-            else if (tab === 'requests') loadRequests();
-            else if (tab === 'odrequests') loadOdRequests();
-            else if (tab === 'certificates') loadCertificates();
-            else if (tab === 'events') loadEvents();
-            else if (tab === 'calendar') loadAdminCalendar();
-            else if (tab === 'settings') loadAdminSettings();
-            else if (tab === 'accounts') loadAdminAccounts();
         });
     });
 
-    // ── User Login Sub-Tabs (Student, Staff, HOD) ──
-    const subtabUserStudent = document.getElementById('subtabUserStudent');
-    const subtabUserStaff = document.getElementById('subtabUserStaff');
-    const subtabUserHod = document.getElementById('subtabUserHod');
+    // Standalone nav-item buttons (not parent groups)
+    document.querySelectorAll('.admin-nav-item:not(.admin-nav-parent)').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.admin-nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.admin-nav-parent').forEach(b => b.classList.remove('group-open'));
+            document.querySelectorAll('.admin-nav-children').forEach(c => c.classList.remove('open'));
+            document.querySelectorAll('.admin-nav-child').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            activateTabPanel(btn.dataset.tab);
+        });
+    });
+
+    // Child buttons inside groups
+    document.querySelectorAll('.admin-nav-child').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            const userType = btn.dataset.userType;
+            const settingsSubtab = btn.dataset.settingsSubtab;
+
+            document.querySelectorAll('.admin-nav-child').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+
+            const parentBtn = btn.closest('.admin-nav-group')?.querySelector('.admin-nav-parent');
+            if (parentBtn) parentBtn.classList.add('active', 'group-open');
+            btn.closest('.admin-nav-children')?.classList.add('open');
+
+            document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+            const panel = document.getElementById(`panel-${tab}`);
+            if (panel) panel.classList.add('active');
+
+            if (userType) {
+                switchUserSubSection(userType);
+            } else if (settingsSubtab) {
+                loadAdminSettings();
+                requestAnimationFrame(() => switchSettingsSubtab(settingsSubtab));
+            }
+        });
+    });
+
+    // ── User Login Sub-Sections ──
     const userSectionStudent = document.getElementById('userSectionStudent');
-    const userSectionStaff = document.getElementById('userSectionStaff');
-    const userSectionHod = document.getElementById('userSectionHod');
+    const userSectionStaff   = document.getElementById('userSectionStaff');
+    const userSectionHod     = document.getElementById('userSectionHod');
 
     function switchUserSubSection(type) {
+        const subtabUserStudent = document.getElementById('subtabUserStudent');
+        const subtabUserStaff   = document.getElementById('subtabUserStaff');
+        const subtabUserHod     = document.getElementById('subtabUserHod');
         [subtabUserStudent, subtabUserStaff, subtabUserHod].forEach(b => b?.classList.remove('active'));
         [userSectionStudent, userSectionStaff, userSectionHod].forEach(s => {
-            if (s) {
-                s.style.display = 'none';
-                s.classList.remove('active');
-            }
+            if (s) { s.style.display = 'none'; s.classList.remove('active'); }
         });
 
         if (type === 'students' || type === 'student') {
@@ -200,9 +246,28 @@ function initAdminApp() {
         }
     }
 
-    subtabUserStudent?.addEventListener('click', () => switchUserSubSection('students'));
-    subtabUserStaff?.addEventListener('click', () => switchUserSubSection('staff'));
-    subtabUserHod?.addEventListener('click', () => switchUserSubSection('hod'));
+    document.getElementById('subtabUserStudent')?.addEventListener('click', () => switchUserSubSection('students'));
+    document.getElementById('subtabUserStaff')?.addEventListener('click', () => switchUserSubSection('staff'));
+    document.getElementById('subtabUserHod')?.addEventListener('click', () => switchUserSubSection('hod'));
+
+    // ── Settings Sub-tab switcher ──
+    function switchSettingsSubtab(subtab) {
+        ['prefix', 'colors', 'academic'].forEach(s => {
+            const cap = s.charAt(0).toUpperCase() + s.slice(1);
+            const view = document.getElementById(`subtabViewSettings${cap}`);
+            const btn  = document.getElementById(`subtabSettings${cap}`);
+            if (view) view.style.display = (s === subtab) ? '' : 'none';
+            if (btn)  btn.classList.toggle('active', s === subtab);
+        });
+        document.querySelectorAll('.admin-nav-child[data-settings-subtab]').forEach(c => {
+            c.classList.toggle('active', c.dataset.settingsSubtab === subtab);
+        });
+    }
+    document.getElementById('subtabSettingsPrefix')?.addEventListener('click', () => switchSettingsSubtab('prefix'));
+    document.getElementById('subtabSettingsColors')?.addEventListener('click', () => switchSettingsSubtab('colors'));
+    document.getElementById('subtabSettingsAcademic')?.addEventListener('click', () => switchSettingsSubtab('academic'));
+
+
 
     // ── Toast ──
     function showToast(type, msg) {
