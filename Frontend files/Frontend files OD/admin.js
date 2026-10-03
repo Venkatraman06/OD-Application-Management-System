@@ -5,11 +5,12 @@ const API_BASE = 'https://od-application-backend.onrender.com';
 // ============================================
 
 function getAdminToken() {
-    return sessionStorage.getItem('adminToken');
+    return sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken') || localStorage.getItem('userToken') || '';
 }
 
 function logoutAdmin() {
     sessionStorage.removeItem('adminToken');
+    localStorage.removeItem('adminToken');
     window.location.href = 'admin.html';
 }
 
@@ -26,12 +27,14 @@ async function adminFetch(url, options = {}) {
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401) {
         sessionStorage.removeItem('adminToken');
+        localStorage.removeItem('adminToken');
         alert('Your session has expired. Please log in again.');
         window.location.href = 'admin.html';
         throw new Error('Session expired');
     }
     if (res.status === 403) {
         sessionStorage.removeItem('adminToken');
+        localStorage.removeItem('adminToken');
         alert('Your Admin account has been deactivated. Please contact another Admin.');
         window.location.href = 'admin.html';
         throw new Error('Account deactivated');
@@ -105,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             sessionStorage.setItem('adminToken', data.token);
+            localStorage.setItem('adminToken', data.token);
             unlock();
         } catch (err) {
             console.error(err);

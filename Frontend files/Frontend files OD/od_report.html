@@ -559,6 +559,25 @@
 
         const API_BASE = 'https://od-application-backend.onrender.com';
 
+        function getAuthToken() {
+            return localStorage.getItem('userToken')
+                || sessionStorage.getItem('userToken')
+                || localStorage.getItem('token')
+                || sessionStorage.getItem('token')
+                || sessionStorage.getItem('adminToken')
+                || localStorage.getItem('adminToken')
+                || '';
+        }
+
+        async function authFetch(url, options = {}) {
+            const token = getAuthToken();
+            const headers = Object.assign({}, options.headers || {});
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+            return fetch(url, { ...options, headers });
+        }
+
         function resolveSigUrl(url) {
             if (!url) return '';
             const value = String(url).trim();
@@ -568,18 +587,29 @@
             return `${API_BASE}${value.startsWith('/') ? '' : '/'}${value}`;
         }
 
+        // In-memory lookup caches to avoid duplicate network requests
+        const _staffLookupCache = new Map();
+        const _hodLookupCache = new Map();
+        let _studentLookupPromise = null;
+
         // Looks up the actual class staff (advisor) assigned to this Department + Section
         async function fetchClassStaffName(department, section) {
+            if (!department) return null;
+            const key = `${department.trim().toLowerCase()}_${(section || '').trim().toLowerCase()}`;
+            if (_staffLookupCache.has(key)) return _staffLookupCache.get(key);
+
             try {
                 const params = new URLSearchParams({ department });
                 if (section) params.set('section', section);
-                const token = localStorage.getItem('userToken') || sessionStorage.getItem('adminToken');
-                const headers = {};
-                if (token) headers['Authorization'] = 'Bearer ' + token;
-                const res = await fetch(`${API_BASE}/api/Faculty/ByDepartmentSection?${params.toString()}`, { headers });
-                if (!res.ok) return null;
+                const res = await authFetch(`${API_BASE}/api/Faculty/ByDepartmentSection?${params.toString()}`);
+                if (!res.ok) {
+                    _staffLookupCache.set(key, null);
+                    return null;
+                }
                 const data = await res.json();
-                return data.name ? data : null;
+                const result = data && data.name ? data : null;
+                _staffLookupCache.set(key, result);
+                return result;
             } catch (err) {
                 console.error('Failed to fetch class staff name:', err);
                 return null;
@@ -588,15 +618,20 @@
 
         // Looks up the actual HOD assigned to this Department
         async function fetchHodName(department) {
+            if (!department) return null;
+            const key = department.trim().toLowerCase();
+            if (_hodLookupCache.has(key)) return _hodLookupCache.get(key);
+
             try {
-                if (!department) return null;
-                const token = localStorage.getItem('userToken') || sessionStorage.getItem('adminToken');
-                const headers = {};
-                if (token) headers['Authorization'] = 'Bearer ' + token;
-                const res = await fetch(`${API_BASE}/api/Hod/ByDepartment?department=${encodeURIComponent(department)}`, { headers });
-                if (!res.ok) return null;
+                const res = await authFetch(`${API_BASE}/api/Hod/ByDepartment?department=${encodeURIComponent(department)}`);
+                if (!res.ok) {
+                    _hodLookupCache.set(key, null);
+                    return null;
+                }
                 const data = await res.json();
-                return data.name ? data : null;
+                const result = data && data.name ? data : null;
+                _hodLookupCache.set(key, result);
+                return result;
             } catch (err) {
                 console.error('Failed to fetch HOD name:', err);
                 return null;
@@ -608,10 +643,13 @@
         // lookup so the report's Group Members table can show real names
         // and sections next to each register number, not just bare numbers.
         async function fetchStudentNameLookup() {
-            try {
-                const res = await fetch(`${API_BASE}/api/Student`);
-                if (!res.ok) return {};
-                const students = await res.json();
+            if (_studentLookupPromise) return _studentLookupPromise;
+
+            _studentLookupPromise = (async () => {
+                try {
+                    const res = await authFetch(`${API_BASE}/api/Student`);
+                    if (!res.ok) return {};
+                    const students = await res.json();
                 const lookup = {};
                 students.forEach(s => {
                     const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
@@ -780,10 +818,7 @@
             // 2. Fallback: fetch directly from backend API if odId is provided in URL
             if (odId) {
                 try {
-                    const token = localStorage.getItem('userToken') || sessionStorage.getItem('adminToken');
-                    const fetchHeaders = {};
-                    if (token) fetchHeaders['Authorization'] = 'Bearer ' + token;
-                    const res = await fetch(`${API_BASE}/api/OdApply/${encodeURIComponent(odId)}`, { headers: fetchHeaders });
+                    const res = await authFetch(`${API_BASE}/api/OdApply/${encodeURIComponent(odId)}`);
                     if (res.ok) {
                         const od = await res.json();
                         await fillOdReport(od);

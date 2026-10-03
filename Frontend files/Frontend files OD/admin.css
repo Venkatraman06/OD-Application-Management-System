@@ -126,17 +126,25 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 }
 .admin-logo svg { width: 26px; height: 26px; }
 .admin-logo-img-wrap {
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-    overflow: hidden;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    width: auto !important;
+    min-width: 46px !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 .admin-logo-img {
-    width: 44px;
-    height: 44px;
-    object-fit: contain;
-    display: block;
-    border-radius: 12px;
+    width: 46px !important;
+    height: auto !important;
+    aspect-ratio: 465 / 268 !important;
+    object-fit: contain !important;
+    display: block !important;
+    border-radius: 0 !important;
 }
 .admin-brand h1 { margin: 0; font-size: 1.15rem; font-weight: 800; color: white; }
 .admin-brand p { margin: 0; font-size: 0.78rem; color: var(--surface-400); }

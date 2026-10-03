@@ -158,18 +158,26 @@ body {
 .logo-icon svg { width: 22px; height: 22px; }
 
 .sidebar-logo-img-wrap {
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-    overflow: hidden;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    width: auto !important;
+    min-width: 44px !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .sidebar-logo-img {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    display: block;
-    border-radius: var(--radius-sm);
+    width: 44px !important;
+    height: auto !important;
+    aspect-ratio: 465 / 268 !important;
+    object-fit: contain !important;
+    display: block !important;
+    border-radius: 0 !important;
 }
 
 .logo-info { display: flex; flex-direction: column; }
