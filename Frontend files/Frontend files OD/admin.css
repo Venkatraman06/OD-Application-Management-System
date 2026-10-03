@@ -546,17 +546,30 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     margin-bottom: 14px; flex-wrap: wrap;
 }
 .list-card-header h2 { margin: 0; }
-.admin-search {
+.admin-search,
+select.admin-search {
     padding: 9px 14px;
     border-radius: var(--radius-md);
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    color: white;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: #0f172a;
+    color: #f8fafc;
     font-size: 0.82rem;
     font-family: var(--font-family);
-    min-width: 220px;
+    min-width: 140px;
+    transition: all 0.2s ease;
 }
-.admin-search:focus { outline: none; border-color: var(--primary-500); }
+.admin-search:focus,
+select.admin-search:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    background: #0f172a;
+}
+.admin-search option,
+select option {
+    background: #0f172a;
+    color: #f8fafc;
+}
 
 .table-wrap { overflow-x: auto; max-height: 560px; overflow-y: auto; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
@@ -1161,12 +1174,32 @@ button#btnResetHod:hover {
 }
 [data-theme="light"] .gate-back-link { color: #64748b !important; }
 [data-theme="light"] .gate-back-link:hover { color: #4338ca !important; }
-[data-theme="light"] .admin-search {
+[data-theme="light"] .admin-search,
+[data-theme="light"] select.admin-search,
+[data-theme="light"] select {
     background: #ffffff !important;
     border: 1.5px solid #cbd5e1 !important;
     color: #0f172a !important;
 }
+[data-theme="light"] .admin-search:focus,
+[data-theme="light"] select.admin-search:focus,
+[data-theme="light"] select:focus {
+    outline: none !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    background: #ffffff !important;
+}
+[data-theme="light"] .admin-search option,
+[data-theme="light"] select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
 [data-theme="light"] .admin-search::placeholder { color: #64748b !important; }
+[data-theme="light"] .badge-pending-cert {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+    border-color: #fca5a5 !important;
+}
 [data-theme="light"] .modal-overlay {
     background: rgba(15, 23, 42, 0.45) !important;
 }

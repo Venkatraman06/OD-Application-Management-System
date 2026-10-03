@@ -1756,6 +1756,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const nextBtn = document.getElementById('calendarNextBtn');
         if (!grid || !calMonthKeys.length) return;
 
+        // Define todayStr here so it is available throughout the function
+        const _today = new Date();
+        const todayStr = `${_today.getFullYear()}-${String(_today.getMonth() + 1).padStart(2, '0')}-${String(_today.getDate()).padStart(2, '0')}`;
+
         const monthKey = calMonthKeys[calMonthIndex]; // 'YYYY-MM'
         const [yearStr, monStr] = monthKey.split('-');
         const year = parseInt(yearStr, 10);

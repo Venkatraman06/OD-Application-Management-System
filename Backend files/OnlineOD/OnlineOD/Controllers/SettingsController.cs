@@ -36,6 +36,7 @@ namespace OnlineOD.Controllers
             map["calendarHolidayColor"] = "#dc2626";
             map["calendarExamColor"] = "#f59e0b";
             map["calendarTodayColor"] = "#6366f1";
+            map["calendarWorkingDayColor"] = "#10b981";
 
             foreach (var s in settings)
             {

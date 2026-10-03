@@ -33,7 +33,8 @@
         weekendColor: '#ef4444',
         holidayColor: '#f97316',
         examColor: '#10b981',
-        todayColor: '#3b82f6'
+        todayColor: '#3b82f6',
+        workingDayColor: '#10b981'
     };
 
     window.applyCalendarColors = function(colors) {
@@ -50,6 +51,9 @@
         }
         if (colors.todayColor || colors.CalendarTodayColor) {
             root.style.setProperty('--cal-today-color', colors.todayColor || colors.CalendarTodayColor);
+        }
+        if (colors.workingDayColor || colors.CalendarWorkingDayColor) {
+            root.style.setProperty('--cal-working-color', colors.workingDayColor || colors.CalendarWorkingDayColor);
         }
     };
 
@@ -76,7 +80,8 @@
                     weekendColor: settings.calendarWeekendColor || settings.CalendarWeekendColor || DEFAULT_CAL_COLORS.weekendColor,
                     holidayColor: settings.calendarHolidayColor || settings.CalendarHolidayColor || DEFAULT_CAL_COLORS.holidayColor,
                     examColor: settings.calendarExamColor || settings.CalendarExamColor || DEFAULT_CAL_COLORS.examColor,
-                    todayColor: settings.calendarTodayColor || settings.CalendarTodayColor || DEFAULT_CAL_COLORS.todayColor
+                    todayColor: settings.calendarTodayColor || settings.CalendarTodayColor || DEFAULT_CAL_COLORS.todayColor,
+                    workingDayColor: settings.calendarWorkingDayColor || settings.CalendarWorkingDayColor || DEFAULT_CAL_COLORS.workingDayColor
                 };
                 window.applyCalendarColors(colors);
                 localStorage.setItem('od_calendar_colors', JSON.stringify(colors));

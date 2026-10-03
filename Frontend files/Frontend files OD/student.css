@@ -2871,6 +2871,68 @@ select.cert-text-input {
     color: #334155 !important;
 }
 
+/* ── Weekend / Non-working Day & Special Day Modal Buttons (Dark & Light) ── */
+#saturdayModalConfirmBtn,
+.special-day-warning-modal .sdw-btn-confirm,
+.sdw-btn-confirm {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+#saturdayModalConfirmBtn:hover,
+.special-day-warning-modal .sdw-btn-confirm:hover,
+.sdw-btn-confirm:hover {
+    background: linear-gradient(135deg, #4338ca, #6d28d9) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
+}
+#saturdayModalSkipBtn,
+.special-day-warning-modal .sdw-btn-edit,
+.sdw-btn-edit {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+#saturdayModalSkipBtn:hover,
+.special-day-warning-modal .sdw-btn-edit:hover,
+.sdw-btn-edit:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="light"] #saturdayModalConfirmBtn,
+[data-theme="light"] .special-day-warning-modal .sdw-btn-confirm,
+[data-theme="light"] .sdw-btn-confirm {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+[data-theme="light"] #saturdayModalConfirmBtn:hover,
+[data-theme="light"] .special-day-warning-modal .sdw-btn-confirm:hover,
+[data-theme="light"] .sdw-btn-confirm:hover {
+    background: linear-gradient(135deg, #4338ca, #6d28d9) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+}
+[data-theme="light"] #saturdayModalSkipBtn,
+[data-theme="light"] .special-day-warning-modal .sdw-btn-edit,
+[data-theme="light"] .sdw-btn-edit {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+[data-theme="light"] #saturdayModalSkipBtn:hover,
+[data-theme="light"] .special-day-warning-modal .sdw-btn-edit:hover,
+[data-theme="light"] .sdw-btn-edit:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
 /* ── Student Header Calendar Icon on Mobile (Below Email) ── */
 @media (max-width: 768px) {
     .header-cal-btn {

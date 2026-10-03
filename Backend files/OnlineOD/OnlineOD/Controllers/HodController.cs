@@ -145,15 +145,20 @@ namespace OnlineOD.Controllers
             }
             else
             {
-                // Admin — full update
+                // Admin — full update (blank password means "keep existing")
+                var existingHodForAdmin = await _hodService.GetHodByIdAsync(dto.HodId);
+                if (existingHodForAdmin == null) return NotFound();
                 var hod = new Hod
                 {
                     HodId = dto.HodId,
                     Name = dto.Name,
                     RollNumber = dto.RollNumber,
                     Department = dto.Department,
+                    Category = string.IsNullOrWhiteSpace(dto.Category) ? (existingHodForAdmin.Category ?? "UG") : dto.Category.Trim().ToUpper(),
                     Email = dto.Email,
-                    Password = dto.Password ?? string.Empty
+                    // If Admin left password blank, keep the existing hash by passing it through unchanged.
+                    // HodService only re-hashes when the value differs from the stored hash.
+                    Password = string.IsNullOrWhiteSpace(dto.Password) ? existingHodForAdmin.Password : dto.Password
                 };
                 var updated = await _hodService.UpdateHodAsync(hod);
                 if (updated == null) return NotFound();

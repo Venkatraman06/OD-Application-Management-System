@@ -262,6 +262,10 @@ function initAdminApp() {
         document.querySelectorAll('.admin-nav-child[data-settings-subtab]').forEach(c => {
             c.classList.toggle('active', c.dataset.settingsSubtab === subtab);
         });
+        if (subtab === 'academic') {
+            loadAcademicSemesters();
+            checkPromoteCount();
+        }
     }
     document.getElementById('subtabSettingsPrefix')?.addEventListener('click', () => switchSettingsSubtab('prefix'));
     document.getElementById('subtabSettingsColors')?.addEventListener('click', () => switchSettingsSubtab('colors'));
@@ -1815,8 +1819,8 @@ function initAdminApp() {
                     <div style="font-size:0.78rem;white-space:nowrap;">${fmtOdDate(item.fromDate)} &rarr; ${fmtOdDate(item.toDate)}</div>
                 </td>
                 <td>${item.numberOfDays || 1}</td>
-                <td>
-                    <span class="status-badge" style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:600;">Certificate Pending</span>
+                <td style="white-space:nowrap;">
+                    <span class="status-badge badge-pending-cert" style="white-space:nowrap;display:inline-block;background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 8px;border-radius:6px;font-size:0.75rem;font-weight:600;">Certificate Pending</span>
                 </td>
             </tr>`;
         }).join('');
@@ -2299,38 +2303,38 @@ function initAdminApp() {
     // SETTINGS MANAGEMENT (OD PREFIX, CALENDAR COLORS, ACADEMIC CONFIG & PROMOTION)
     // ============================================
     let academicSemestersList = [];
+    // Semesters filter & pagination state
+    let semFilterCat = '';
+    let semFilterYear = '';
+    let semFilterSem = '';
+    let semCurrentPage = 1;
+    const SEM_PAGE_SIZE = 5;
 
-    // Settings Sub-Tabs
-    const subtabSettingsPrefix = document.getElementById('subtabSettingsPrefix');
-    const subtabSettingsColors = document.getElementById('subtabSettingsColors');
-    const subtabSettingsAcademic = document.getElementById('subtabSettingsAcademic');
-    const subtabViewSettingsPrefix = document.getElementById('subtabViewSettingsPrefix');
-    const subtabViewSettingsColors = document.getElementById('subtabViewSettingsColors');
-    const subtabViewSettingsAcademic = document.getElementById('subtabViewSettingsAcademic');
-
-    function switchSettingsSubtab(type) {
-        [subtabSettingsPrefix, subtabSettingsColors, subtabSettingsAcademic].forEach(b => b?.classList.remove('active'));
-        if (subtabViewSettingsPrefix) subtabViewSettingsPrefix.style.display = 'none';
-        if (subtabViewSettingsColors) subtabViewSettingsColors.style.display = 'none';
-        if (subtabViewSettingsAcademic) subtabViewSettingsAcademic.style.display = 'none';
-
-        if (type === 'prefix') {
-            subtabSettingsPrefix?.classList.add('active');
-            if (subtabViewSettingsPrefix) subtabViewSettingsPrefix.style.display = 'block';
-        } else if (type === 'colors') {
-            subtabSettingsColors?.classList.add('active');
-            if (subtabViewSettingsColors) subtabViewSettingsColors.style.display = 'block';
-        } else if (type === 'academic') {
-            subtabSettingsAcademic?.classList.add('active');
-            if (subtabViewSettingsAcademic) subtabViewSettingsAcademic.style.display = 'block';
-            loadAcademicSemesters();
-            checkPromoteCount();
-        }
+    // Populate the Semester filter dropdown from actual data
+    function updateSemesterFilterDropdown() {
+        const sel = document.getElementById('semFilterSemester');
+        if (!sel) return;
+        const currentVal = sel.value;
+        const semNums = [...new Set(academicSemestersList.map(i => i.semester ?? i.Semester).filter(Boolean))].sort((a, b) => a - b);
+        sel.innerHTML = '<option value="">All</option>' + semNums.map(s => `<option value="${s}"${currentVal == s ? ' selected' : ''}>Semester ${s}</option>`).join('');
     }
 
-    subtabSettingsPrefix?.addEventListener('click', () => switchSettingsSubtab('prefix'));
-    subtabSettingsColors?.addEventListener('click', () => switchSettingsSubtab('colors'));
-    subtabSettingsAcademic?.addEventListener('click', () => switchSettingsSubtab('academic'));
+    function getFilteredSemesters() {
+        return academicSemestersList
+            .filter(item => {
+                const cat = (item.category ?? item.Category ?? '').toUpperCase();
+                const yr = String(item.year ?? item.Year ?? '');
+                const sem = String(item.semester ?? item.Semester ?? '');
+                if (semFilterCat && cat !== semFilterCat.toUpperCase()) return false;
+                if (semFilterYear && yr !== semFilterYear) return false;
+                if (semFilterSem && sem !== semFilterSem) return false;
+                return true;
+            })
+            // Latest first: sort by ID descending
+            .sort((a, b) => ((b.id ?? b.Id ?? 0) - (a.id ?? a.Id ?? 0)));
+    }
+
+
 
     async function loadAdminSettings() {
         try {
@@ -2339,18 +2343,20 @@ function initAdminApp() {
                 const settings = await res.json();
                 // OD Prefix
                 if (document.getElementById('settingOdPrefix')) {
-                    document.getElementById('settingOdPrefix').value = settings.OdIdPrefix || 'OD-';
+                    document.getElementById('settingOdPrefix').value = settings.OdIdPrefix || settings.odIdPrefix || 'OD-';
                 }
                 // Colors
-                const weekend = settings.CalendarWeekendColor || '#ef4444';
-                const holiday = settings.CalendarHolidayColor || '#f97316';
-                const exam = settings.CalendarExamColor || '#10b981';
-                const today = settings.CalendarTodayColor || '#3b82f6';
+                const weekend = settings.CalendarWeekendColor || settings.calendarWeekendColor || '#ef4444';
+                const holiday = settings.CalendarHolidayColor || settings.calendarHolidayColor || '#f97316';
+                const exam = settings.CalendarExamColor || settings.calendarExamColor || '#10b981';
+                const today = settings.CalendarTodayColor || settings.calendarTodayColor || '#3b82f6';
+                const workingDay = settings.CalendarWorkingDayColor || settings.calendarWorkingDayColor || '#10b981';
 
                 setCalColorField('settingCalWeekend', 'settingCalWeekendText', weekend);
                 setCalColorField('settingCalHoliday', 'settingCalHolidayText', holiday);
                 setCalColorField('settingCalExam', 'settingCalExamText', exam);
                 setCalColorField('settingCalToday', 'settingCalTodayText', today);
+                setCalColorField('settingCalWorkingDay', 'settingCalWorkingDayText', workingDay);
             }
         } catch (err) {
             console.error(err);
@@ -2369,7 +2375,7 @@ function initAdminApp() {
     }
 
     // Two-way sync for color pickers and text inputs
-    ['settingCalWeekend', 'settingCalHoliday', 'settingCalExam', 'settingCalToday'].forEach(baseId => {
+    ['settingCalWeekend', 'settingCalHoliday', 'settingCalExam', 'settingCalToday', 'settingCalWorkingDay'].forEach(baseId => {
         const picker = document.getElementById(baseId);
         const text = document.getElementById(`${baseId}Text`);
         picker?.addEventListener('input', () => { if (text) text.value = picker.value; });
@@ -2386,6 +2392,7 @@ function initAdminApp() {
         setCalColorField('settingCalHoliday', 'settingCalHolidayText', '#f97316');
         setCalColorField('settingCalExam', 'settingCalExamText', '#10b981');
         setCalColorField('settingCalToday', 'settingCalTodayText', '#3b82f6');
+        setCalColorField('settingCalWorkingDay', 'settingCalWorkingDayText', '#10b981');
     });
 
     // Save OD ID Prefix
@@ -2428,7 +2435,8 @@ function initAdminApp() {
             CalendarWeekendColor: (document.getElementById('settingCalWeekendText')?.value || '#ef4444').trim(),
             CalendarHolidayColor: (document.getElementById('settingCalHolidayText')?.value || '#f97316').trim(),
             CalendarExamColor: (document.getElementById('settingCalExamText')?.value || '#10b981').trim(),
-            CalendarTodayColor: (document.getElementById('settingCalTodayText')?.value || '#3b82f6').trim()
+            CalendarTodayColor: (document.getElementById('settingCalTodayText')?.value || '#3b82f6').trim(),
+            CalendarWorkingDayColor: (document.getElementById('settingCalWorkingDayText')?.value || '#10b981').trim()
         };
 
         const btn = document.getElementById('saveCalColorsBtn');
@@ -2472,20 +2480,40 @@ function initAdminApp() {
             academicSemestersList = [];
             showToast('error', 'Failed to load academic semesters.');
         }
-        renderAcademicSemesters(academicSemestersList);
+
+        // Reset to page 1 whenever fresh data is loaded
+        semCurrentPage = 1;
+        updateSemesterFilterDropdown();
+        renderAcademicSemesters();
     }
 
-    function renderAcademicSemesters(list) {
+    function renderAcademicSemesters() {
         const tbody = document.getElementById('academicSemestersTableBody');
         if (!tbody) return;
-        if (!list.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No academic semesters configured yet.</td></tr>';
+
+        const filtered = getFilteredSemesters();
+        const totalPages = Math.max(1, Math.ceil(filtered.length / SEM_PAGE_SIZE));
+        if (semCurrentPage > totalPages) semCurrentPage = totalPages;
+
+        const startIdx = (semCurrentPage - 1) * SEM_PAGE_SIZE;
+        const pageItems = filtered.slice(startIdx, startIdx + SEM_PAGE_SIZE);
+
+        // Update pagination UI
+        const infoEl = document.getElementById('semPaginationInfo');
+        const prevBtn = document.getElementById('semPrevBtn');
+        const nextBtn = document.getElementById('semNextBtn');
+        if (infoEl) infoEl.textContent = `Page ${semCurrentPage} of ${totalPages} (${filtered.length} record${filtered.length !== 1 ? 's' : ''})`;
+        if (prevBtn) prevBtn.disabled = semCurrentPage <= 1;
+        if (nextBtn) nextBtn.disabled = semCurrentPage >= totalPages;
+
+        if (!pageItems.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No academic semesters match the selected filters.</td></tr>';
             return;
         }
 
         const todayStr = new Date().toISOString().slice(0, 10);
 
-        tbody.innerHTML = list.map(item => {
+        tbody.innerHTML = pageItems.map(item => {
             const id = item.id ?? item.Id;
             const cat = item.category ?? item.Category ?? 'UG';
             const yr = item.year ?? item.Year;
@@ -2539,6 +2567,42 @@ function initAdminApp() {
             });
         });
     }
+
+    // Semester filter event listeners
+    document.getElementById('semFilterCategory')?.addEventListener('change', (e) => {
+        semFilterCat = e.target.value;
+        semCurrentPage = 1;
+        renderAcademicSemesters();
+    });
+    document.getElementById('semFilterYear')?.addEventListener('change', (e) => {
+        semFilterYear = e.target.value;
+        semCurrentPage = 1;
+        renderAcademicSemesters();
+    });
+    document.getElementById('semFilterSemester')?.addEventListener('change', (e) => {
+        semFilterSem = e.target.value;
+        semCurrentPage = 1;
+        renderAcademicSemesters();
+    });
+    document.getElementById('semFilterResetBtn')?.addEventListener('click', () => {
+        semFilterCat = ''; semFilterYear = ''; semFilterSem = '';
+        semCurrentPage = 1;
+        const selCat = document.getElementById('semFilterCategory');
+        const selYr = document.getElementById('semFilterYear');
+        const selSem = document.getElementById('semFilterSemester');
+        if (selCat) selCat.value = '';
+        if (selYr) selYr.value = '';
+        if (selSem) selSem.value = '';
+        renderAcademicSemesters();
+    });
+    document.getElementById('semPrevBtn')?.addEventListener('click', () => {
+        if (semCurrentPage > 1) { semCurrentPage--; renderAcademicSemesters(); }
+    });
+    document.getElementById('semNextBtn')?.addEventListener('click', () => {
+        const filtered = getFilteredSemesters();
+        const totalPages = Math.ceil(filtered.length / SEM_PAGE_SIZE);
+        if (semCurrentPage < totalPages) { semCurrentPage++; renderAcademicSemesters(); }
+    });
 
     // Add Academic Semester Form
     document.getElementById('academicSemesterForm')?.addEventListener('submit', async (e) => {
