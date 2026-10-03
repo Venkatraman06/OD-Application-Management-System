@@ -650,19 +650,22 @@
                     const res = await authFetch(`${API_BASE}/api/Student`);
                     if (!res.ok) return {};
                     const students = await res.json();
-                const lookup = {};
-                students.forEach(s => {
-                    const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
-                    if (reg) lookup[reg] = {
-                        name: s.name || s.Name || '',
-                        section: s.section || s.Section || ''
-                    };
-                });
-                return lookup;
-            } catch (err) {
-                console.error('Failed to fetch student name lookup:', err);
-                return {};
-            }
+                    const lookup = {};
+                    students.forEach(s => {
+                        const reg = (s.registerNumber || s.RegisterNumber || '').trim().toLowerCase();
+                        if (reg) lookup[reg] = {
+                            name: s.name || s.Name || '',
+                            section: s.section || s.Section || ''
+                        };
+                    });
+                    return lookup;
+                } catch (err) {
+                    console.error('Failed to fetch student name lookup:', err);
+                    return {};
+                }
+            })();
+
+            return _studentLookupPromise;
         }
 
         async function fillOdReport(od) {

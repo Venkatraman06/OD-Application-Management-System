@@ -1,5 +1,14 @@
 const API_BASE = 'https://od-application-backend.onrender.com';
 
+function resolveSigUrl(url) {
+    if (!url) return '';
+    const value = String(url).trim();
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) {
+        return value;
+    }
+    return `${API_BASE}${value.startsWith('/') ? '' : '/'}${value}`;
+}
+
 // ============================================
 // JWT Admin Auth helpers
 // ============================================
@@ -864,8 +873,11 @@ function initAdminApp() {
         const previewImg = document.getElementById('staffCurrentSignatureImg');
         const sigFile = document.getElementById('staffSignatureFile');
         if (sigUrl && previewDiv && previewImg) {
-            previewImg.src = `${API_BASE}${sigUrl}`;
+            previewImg.src = resolveSigUrl(sigUrl);
             previewDiv.style.display = 'block';
+            previewImg.onerror = () => {
+                previewDiv.style.display = 'none';
+            };
         } else if (previewDiv) {
             previewDiv.style.display = 'none';
         }
@@ -873,6 +885,20 @@ function initAdminApp() {
 
         openModal('staffModalOverlay');
     }
+
+    document.getElementById('staffSignatureFile')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        const previewDiv = document.getElementById('staffCurrentSignaturePreview');
+        const previewImg = document.getElementById('staffCurrentSignatureImg');
+        if (file && previewDiv && previewImg) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                previewImg.src = ev.target.result;
+                previewDiv.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 
     document.getElementById('staffRemoveSignatureBtn')?.addEventListener('click', async () => {
         const id = staffIdEl.value;
@@ -1136,8 +1162,11 @@ function initAdminApp() {
         const previewImg = document.getElementById('hodCurrentSignatureImg');
         const sigFile = document.getElementById('hodSignatureFile');
         if (sigUrl && previewDiv && previewImg) {
-            previewImg.src = `${API_BASE}${sigUrl}`;
+            previewImg.src = resolveSigUrl(sigUrl);
             previewDiv.style.display = 'block';
+            previewImg.onerror = () => {
+                previewDiv.style.display = 'none';
+            };
         } else if (previewDiv) {
             previewDiv.style.display = 'none';
         }
@@ -1145,6 +1174,20 @@ function initAdminApp() {
 
         openModal('hodModalOverlay');
     }
+
+    document.getElementById('hodSignatureFile')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        const previewDiv = document.getElementById('hodCurrentSignaturePreview');
+        const previewImg = document.getElementById('hodCurrentSignatureImg');
+        if (file && previewDiv && previewImg) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                previewImg.src = ev.target.result;
+                previewDiv.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 
     document.getElementById('hodRemoveSignatureBtn')?.addEventListener('click', async () => {
         const id = hodIdEl.value;
