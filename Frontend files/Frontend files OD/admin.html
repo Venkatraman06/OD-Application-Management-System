@@ -90,34 +90,34 @@
                     <div class="admin-nav-children open" id="navChildrenUsers">
                         <button class="admin-nav-child active" data-tab="users" data-user-type="students">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
-                            Student Login <span class="tab-count" id="studentTabCount">0</span>
+                            Student Login
                         </button>
                         <button class="admin-nav-child" data-tab="users" data-user-type="staff">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            Staff Login <span class="tab-count" id="staffTabCount">0</span>
+                            Staff Login
                         </button>
                         <button class="admin-nav-child" data-tab="users" data-user-type="hod">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                            HOD Login <span class="tab-count" id="hodTabCount">0</span>
+                            HOD Login
                         </button>
                     </div>
                 </div>
 
                 <button class="admin-nav-item" data-tab="odrequests">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    <span>OD Requests</span> <span class="tab-count" id="odRequestsTabCount">0</span>
+                    <span>OD Requests</span>
                 </button>
                 <button class="admin-nav-item" data-tab="certificates">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15l-2 5l9-5l-9-5l2 5zm0 0l-7 2l2-7l7 2l-2 3z"/><path d="M12 2l3.09 6.26L22 9.27l-5 4.87l1.18 6.88L12 17.77l-6.18 3.25L7 14.14L2 9.27l6.91-1.01L12 2z"/></svg>
-                    <span>Certificates</span> <span class="tab-count" id="certificatesTabCount">0</span>
+                    <span>Certificates</span>
                 </button>
                 <button class="admin-nav-item" data-tab="events">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    <span>Events</span> <span class="tab-count" id="eventsTabCount">0</span>
+                    <span>Events</span>
                 </button>
                 <button class="admin-nav-item" data-tab="requests">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span>Contact Requests</span> <span class="tab-count" id="requestsTabCount">0</span>
+                    <span>Contact Requests</span>
                 </button>
 
                 <!-- Settings (expandable parent) -->
@@ -177,7 +177,7 @@
                     <div id="subtabViewAllStudents">
                         <div class="admin-card list-card" style="width:100%;">
                             <div class="list-card-header">
-                                <h2>All Students</h2>
+                                <h2>All Students <span class="page-total-badge" id="studentsPageTotal"></span></h2>
                                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                     <input type="text" class="admin-search" id="studentSearch" placeholder="Search name / reg no. / email..." style="min-width:180px;">
                                     <select id="studentCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
@@ -222,9 +222,27 @@
                     <div id="subtabViewOdHistory" style="display:none">
                         <div class="admin-card list-card" style="width:100%">
                             <div class="list-card-header">
-                                <h2>Student OD History</h2>
-                                <div style="display:flex;gap:10px;align-items:center;">
-                                    <input type="text" class="admin-search" id="odHistorySearch" placeholder="Search name / reg no / dept / section...">
+                                <h2>Student OD History <span class="page-total-badge" id="odHistoryPageTotal"></span></h2>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="text" class="admin-search" id="odHistorySearch" placeholder="Search name / reg no / dept / section..." style="min-width:180px;">
+                                    <select id="odHistoryCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
+                                        <option value="">All Categories</option>
+                                        <option value="UG">UG</option>
+                                        <option value="PG">PG</option>
+                                    </select>
+                                    <select id="odHistoryDeptFilter" class="admin-search" style="min-width:110px;cursor:pointer;" title="Filter by Department">
+                                        <option value="">All Depts</option>
+                                    </select>
+                                    <select id="odHistoryYearFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Year">
+                                        <option value="">All Years</option>
+                                        <option value="1">Year 1</option>
+                                        <option value="2">Year 2</option>
+                                        <option value="3">Year 3</option>
+                                        <option value="4">Year 4</option>
+                                    </select>
+                                    <select id="odHistorySectionFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Section">
+                                        <option value="">All Sections</option>
+                                    </select>
                                     <button class="action-btn icon-btn" id="refreshOdHistoryBtn" title="Refresh" type="button" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;border-radius:8px;padding:8px;cursor:pointer;display:inline-flex;align-items:center;">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                                     </button>
@@ -258,7 +276,7 @@
                 <div id="userSectionStaff" class="user-sub-section" style="display:none;">
                     <div class="admin-card list-card" style="width:100%;">
                         <div class="list-card-header">
-                            <h2>All Staff</h2>
+                            <h2>All Staff <span class="page-total-badge" id="staffPageTotal"></span></h2>
                             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                 <input type="text" class="admin-search" id="staffSearch" placeholder="Search name / roll no. / email..." style="min-width:180px;">
                                 <select id="staffCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
@@ -301,7 +319,7 @@
                 <div id="userSectionHod" class="user-sub-section" style="display:none;">
                     <div class="admin-card list-card" style="width:100%;">
                         <div class="list-card-header">
-                            <h2>All HODs</h2>
+                            <h2>All HODs <span class="page-total-badge" id="hodsPageTotal"></span></h2>
                             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                 <input type="text" class="admin-search" id="hodSearch" placeholder="Search name / roll no. / email..." style="min-width:180px;">
                                 <select id="hodCategoryFilter" class="admin-search" style="min-width:100px;cursor:pointer;" title="Filter by Category">
@@ -338,7 +356,7 @@
             <section class="admin-panel" id="panel-requests">
                 <div class="admin-card list-card requests-full">
                     <div class="list-card-header">
-                        <h2>Contact Admin Requests</h2>
+                        <h2>Contact Admin Requests <span class="page-total-badge" id="requestsPageTotal"></span></h2>
                         <input type="text" class="admin-search" id="requestsSearch" placeholder="Search reg/staff no. / role...">
                     </div>
                     <div class="table-wrap">
@@ -548,7 +566,7 @@
 
                 <div class="admin-card list-card">
                     <div class="list-card-header">
-                        <h2>All Events</h2>
+                        <h2>All Events <span class="page-total-badge" id="eventsPageTotal"></span></h2>
                         <input type="text" class="admin-search" id="eventsSearch" placeholder="Search event / college...">
                     </div>
                     <div class="table-wrap">
@@ -845,7 +863,7 @@
 
                 <div class="admin-card list-card">
                     <div class="list-card-header">
-                        <h2>All Admin Accounts</h2>
+                        <h2>All Admin Accounts <span class="page-total-badge" id="accountsPageTotal"></span></h2>
                     </div>
                     <div class="table-wrap">
                         <table class="admin-table">

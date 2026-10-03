@@ -1044,7 +1044,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderODs(ods, filter) {
         const container = document.getElementById('requestsContainer');
         const empty     = document.getElementById('emptyState');
-        setEl('sectionCount', `${ods.length} request${ods.length !== 1 ? 's' : ''}`);
+        setEl('sectionCount', `Total: ${ods.length}`);
+        setEl('sectionTotalBadge', `Total: ${ods.length}`);
 
         if (!ods || ods.length === 0) {
             if (container) container.innerHTML = '';
@@ -1381,7 +1382,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderCertificates(certs) {
         const container = document.getElementById('requestsContainer');
         const empty     = document.getElementById('emptyState');
-        setEl('sectionCount', `${certs.length} finished OD${certs.length !== 1 ? 's' : ''}`);
+        setEl('sectionCount', `Total: ${certs.length}`);
+        setEl('sectionTotalBadge', `Total: ${certs.length}`);
 
         if (!certs || certs.length === 0) {
             if (container) container.innerHTML = '';
@@ -2696,6 +2698,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             myStudentsList = await res.json();
             setEl('studentsCount', myStudentsList.length);
+            setEl('sectionTotalBadge', 'Total: ' + myStudentsList.length);
+            setEl('sectionCount', 'Total: ' + myStudentsList.length);
             renderMyStudents(myStudentsList);
         } catch (err) {
             console.error(err);

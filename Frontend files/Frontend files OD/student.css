@@ -3005,3 +3005,212 @@ select.cert-text-input {
         font-size: 6px !important;
     }
 }
+
+/* ══════════════════════════════════════════════
+   LIGHT THEME — Apply OD / Group OD / Apply Status
+   ══════════════════════════════════════════════ */
+
+/* ── Form cards (Apply OD & Group OD) ── */
+[data-theme="light"] .form-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .form-card-header {
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .form-card-header h2,
+[data-theme="light"] .form-card h2 {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+}
+
+[data-theme="light"] .form-card-header p,
+[data-theme="light"] .form-card p {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .form-card label {
+    color: #334155 !important;
+    font-weight: 600 !important;
+}
+
+[data-theme="light"] .input-wrapper input,
+[data-theme="light"] .input-wrapper textarea,
+[data-theme="light"] .input-wrapper select {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .input-wrapper input::placeholder,
+[data-theme="light"] .input-wrapper textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+[data-theme="light"] .input-wrapper input:focus,
+[data-theme="light"] .input-wrapper textarea:focus,
+[data-theme="light"] .input-wrapper select:focus {
+    border-color: #6366f1 !important;
+    background: #fafbff !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+
+[data-theme="light"] .input-wrapper select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .competition-select {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .competition-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .input-icon {
+    color: #6366f1 !important;
+}
+
+/* ── Apply Status: status-wrapper ── */
+[data-theme="light"] .status-wrapper {
+    background: transparent !important;
+}
+
+/* ── Apply Status: search input & filter selects ── */
+[data-theme="light"] .student-search-input {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .student-search-input::placeholder {
+    color: #94a3b8 !important;
+}
+
+[data-theme="light"] .student-search-input:focus {
+    border-color: #6366f1 !important;
+    background: #fafbff !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+
+[data-theme="light"] .student-filter-select {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .student-filter-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .student-filter-select:focus {
+    border-color: #6366f1 !important;
+    outline: none !important;
+}
+
+/* ── OD status cards in Apply Status tab ── */
+[data-theme="light"] .status-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .status-card:hover {
+    border-color: #6366f1 !important;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12) !important;
+}
+
+[data-theme="light"] .status-card h3,
+[data-theme="light"] .status-card h4 {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="light"] .status-card p {
+    color: #334155 !important;
+}
+
+[data-theme="light"] .status-card .od-meta span,
+[data-theme="light"] .od-meta-item {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .od-meta-item strong {
+    color: #0f172a !important;
+}
+
+/* ── Tabs nav (OD Apply / Group OD Apply / Apply Status) ── */
+[data-theme="light"] .tab-nav {
+    background: #f8fafc !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .tab-btn {
+    color: #475569 !important;
+    font-weight: 600 !important;
+}
+
+[data-theme="light"] .tab-btn:hover {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+}
+
+[data-theme="light"] .tab-btn.active {
+    color: #4338ca !important;
+    border-bottom-color: #6366f1 !important;
+    font-weight: 700 !important;
+}
+
+/* ── Group OD member list ── */
+[data-theme="light"] .member-list {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .member-item {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .member-hint {
+    color: #64748b !important;
+}
+
+/* ── Buttons ── */
+[data-theme="light"] .btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+[data-theme="light"] .btn-secondary {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+[data-theme="light"] .btn-secondary:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* ── Refresh button in status tab ── */
+[data-theme="light"] .refresh-btn {
+    background: #eef2ff !important;
+    border: 1px solid #c7d2fe !important;
+    color: #4338ca !important;
+}
+
+[data-theme="light"] .refresh-btn:hover {
+    background: #e0e7ff !important;
+}

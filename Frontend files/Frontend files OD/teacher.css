@@ -4572,3 +4572,155 @@ select option,
         font-size: 0.4rem !important;
     }
 }
+
+/* ══════════════════════════════════════════════════
+   LIGHT THEME & TOTAL BADGES — Teacher Dashboard
+   ══════════════════════════════════════════════════ */
+
+/* ── Page total badge ── */
+.page-total-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+[data-theme="light"] .page-total-badge {
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+    border-color: #c7d2fe !important;
+}
+
+/* ── Teacher Header (User details card) ── */
+[data-theme="light"] .teacher-header {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .teacher-name {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .teacher-role {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .teacher-details-row {
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .td-label {
+    color: #475569 !important;
+    font-weight: 600 !important;
+}
+
+[data-theme="light"] .td-value {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="light"] .stat-pill {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .stat-number {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .stat-label {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .mobile-title {
+    color: #0f172a !important;
+}
+
+/* ── Section Title & Headings ── */
+[data-theme="light"] .section-title h2 {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .section-title h2 span {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] #sectionTitleText {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .section-count {
+    color: #475569 !important;
+}
+
+/* ── OD Request Cards (Pending, Ongoing/No Action, Approved, Rejected, Certificates) ── */
+[data-theme="light"] .request-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .request-card:hover {
+    border-color: #6366f1 !important;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12) !important;
+}
+
+[data-theme="light"] .request-card .student-info h3 {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="light"] .request-card .student-info p {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .request-card .card-body {
+    color: #334155 !important;
+}
+
+[data-theme="light"] .request-card .card-body strong {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .request-card .card-actions {
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .request-card .view-details-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .request-card .view-details-btn:hover {
+    background: #e2e8f0 !important;
+    color: #000000 !important;
+}
+
+/* ── Time filter bar ── */
+[data-theme="light"] .time-filter-bar {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .time-btn {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .time-btn:hover {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+}
+
+[data-theme="light"] .time-btn.active {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+}

@@ -50,7 +50,6 @@
                         </svg>
                     </div>
                     <span class="nav-text">Pending</span>
-                    <span class="nav-badge pending" id="pendingCount">0</span>
                 </button>
                 <button class="nav-item" data-filter="ongoing" id="navOngoing">
                     <div class="nav-icon">
@@ -59,7 +58,6 @@
                         </svg>
                     </div>
                     <span class="nav-text">No Action</span>
-                    <span class="nav-badge ongoing" id="ongoingCount">0</span>
                 </button>
                 <button class="nav-item" data-filter="approved" id="navApproved">
                     <div class="nav-icon">
@@ -69,7 +67,6 @@
                         </svg>
                     </div>
                     <span class="nav-text">Accepted</span>
-                    <span class="nav-badge approved" id="approvedCount">0</span>
                 </button>
                 <button class="nav-item" data-filter="rejected" id="navRejected">
                     <div class="nav-icon">
@@ -80,7 +77,6 @@
                         </svg>
                     </div>
                     <span class="nav-text">Rejected</span>
-                    <span class="nav-badge rejected" id="rejectedCount">0</span>
                 </button>
 
                 <div class="nav-label" style="margin-top:20px">Certificates</div>
@@ -92,7 +88,6 @@
                         </svg>
                     </div>
                     <span class="nav-text">Certificates</span>
-                    <span class="nav-badge certificates" id="certificatesCount">0</span>
                 </button>
 
                 <div class="nav-label" style="margin-top:20px">Students</div>
@@ -106,7 +101,6 @@
                         </svg>
                     </div>
                     <span class="nav-text">My Students</span>
-                    <span class="nav-badge" id="studentsCount" style="background:rgba(99,102,241,0.2);color:#a5b4fc;">0</span>
                 </button>
 
                 <div class="nav-label" style="margin-top:20px">Reports</div>
@@ -238,6 +232,7 @@
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                     <span id="sectionTitleText">Pending OD Requests</span>
+                    <span class="page-total-badge" id="sectionTotalBadge">Total: 0</span>
                 </h2>
                 <div class="section-actions">
                     <span class="section-count" id="sectionCount"></span>

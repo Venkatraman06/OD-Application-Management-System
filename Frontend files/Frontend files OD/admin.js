@@ -411,11 +411,14 @@ function initAdminApp() {
             showToast('error', 'Failed to load student OD history.');
         }
         renderOdHistory(odHistoryList);
+        populateOdHistoryFilterDropdowns();
     }
 
     function renderOdHistory(list) {
         const tbody = document.getElementById('odHistoryTableBody');
         if (!tbody) return;
+        const totalEl = document.getElementById('odHistoryPageTotal');
+        if (totalEl) totalEl.textContent = 'Total: ' + list.length;
         if (!list.length) {
             tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No OD history found.</td></tr>';
             return;
@@ -439,17 +442,49 @@ function initAdminApp() {
         }).join('');
     }
 
-    document.getElementById('odHistorySearch')?.addEventListener('input', (e) => {
-        const q = e.target.value.trim().toLowerCase();
-        if (!q) { renderOdHistory(odHistoryList); return; }
-        renderOdHistory(odHistoryList.filter(s =>
+    function applyOdHistoryFilters() {
+        const q    = (document.getElementById('odHistorySearch')?.value ?? '').trim().toLowerCase();
+        const cat  = (document.getElementById('odHistoryCategoryFilter')?.value ?? '').trim().toUpperCase();
+        const dept = (document.getElementById('odHistoryDeptFilter')?.value ?? '').trim().toLowerCase();
+        const year = (document.getElementById('odHistoryYearFilter')?.value ?? '').trim();
+        const sec  = (document.getElementById('odHistorySectionFilter')?.value ?? '').trim().toLowerCase();
+        let list = odHistoryList;
+        if (q)    list = list.filter(s =>
             (s.studentName ?? s.StudentName ?? s.name ?? s.Name ?? '').toLowerCase().includes(q) ||
             (s.registerNumber ?? s.RegisterNumber ?? '').toLowerCase().includes(q) ||
             (s.category ?? s.Category ?? '').toLowerCase().includes(q) ||
             (s.class ?? s.Class ?? s.department ?? s.Department ?? '').toLowerCase().includes(q) ||
             (s.section ?? s.Section ?? '').toLowerCase().includes(q)
-        ));
-    });
+        );
+        if (cat)  list = list.filter(s => (s.category ?? s.Category ?? 'UG').toUpperCase() === cat);
+        if (dept) list = list.filter(s => (s.class ?? s.Class ?? s.department ?? s.Department ?? '').trim().toLowerCase() === dept);
+        if (year) list = list.filter(s => String(s.year ?? s.Year ?? '') === year);
+        if (sec)  list = list.filter(s => (s.section ?? s.Section ?? '').trim().toLowerCase() === sec);
+        renderOdHistory(list);
+    }
+
+    function populateOdHistoryFilterDropdowns() {
+        const depts = [...new Set(odHistoryList.map(s => (s.class ?? s.Class ?? s.department ?? s.Department ?? '').trim()).filter(Boolean))].sort();
+        const secs  = [...new Set(odHistoryList.map(s => (s.section ?? s.Section ?? '').trim()).filter(Boolean))].sort();
+        const deptSel = document.getElementById('odHistoryDeptFilter');
+        const secSel  = document.getElementById('odHistorySectionFilter');
+        if (deptSel) {
+            const prev = deptSel.value;
+            deptSel.innerHTML = '<option value="">All Depts</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            if (prev) deptSel.value = prev;
+        }
+        if (secSel) {
+            const prev = secSel.value;
+            secSel.innerHTML = '<option value="">All Sections</option>' + secs.map(s => `<option value="${s}">Sec ${s}</option>`).join('');
+            if (prev) secSel.value = prev;
+        }
+    }
+
+    document.getElementById('odHistorySearch')?.addEventListener('input', applyOdHistoryFilters);
+    document.getElementById('odHistoryCategoryFilter')?.addEventListener('change', applyOdHistoryFilters);
+    document.getElementById('odHistoryDeptFilter')?.addEventListener('change', applyOdHistoryFilters);
+    document.getElementById('odHistoryYearFilter')?.addEventListener('change', applyOdHistoryFilters);
+    document.getElementById('odHistorySectionFilter')?.addEventListener('change', applyOdHistoryFilters);
 
     document.getElementById('refreshOdHistoryBtn')?.addEventListener('click', () => {
         loadOdHistory();
@@ -475,6 +510,7 @@ function initAdminApp() {
             showToast('error', 'Failed to load students.');
         }
         setEl('studentTabCount', students.length);
+        setEl('studentsPageTotal', 'Total: ' + students.length);
         renderStudents(students);
         populateStudentFilterDropdowns();
     }
@@ -735,6 +771,7 @@ function initAdminApp() {
             showToast('error', 'Failed to load staff.');
         }
         setEl('staffTabCount', staff.length);
+        setEl('staffPageTotal', 'Total: ' + staff.length);
         renderStaff(staff);
         populateStaffFilterDropdowns();
     }
@@ -1058,6 +1095,7 @@ function initAdminApp() {
             showToast('error', 'Failed to load HODs.');
         }
         setEl('hodTabCount', hods.length);
+        setEl('hodsPageTotal', 'Total: ' + hods.length);
         renderHods(hods);
         populateHodFilterDropdowns();
     }
@@ -1317,6 +1355,7 @@ function initAdminApp() {
             showToast('error', 'Failed to load contact requests.');
         }
         setEl('requestsTabCount', requests.filter(r => !(r.isResolved ?? r.IsResolved)).length);
+        setEl('requestsPageTotal', 'Total: ' + requests.length);
         renderRequests(requests);
     }
 
@@ -1801,6 +1840,7 @@ function initAdminApp() {
             showToast('error', 'Failed to load events.');
         }
         setEl('eventsTabCount', events.length);
+        setEl('eventsPageTotal', 'Total: ' + events.length);
         renderEvents(events);
     }
 
@@ -2240,6 +2280,7 @@ function initAdminApp() {
             showToast('error', 'Failed to load admin accounts.');
         }
         setEl('accountsTabCount', adminAccounts.length);
+        setEl('accountsPageTotal', 'Total: ' + adminAccounts.length);
         renderAdminAccounts(adminAccounts);
     }
 
