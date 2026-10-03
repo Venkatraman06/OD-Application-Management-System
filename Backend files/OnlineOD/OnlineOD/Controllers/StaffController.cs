@@ -205,7 +205,7 @@ namespace OnlineOD.Controllers
         // (the same routing rule used for PendingODs). Used by the printed
         // OD report to show the actual class staff's name in the Staff
         // Signature line, instead of just the department name.
-        [Authorize(Roles = "Staff,HOD,Admin")]
+        [Authorize(Roles = "Student,Staff,HOD,Admin")]
         [HttpGet("ByDepartmentSection")]
         public async Task<IActionResult> GetByDepartmentSection([FromQuery] string department, [FromQuery] string? section = null)
         {
