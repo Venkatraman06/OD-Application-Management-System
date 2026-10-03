@@ -1502,23 +1502,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     let calFiltersInitialized = false;
 
     function isEffectiveWorkingDay(dateStr) {
-        if (Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr)) {
-            const v = calendarOverrides[dateStr];
-            return typeof v === 'object' ? v.isWorking : v;
+        if (typeof CollegeWorkingDays !== 'undefined') {
+            const myDept = (dept || '').trim();
+            const spec = CollegeWorkingDays.getSpecialDay(dateStr, myDept, null, selectedCalYear, selectedCalSection);
+            if (spec) {
+                if (spec.dayType === 'Holiday' || spec.isWorking === false) return false;
+                if (spec.dayType === 'Working' || spec.isWorking === true) return true;
+            }
+            return CollegeWorkingDays.isWorkingDay(dateStr, myDept, null, selectedCalYear, selectedCalSection);
         }
-        return typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.isWorkingDay(dateStr);
+        return false;
     }
 
     async function loadCalendarOverrides() {
         if (calendarOverridesLoaded) return;
         try {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+            const headers = { 'Cache-Control': 'no-cache' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
             const myDept = (dept || '').trim();
-            const res = await fetch(`${API_BASE}/api/WorkingDay?dept=${encodeURIComponent(myDept)}&_=${Date.now()}`, { cache: 'no-store' });
+            const res = await fetch(`${API_BASE}/api/WorkingDay?dept=${encodeURIComponent(myDept)}&_=${Date.now()}`, {
+                cache: 'no-store',
+                headers: headers
+            });
             if (res.ok) {
                 const data = await res.json();
                 calendarOverrides = {};
                 (data.overrides || []).forEach(o => {
-                    calendarOverrides[o.date] = { isWorking: o.isWorking, dayType: o.dayType || null, name: o.name || null };
+                    calendarOverrides[o.date] = {
+                        isWorking: o.isWorking,
+                        dayType: o.dayType || null,
+                        name: o.name || null,
+                        department: o.department || null,
+                        course: o.course || null,
+                        year: o.year || null,
+                        section: o.section || null
+                    };
                 });
                 if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.specialDaysMap) {
                     CollegeWorkingDays.specialDaysMap.clear();
@@ -2190,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (selectedCalSection && s.section && s.section !== 'All' && s.section.toUpperCase() !== selectedCalSection.toUpperCase()) return false;
             return true;
         });
-        const special = specials[0] || (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(dateStr) : null);
+        const special = specials[0] || (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(dateStr, (dept || '').trim(), null, selectedCalYear, selectedCalSection) : null);
 
         const isWorking = isEffectiveWorkingDay(dateStr);
         const covering = isWorking ? odsCoveringDate(dateStr) : [];

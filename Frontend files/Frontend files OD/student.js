@@ -290,32 +290,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         const confirmBtn = document.getElementById('saturdayModalConfirmBtn');
         const skipBtn = document.getElementById('saturdayModalSkipBtn');
 
-        // Look up special day entries for this date scoped to student department/year/section
+        // Look up special day entries for this date scoped to student department/year/section/category
         const dept = (localStorage.getItem('userDept') || '').trim();
         const year = (localStorage.getItem('userYear') || '').trim();
         const section = (localStorage.getItem('userSection') || '').trim();
+        const category = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
 
         let specialLines = [];
         if (typeof CollegeWorkingDays !== 'undefined') {
             const allDateSpecials = CollegeWorkingDays.getSpecialDaysForDate
-                ? CollegeWorkingDays.getSpecialDaysForDate(dateStr)
+                ? CollegeWorkingDays.getSpecialDaysForDate(dateStr, dept, year, section, category)
                 : [];
 
-            const matching = allDateSpecials.filter(s => {
-                if (dept && s.department && !s.department.toLowerCase().includes(dept.toLowerCase()) && !dept.toLowerCase().includes(s.department.toLowerCase())) return false;
-                if (year && s.year && s.year !== parseInt(year, 10)) return false;
-                if (section && s.section && s.section !== 'All' && s.section.toUpperCase() !== section.toUpperCase()) return false;
-                return true;
-            });
-
-            if (matching.length > 0) {
-                matching.forEach(s => {
+            if (allDateSpecials.length > 0) {
+                allDateSpecials.forEach(s => {
                     const labelType = s.dayType === 'Examination' ? 'Examination' : 'Holiday';
                     const nameLabel = s.name || s.dayType || labelType;
                     specialLines.push(`${labelType}: ${nameLabel}`);
                 });
             } else {
-                const single = CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section) : null;
+                const single = CollegeWorkingDays.getSpecialDay ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section, category) : null;
                 if (single && (single.name || single.dayType)) {
                     const labelType = single.dayType === 'Examination' ? 'Examination' : 'Holiday';
                     const nameLabel = single.name || single.dayType || labelType;
@@ -610,7 +604,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const myDept = (localStorage.getItem('userDept') || '').trim();
         const myYear = (localStorage.getItem('userYear') || '').trim();
         const mySec  = (localStorage.getItem('userSection') || '').trim();
-        const specials = CollegeWorkingDays.getSpecialDaysInRange(fromVal, toVal, myDept, myYear, mySec);
+        const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
+        const specials = CollegeWorkingDays.getSpecialDaysInRange(fromVal, toVal, myDept, myYear, mySec, myCourse);
         if (!specials || specials.length === 0) return;
 
         // Remove any existing warning overlay
@@ -1138,8 +1133,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const myDept = (localStorage.getItem('userDept') || '').trim();
         const myYear = (localStorage.getItem('userYear') || '').trim();
         const mySec  = (localStorage.getItem('userSection') || '').trim();
+        const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
         const specials = (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysInRange)
-            ? CollegeWorkingDays.getSpecialDaysInRange(fromDate, toDate, myDept, myYear, mySec)
+            ? CollegeWorkingDays.getSpecialDaysInRange(fromDate, toDate, myDept, myYear, mySec, myCourse)
             : [];
 
         if (specials.length > 0 && !_specialDayWarningAcknowledged) {
@@ -1292,8 +1288,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const myDept = (localStorage.getItem('userDept') || '').trim();
         const myYear = (localStorage.getItem('userYear') || '').trim();
         const mySec  = (localStorage.getItem('userSection') || '').trim();
+        const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
         const specials = (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDaysInRange)
-            ? CollegeWorkingDays.getSpecialDaysInRange(fromDate, toDate, myDept, myYear, mySec)
+            ? CollegeWorkingDays.getSpecialDaysInRange(fromDate, toDate, myDept, myYear, mySec, myCourse)
             : [];
 
         if (specials.length > 0 && !_groupSpecialDayWarningAcknowledged) {

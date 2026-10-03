@@ -104,18 +104,29 @@ namespace OnlineOD.Service
             var normalized = Normalize(dateStr);
             if (normalized == null) return false;
 
-            if (isWorking) WorkingDays.Add(normalized);
-            else WorkingDays.Remove(normalized);
+            var cleanDept = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+            var cleanCourse = string.IsNullOrWhiteSpace(course) ? null : course.Trim();
+            var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
+            var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
+            var cleanName = name?.Trim() ?? string.Empty;
+            var cleanType = dayType?.Trim();
 
-            if (!string.IsNullOrWhiteSpace(dayType))
+            // Baseline WorkingDays (HashSet) only reflects true institution-wide/global overrides.
+            // Scoped overrides (for specific department, category/course, year, or section) MUST NOT
+            // mutate the global WorkingDays set, or they leak to all other departments/classes.
+            bool isGlobalScope = string.IsNullOrWhiteSpace(cleanDept) &&
+                                 !cleanYear.HasValue &&
+                                 string.IsNullOrWhiteSpace(cleanSec) &&
+                                 (string.IsNullOrWhiteSpace(cleanCourse) || cleanCourse.Equals("All", StringComparison.OrdinalIgnoreCase));
+
+            if (isGlobalScope)
             {
-                var cleanDept = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
-                var cleanCourse = string.IsNullOrWhiteSpace(course) ? null : course.Trim();
-                var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
-                var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
-                var cleanName = name?.Trim() ?? string.Empty;
-                var cleanType = dayType.Trim();
+                if (isWorking) WorkingDays.Add(normalized);
+                else WorkingDays.Remove(normalized);
+            }
 
+            if (!string.IsNullOrWhiteSpace(cleanType))
+            {
                 // Check if matching item already in list to update or add
                 var existing = _specialDaysList.FirstOrDefault(s =>
                     (id > 0 && s.Id == id) ||
@@ -163,47 +174,43 @@ namespace OnlineOD.Service
 
         private static bool MatchesScope(SpecialDayItem item, string? dept, int? year, string? section, string? category = null)
         {
-            // Global/institution-wide item (no department) matches all
-            if (string.IsNullOrWhiteSpace(item.Department))
-                return true;
-
-            // If a department is specified, it must match
-            if (!string.IsNullOrWhiteSpace(dept))
+            // 1. Department matching
+            if (!string.IsNullOrWhiteSpace(item.Department))
             {
-                if (!string.Equals(item.Department, dept, StringComparison.OrdinalIgnoreCase) &&
-                    !item.Department.Contains(dept, StringComparison.OrdinalIgnoreCase) &&
-                    !dept.Contains(item.Department, StringComparison.OrdinalIgnoreCase))
-                {
+                if (string.IsNullOrWhiteSpace(dept))
                     return false;
-                }
-            }
-            else
-            {
-                // No department specified in query/filter: do not leak department-specific item
-                return false;
-            }
 
-            if (year.HasValue && year.Value > 0 && item.Year.HasValue && item.Year.Value > 0)
-            {
-                if (item.Year.Value != year.Value)
+                var itemDept = item.Department.Trim().ToLower();
+                var queryDept = dept.Trim().ToLower();
+                if (itemDept != queryDept && !itemDept.Contains(queryDept) && !queryDept.Contains(itemDept))
                     return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(section) && !section.Equals("All", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(item.Section) && !item.Section.Equals("All", StringComparison.OrdinalIgnoreCase))
+            // 2. Category / Course matching (UG / PG)
+            if (!string.IsNullOrWhiteSpace(item.Course) && !item.Course.Equals("All", StringComparison.OrdinalIgnoreCase))
             {
-                if (!string.Equals(item.Section, section, StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(category))
+                    return false;
+
+                var itemCourse = item.Course.Trim().ToLower();
+                var queryCourse = category.Trim().ToLower();
+                if (itemCourse != queryCourse && !itemCourse.Contains(queryCourse) && !queryCourse.Contains(itemCourse))
                     return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(category) && !string.IsNullOrWhiteSpace(item.Course))
+            // 3. Year matching
+            if (item.Year.HasValue && item.Year.Value > 0)
             {
-                if (!string.Equals(item.Course, category, StringComparison.OrdinalIgnoreCase) &&
-                    !item.Course.Contains(category, StringComparison.OrdinalIgnoreCase) &&
-                    !category.Contains(item.Course, StringComparison.OrdinalIgnoreCase))
-                {
+                if (!year.HasValue || year.Value <= 0 || item.Year.Value != year.Value)
                     return false;
-                }
+            }
+
+            // 4. Section matching
+            if (!string.IsNullOrWhiteSpace(item.Section) && !item.Section.Equals("All", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(item.Section.Trim(), section.Trim(), StringComparison.OrdinalIgnoreCase))
+                    return false;
             }
 
             return true;

@@ -58,6 +58,44 @@ const CollegeWorkingDays = (() => {
     const minDate = sorted[0];
     const maxDate = sorted[sorted.length - 1];
 
+    function isSunday(dateStr) {
+        if (!dateStr) return false;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return false;
+        const dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return dt.getDay() === 0;
+    }
+
+    function matchesSpecialScope(s, cleanDept, cleanYear, cleanSec, cleanCourse) {
+        if (!s) return false;
+
+        // 1. Department
+        if (s.department && s.department.trim() !== '') {
+            if (!cleanDept) return false;
+            const sDept = s.department.trim().toLowerCase();
+            if (sDept !== cleanDept && !sDept.includes(cleanDept) && !cleanDept.includes(sDept)) return false;
+        }
+
+        // 2. Category / Course (UG / PG)
+        if (s.course && s.course.trim() !== '' && s.course.trim().toLowerCase() !== 'all') {
+            if (!cleanCourse) return false;
+            const sC = s.course.trim().toLowerCase();
+            if (sC !== cleanCourse && !sC.includes(cleanCourse) && !cleanCourse.includes(sC)) return false;
+        }
+
+        // 3. Year
+        if (s.year && s.year > 0) {
+            if (!cleanYear || s.year !== cleanYear) return false;
+        }
+
+        // 4. Section
+        if (s.section && s.section.trim() !== '' && s.section.trim().toUpperCase() !== 'ALL') {
+            if (!cleanSec || cleanSec === 'ALL' || s.section.trim().toUpperCase() !== cleanSec) return false;
+        }
+
+        return true;
+    }
+
     /** true if dateStr (YYYY-MM-DD) is a published college working day for the given scope */
     function isWorkingDay(dateStr, dept, year, section, course) {
         if (!dateStr) return false;
@@ -69,6 +107,7 @@ const CollegeWorkingDays = (() => {
         const special = getSpecialDay(dateStr, d, y, s, c);
         if (special && special.dayType === 'Holiday') return false;
         if (special && special.dayType === 'Working') return true;
+        if (isSunday(dateStr)) return false;
         return workingSet.has(dateStr);
     }
 
@@ -84,32 +123,19 @@ const CollegeWorkingDays = (() => {
         const list = specialDaysMap.get(dateStr);
         if (!list || list.length === 0) return null;
 
-        const cleanDept = (dept || '').trim().toLowerCase();
-        const cleanYear = year ? parseInt(year, 10) : null;
-        const cleanSec = (section && section !== 'All') ? section.trim().toUpperCase() : null;
-        const cleanCourse = (course && course !== 'All') ? course.trim().toLowerCase() : null;
+        const cleanDept = (dept || (typeof localStorage !== 'undefined' ? localStorage.getItem('userDept') : null) || '').trim().toLowerCase();
+        const cleanYear = year ? parseInt(year, 10) : (typeof localStorage !== 'undefined' && localStorage.getItem('userYear') ? parseInt(localStorage.getItem('userYear'), 10) : null);
+        const cleanSec = (section && section !== 'All') ? section.trim().toUpperCase() : (typeof localStorage !== 'undefined' && localStorage.getItem('userSection') && localStorage.getItem('userSection') !== 'All' ? localStorage.getItem('userSection').trim().toUpperCase() : null);
+        const cleanCourse = (course && course !== 'All') ? course.trim().toLowerCase() : (typeof localStorage !== 'undefined' && (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')) && (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')) !== 'All' ? (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')).trim().toLowerCase() : null);
 
-        // 1. Try to find a precise match for this scope
-        const match = list.find(s => {
-            if (s.department) {
-                const sDept = s.department.toLowerCase();
-                if (!cleanDept || (!sDept.includes(cleanDept) && !cleanDept.includes(sDept))) return false;
-            }
-            if (cleanYear && s.year && s.year !== cleanYear) return false;
-            if (cleanSec && s.section && s.section !== 'All' && s.section.toUpperCase() !== cleanSec) return false;
-            if (cleanCourse && s.course && s.course !== 'All') {
-                const sC = s.course.toLowerCase();
-                if (!sC.includes(cleanCourse) && !cleanCourse.includes(sC)) return false;
-            }
-            return true;
-        });
+        // 1. Direct scoped match
+        const match = list.find(s => matchesSpecialScope(s, cleanDept, cleanYear, cleanSec, cleanCourse));
         if (match) return match;
 
-        // 2. If no direct match, check if there is a global (institution-wide) entry (no department set)
+        // 2. Global (institution-wide) entry (no department set)
         const globalEntry = list.find(s => !s.department || s.department.trim() === '');
         if (globalEntry) return globalEntry;
 
-        // 3. Otherwise, return null (do NOT return another department's holiday!)
         return null;
     }
 
@@ -122,33 +148,27 @@ const CollegeWorkingDays = (() => {
         const cleanDept = (dept || '').trim().toLowerCase();
         const cleanYear = year ? parseInt(year, 10) : null;
         const cleanSec = (section && section !== 'All') ? section.trim().toUpperCase() : null;
+        const cleanCourse = (course && course !== 'All') ? course.trim().toLowerCase() : null;
 
-        return list.filter(s => {
-            if (s.department) {
-                const sDept = s.department.toLowerCase();
-                if (cleanDept && !sDept.includes(cleanDept) && !cleanDept.includes(sDept)) return false;
-            }
-            if (cleanYear && s.year && s.year !== cleanYear) return false;
-            if (cleanSec && s.section && s.section !== 'All' && s.section.toUpperCase() !== cleanSec) return false;
-            return true;
-        });
+        return list.filter(s => matchesSpecialScope(s, cleanDept, cleanYear, cleanSec, cleanCourse));
     }
 
     /** returns array of special days within [fromStr, toStr] range, optionally filtered by scope */
     function getSpecialDaysInRange(fromStr, toStr, dept, year, section, course) {
         if (!fromStr || !toStr || fromStr > toStr) return [];
+        const cleanDept = (dept || (typeof localStorage !== 'undefined' ? localStorage.getItem('userDept') : null) || '').trim().toLowerCase();
+        const cleanYear = year ? parseInt(year, 10) : (typeof localStorage !== 'undefined' && localStorage.getItem('userYear') ? parseInt(localStorage.getItem('userYear'), 10) : null);
+        const cleanSec = (section && section !== 'All') ? section.trim().toUpperCase() : (typeof localStorage !== 'undefined' && localStorage.getItem('userSection') && localStorage.getItem('userSection') !== 'All' ? localStorage.getItem('userSection').trim().toUpperCase() : null);
+        const cleanCourse = (course && course !== 'All') ? course.trim().toLowerCase() : (typeof localStorage !== 'undefined' && (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')) && (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')) !== 'All' ? (localStorage.getItem('userCategory') || localStorage.getItem('userCourse')).trim().toLowerCase() : null);
+
         const result = [];
         for (const [date, list] of specialDaysMap.entries()) {
             if (date >= fromStr && date <= toStr) {
                 const items = Array.isArray(list) ? list : (list ? [list] : []);
                 items.forEach(item => {
-                    if (item.department) {
-                        const iDept = item.department.toLowerCase();
-                        if (dept && !iDept.includes(dept.toLowerCase()) && !dept.toLowerCase().includes(iDept)) return;
+                    if (matchesSpecialScope(item, cleanDept, cleanYear, cleanSec, cleanCourse)) {
+                        result.push(item);
                     }
-                    if (year && item.year && item.year !== parseInt(year, 10)) return;
-                    if (section && section !== 'All' && item.section && item.section !== 'All' && item.section.toUpperCase() !== section.toUpperCase()) return;
-                    result.push(item);
                 });
             }
         }

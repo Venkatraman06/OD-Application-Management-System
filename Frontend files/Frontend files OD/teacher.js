@@ -1930,11 +1930,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let calendarOverridesLoaded = false;
 
     function isEffectiveWorkingDay(dateStr) {
-        if (Object.prototype.hasOwnProperty.call(calendarOverrides, dateStr)) {
-            const v = calendarOverrides[dateStr];
-            return typeof v === 'object' ? v.isWorking : v;
-        }
-        return typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.isWorkingDay(dateStr);
+        const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
+        const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
+            ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section, myCourse)
+            : null;
+        if (special && special.dayType === 'Holiday') return false;
+        if (special && special.dayType === 'Working') return true;
+        return typeof CollegeWorkingDays !== 'undefined' ? CollegeWorkingDays.isWorkingDay(dateStr, dept, year, section, myCourse) : true;
     }
 
     async function loadCalendarOverrides() {
@@ -1943,15 +1945,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const myDept = (dept || '').trim();
             const myYear = (year || '').trim();
             const mySec = (section || '').trim();
-            const myCourse = (localStorage.getItem('userCourse') || '').trim();
+            const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
             const params = new URLSearchParams();
             params.append('_', Date.now().toString());
             if (myDept) params.append('dept', myDept);
             if (myYear) params.append('year', myYear);
             if (mySec) params.append('section', mySec);
-            if (myCourse) params.append('course', myCourse);
+            if (myCourse) {
+                params.append('course', myCourse);
+                params.append('category', myCourse);
+            }
 
-            const res = await fetch(`${API_BASE}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
+            const fetchFn = typeof authFetch === 'function' ? authFetch : fetch;
+            const res = await fetchFn(`${API_BASE}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 calendarOverrides = {};
@@ -1974,7 +1980,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 department: s.department || null,
                                 course: s.course || null,
                                 year: s.year || null,
-                                section: s.section || null
+                                section: s.section || null,
+                                addedBy: s.addedBy || s.AddedBy || null
                             });
                         }
                     });
@@ -2082,6 +2089,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+        const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
+
         let html = '';
         for (let i = 0; i < firstDow; i++) html += '<div class="calendar-day empty"></div>';
 
@@ -2093,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Check for special day (Holiday / Examination) matching this staff member's scope
             const specialDay = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section)
+                ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section, staffCourse)
                 : null;
             const isWorking = isEffectiveWorkingDay(dateStr);
             const isHoliday     = specialDay && specialDay.dayType === 'Holiday';
@@ -2191,8 +2200,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function openStaffDayDetail(dateStr) {
         dayDetailCurrentDate = dateStr;
+        const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
         const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-            ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section)
+            ? CollegeWorkingDays.getSpecialDay(dateStr, dept, year, section, staffCourse)
             : null;
         const isWorking = isEffectiveWorkingDay(dateStr);
         const covering = odsCoveringDate(dateStr);
@@ -2362,8 +2372,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const curDate = dayDetailCurrentDate;
             closeStaffDayDetail();
+            const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
+                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section, staffCourse)
                 : null;
             const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
             openAddCalendarModalWithData({
@@ -2383,8 +2394,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (deleteBtn) {
             e.preventDefault();
             const curDate = dayDetailCurrentDate;
+            const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
+                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section, staffCourse)
                 : null;
             const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
             const typeAndName = rangeInfo.name ? `${rangeInfo.dayType}: ${rangeInfo.name}` : rangeInfo.dayType;
@@ -2432,8 +2444,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (confirmDeleteBtn) {
             e.preventDefault();
             const curDate = dayDetailCurrentDate;
+            const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
             const special = typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.getSpecialDay
-                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section)
+                ? CollegeWorkingDays.getSpecialDay(curDate, dept, year, section, staffCourse)
                 : null;
             const rangeInfo = findSpecialDayRange(curDate, special, dept, year, section);
 
