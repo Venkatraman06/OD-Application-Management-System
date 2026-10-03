@@ -285,7 +285,8 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "Invalid file type. Allowed formats: JPG, PNG, GIF, WEBP, SVG." });
 
             var allowedMimes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml" };
-            if (!allowedMimes.Contains(signature.ContentType.ToLowerInvariant()))
+            var mimeType = signature.ContentType.ToLowerInvariant();
+            if (!allowedMimes.Contains(mimeType))
                 return BadRequest(new { message = "Invalid file content type. Only image files are accepted." });
 
             if (signature.Length > 5 * 1024 * 1024)
@@ -294,23 +295,24 @@ namespace OnlineOD.Controllers
             var hod = await _hodService.GetHodByIdAsync(id);
             if (hod == null) return NotFound(new { message = "HOD not found." });
 
-            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "signatures");
-            Directory.CreateDirectory(uploadsDir);
-
-            // Delete old signature file if it exists
-            if (!string.IsNullOrEmpty(hod.DigitalSignature))
+            // Delete old signature file if it was a file path and exists
+            if (!string.IsNullOrEmpty(hod.DigitalSignature) && hod.DigitalSignature.StartsWith("/"))
             {
-                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", hod.DigitalSignature.TrimStart('/'));
-                if (System.IO.File.Exists(oldPath))
-                    System.IO.File.Delete(oldPath);
+                try
+                {
+                    var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", hod.DigitalSignature.TrimStart('/'));
+                    if (System.IO.File.Exists(oldPath))
+                        System.IO.File.Delete(oldPath);
+                }
+                catch { /* ignore file cleanup error */ }
             }
 
-            var fileName = $"hod_{id}_{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-            using var stream = System.IO.File.Create(filePath);
-            await signature.CopyToAsync(stream);
-
-            hod.DigitalSignature = $"/uploads/signatures/{fileName}";
+            // Encode signature image as persistent base64 Data URL stored in database
+            // so it survives Render redeployments and container restarts without 404
+            using var ms = new MemoryStream();
+            await signature.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            hod.DigitalSignature = $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
             await _hodService.UpdateHodAsync(hod);
 
             return Ok(new { message = "Signature uploaded successfully.", signatureUrl = hod.DigitalSignature });

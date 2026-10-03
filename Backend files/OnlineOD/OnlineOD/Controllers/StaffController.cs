@@ -244,9 +244,9 @@ namespace OnlineOD.Controllers
             if (!allowedExtensions.Contains(ext))
                 return BadRequest(new { message = "Invalid file type. Allowed formats: JPG, PNG, GIF, WEBP, SVG." });
 
-            // Validate MIME type
             var allowedMimes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml" };
-            if (!allowedMimes.Contains(signature.ContentType.ToLowerInvariant()))
+            var mimeType = signature.ContentType.ToLowerInvariant();
+            if (!allowedMimes.Contains(mimeType))
                 return BadRequest(new { message = "Invalid file content type. Only image files are accepted." });
 
             if (signature.Length > 5 * 1024 * 1024)
@@ -255,23 +255,24 @@ namespace OnlineOD.Controllers
             var staff = await _staffService.GetStaffByIdAsync(id);
             if (staff == null) return NotFound(new { message = "Staff member not found." });
 
-            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "signatures");
-            Directory.CreateDirectory(uploadsDir);
-
-            // Delete old signature file if it exists
-            if (!string.IsNullOrEmpty(staff.DigitalSignature))
+            // Delete old signature file if it was a file path and exists
+            if (!string.IsNullOrEmpty(staff.DigitalSignature) && staff.DigitalSignature.StartsWith("/"))
             {
-                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", staff.DigitalSignature.TrimStart('/'));
-                if (System.IO.File.Exists(oldPath))
-                    System.IO.File.Delete(oldPath);
+                try
+                {
+                    var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", staff.DigitalSignature.TrimStart('/'));
+                    if (System.IO.File.Exists(oldPath))
+                        System.IO.File.Delete(oldPath);
+                }
+                catch { /* ignore file cleanup error */ }
             }
 
-            var fileName = $"staff_{id}_{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(uploadsDir, fileName);
-            using var stream = System.IO.File.Create(filePath);
-            await signature.CopyToAsync(stream);
-
-            staff.DigitalSignature = $"/uploads/signatures/{fileName}";
+            // Encode signature image as persistent base64 Data URL stored in database
+            // so it survives Render redeployments and container restarts without 404
+            using var ms = new MemoryStream();
+            await signature.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            staff.DigitalSignature = $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
             await _staffService.UpdateStaffAsync(staff);
 
             return Ok(new { message = "Signature uploaded successfully.", signatureUrl = staff.DigitalSignature });

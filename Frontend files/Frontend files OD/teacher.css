@@ -4724,3 +4724,11 @@ select option,
     background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
     color: #ffffff !important;
 }
+
+/* ── Sidebar Logo "On Duty Application" Light Theme ── */
+[data-theme="light"] .logo-text {
+    color: #0f172a !important;
+}
+[data-theme="light"] .logo-role {
+    color: #475569 !important;
+}

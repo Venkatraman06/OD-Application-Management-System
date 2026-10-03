@@ -4231,3 +4231,11 @@ select option,
     border: 1px solid #bbf7d0 !important;
     color: #166534 !important;
 }
+
+/* ── Sidebar Logo "On Duty Application" Light Theme ── */
+[data-theme="light"] .logo-text {
+    color: #0f172a !important;
+}
+[data-theme="light"] .logo-role {
+    color: #475569 !important;
+}
