@@ -241,7 +241,9 @@ using (var scope = app.Services.CreateScope())
 
                     ALTER TABLE ""Students"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
                     ALTER TABLE ""Staffs"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
+                    ALTER TABLE ""Staffs"" ADD COLUMN IF NOT EXISTS ""DigitalSignature"" text;
                     ALTER TABLE ""Hods"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
+                    ALTER TABLE ""Hods"" ADD COLUMN IF NOT EXISTS ""DigitalSignature"" text;
                     ALTER TABLE ""OdApplies"" ADD COLUMN IF NOT EXISTS ""Category"" text DEFAULT 'UG';
 
                     UPDATE ""Students"" SET ""Category"" = 'UG' WHERE ""Category"" IS NULL OR ""Category"" = '';
@@ -300,9 +302,17 @@ using (var scope = app.Services.CreateScope())
                     BEGIN
                         ALTER TABLE [Staffs] ADD [Category] nvarchar(50) NOT NULL CONSTRAINT DF_Staffs_Category DEFAULT 'UG';
                     END
+                    IF COL_LENGTH('Staffs', 'DigitalSignature') IS NULL
+                    BEGIN
+                        ALTER TABLE [Staffs] ADD [DigitalSignature] nvarchar(max) NULL;
+                    END
                     IF COL_LENGTH('Hods', 'Category') IS NULL
                     BEGIN
                         ALTER TABLE [Hods] ADD [Category] nvarchar(50) NOT NULL CONSTRAINT DF_Hods_Category DEFAULT 'UG';
+                    END
+                    IF COL_LENGTH('Hods', 'DigitalSignature') IS NULL
+                    BEGIN
+                        ALTER TABLE [Hods] ADD [DigitalSignature] nvarchar(max) NULL;
                     END
                     IF COL_LENGTH('OdApplies', 'Category') IS NULL
                     BEGIN
