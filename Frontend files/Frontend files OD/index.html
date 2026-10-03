@@ -16,19 +16,9 @@
     </script>
 </head>
 <body>
-    <!-- Door Opening Intro Animation Overlay -->
-    <div class="door-intro-overlay" id="doorIntroOverlay">
-        <div class="door-panel door-panel-left"></div>
-        <div class="door-panel door-panel-right"></div>
-        <div class="door-center-content">
-            <div class="door-logo-wrap">
-                <img src="od_logo.jpg" alt="OD Application Logo" class="door-logo-img">
-                <div class="door-brand-text">
-                    <h2>OD Application</h2>
-                    <p>On Duty Management System</p>
-                </div>
-            </div>
-        </div>
+    <!-- Logo Reveal Intro Animation -->
+    <div class="logo-reveal-overlay" id="logoRevealOverlay" aria-hidden="true">
+        <img src="od_logo_symbol.png" alt="" class="logo-reveal-symbol" id="logoRevealSymbol">
     </div>
 
     <div class="bg-animation">
@@ -39,12 +29,12 @@
         <div class="floating-shape shape-5"></div>
     </div>
 
-    <div class="login-container">
+    <div class="login-container login-anim-init" id="loginContainer">
         <div class="branding-panel">
             <div class="brand-content">
                 <div class="logo-container">
                     <div class="logo-icon brand-logo-icon">
-                        <img src="od_logo.jpg" alt="OD Application Logo" class="brand-logo-img">
+                        <img src="od_logo_symbol.png" alt="OD Application Logo" class="brand-logo-img brand-logo-symbol">
                     </div>
                 </div>
                 <h1 class="brand-title">OD Application</h1>
@@ -68,7 +58,7 @@
                                 <line x1="16" y1="17" x2="8" y2="17"/>
                             </svg>
                         </div>
-                        <span>Track OD Status & History</span>
+                        <span>Track OD Status &amp; History</span>
                     </div>
                 </div>
             </div>
@@ -81,7 +71,7 @@
             <div class="form-wrapper">
                 <div class="mobile-logo">
                     <div class="logo-icon small brand-logo-icon">
-                        <img src="od_logo.jpg" alt="OD Application Logo" class="brand-logo-img">
+                        <img src="od_logo_symbol.png" alt="OD Application Logo" class="brand-logo-img brand-logo-symbol">
                     </div>
                     <h2 class="mobile-title">OD Application</h2>
                 </div>
@@ -162,6 +152,7 @@
             </div>
         </div>
     </div>
+
 
     <div class="toast-container" id="toastContainer"></div>
 

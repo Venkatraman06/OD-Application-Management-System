@@ -1,29 +1,26 @@
 const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ── Door Opening Intro Animation ─────────────────────────────────────
-    const doorOverlay = document.getElementById('doorIntroOverlay');
+    // ── Logo Reveal Intro Animation ─────────────────────────────────────
+    const logoOverlay = document.getElementById('logoRevealOverlay');
     const rollNumberInput = document.getElementById('rollNumber');
     const passwordInput = document.getElementById('password');
 
-    if (doorOverlay) {
-        let isOpened = false;
-        function openDoors() {
-            if (isOpened) return;
-            isOpened = true;
-            doorOverlay.classList.add('door-open');
-            setTimeout(() => {
-                doorOverlay.classList.add('door-finished');
-                rollNumberInput?.focus();
-            }, 1250);
-        }
+    if (logoOverlay) {
+        let isFinished = false;
+        const finishIntro = () => {
+            if (isFinished) return;
+            isFinished = true;
+            logoOverlay.style.display = 'none';
+            rollNumberInput?.focus();
+        };
 
-        // Trigger opening after brief logo presentation
-        setTimeout(openDoors, 600);
+        // Skip immediately on click or any keypress
+        logoOverlay.addEventListener('click', finishIntro);
+        window.addEventListener('keydown', finishIntro, { once: true });
 
-        // Allow immediate skip on click or keypress
-        doorOverlay.addEventListener('click', openDoors);
-        window.addEventListener('keydown', openDoors, { once: true });
+        // Auto-cleanup after CSS animation completes
+        setTimeout(finishIntro, 1100);
     }
 
     const loginForm = document.getElementById('loginForm');
