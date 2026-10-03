@@ -668,35 +668,52 @@
             setText('numberOfDays', numberOfDays);
             setText('reason', reason);
 
-            // Staff Signature line lookup + digital signature image
+            // Determine actual approval statuses
+            const isFacultyApproved = String(facultyStatus || '').trim().toLowerCase() === 'approved';
+            const isHodApproved = String(hodStatus || '').trim().toLowerCase() === 'approved';
+
+            // Staff Signature line lookup + digital signature image (shown ONLY when Faculty approval is Approved)
             setText('signStaffName', department ? `${department} Department` : 'Class Advisor');
             const staffData = await fetchClassStaffName(department, section);
+            const staffImg = document.getElementById('signStaffImg');
             if (staffData) {
                 setText('signStaffName', staffData.name);
-                const staffImg = document.getElementById('signStaffImg');
-                if (staffImg && staffData.signatureUrl) {
+                if (isFacultyApproved && staffData.signatureUrl && staffImg) {
                     staffImg.src = `${API_BASE}${staffData.signatureUrl}`;
                     staffImg.style.display = 'block';
-                    staffImg.onerror = () => { staffImg.style.display = 'none'; };
+                    staffImg.onerror = () => { staffImg.style.display = 'none'; staffImg.src = ''; };
+                } else if (staffImg) {
+                    staffImg.style.display = 'none';
+                    staffImg.src = '';
                 }
+            } else if (staffImg) {
+                staffImg.style.display = 'none';
+                staffImg.src = '';
             }
 
-            // HOD Signature line lookup with Dr. prefix + digital signature image
+            // HOD Signature line lookup with Dr. prefix + digital signature image (shown ONLY when HOD approval is Approved)
             const hodData = await fetchHodName(department);
+            const hodImg = document.getElementById('signHodImg');
             if (hodData) {
-                const cleanName = hodData.name.replace(/^dr\.?\s+/i, '');
+                const cleanName = (hodData.name || '').replace(/^dr\.?\s+/i, '');
                 const signHodEl = document.getElementById('signHodName');
                 if (signHodEl) {
                     signHodEl.innerHTML = `Dr. ${escHtml(cleanName)}<br><span style="font-size:10px;font-weight:normal;opacity:0.8">HOD</span>`;
                 }
-                const hodImg = document.getElementById('signHodImg');
-                if (hodImg && hodData.signatureUrl) {
+                if (isHodApproved && hodData.signatureUrl && hodImg) {
                     hodImg.src = `${API_BASE}${hodData.signatureUrl}`;
                     hodImg.style.display = 'block';
-                    hodImg.onerror = () => { hodImg.style.display = 'none'; };
+                    hodImg.onerror = () => { hodImg.style.display = 'none'; hodImg.src = ''; };
+                } else if (hodImg) {
+                    hodImg.style.display = 'none';
+                    hodImg.src = '';
                 }
             } else {
                 setText('signHodName', department ? `${department} HOD` : 'HOD');
+                if (hodImg) {
+                    hodImg.style.display = 'none';
+                    hodImg.src = '';
+                }
             }
 
             // Report generated date = today, whenever this report is opened/printed
