@@ -1317,14 +1317,72 @@ input:focus-visible {
     background: radial-gradient(circle at 50% 50%, rgba(238, 242, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
 }
 
+.logo-reveal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 14px;
+    animation: logoIntroSequence 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+}
+
 .logo-reveal-symbol {
-    width: min(170px, 44vw);
+    width: min(150px, 38vw);
     height: auto;
     aspect-ratio: 465 / 268;
     object-fit: contain;
     display: block;
-    animation: logoIntroSequence 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    will-change: transform, opacity, filter;
+    filter: drop-shadow(0 8px 24px rgba(99, 102, 241, 0.35));
+}
+
+.logo-reveal-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.logo-reveal-title {
+    font-size: clamp(1.4rem, 4vw, 1.85rem);
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    line-height: 1.1;
+    color: #ffffff;
+}
+
+[data-theme="light"] .logo-reveal-title {
+    color: #0f172a;
+}
+
+.logo-reveal-title .logo-title-on {
+    color: #ffffff;
+}
+
+[data-theme="light"] .logo-reveal-title .logo-title-on {
+    color: #0f172a;
+}
+
+.logo-reveal-title .logo-title-duty {
+    color: #a855f7;
+}
+
+[data-theme="light"] .logo-reveal-title .logo-title-duty {
+    color: #7c3aed;
+}
+
+.logo-reveal-sub {
+    font-size: clamp(0.72rem, 2vw, 0.88rem);
+    font-weight: 700;
+    letter-spacing: 5px;
+    color: rgba(255, 255, 255, 0.85);
+    padding-left: 5px;
+    text-transform: uppercase;
+}
+
+[data-theme="light"] .logo-reveal-sub {
+    color: #334155;
 }
 
 @keyframes logoIntroSequence {
@@ -1372,6 +1430,7 @@ input:focus-visible {
         display: none !important;
     }
 
+    .logo-reveal-content,
     .logo-reveal-symbol,
     .login-container {
         animation: none !important;
