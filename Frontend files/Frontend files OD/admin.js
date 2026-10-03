@@ -564,6 +564,48 @@ function initAdminApp() {
         }
     });
 
+    // ── User Modals Helper ──
+    function openModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('active');
+    }
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    }
+
+    // Escape key closes any active modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        }
+    });
+
+    // Student Modal Controls
+    const studentModalOverlay = document.getElementById('studentModalOverlay');
+    const openAddStudentModalBtn = document.getElementById('openAddStudentModalBtn');
+    const studentModalCloseBtn = document.getElementById('studentModalCloseBtn');
+    const studentCancelBtn = document.getElementById('studentCancelBtn');
+    const studentModalTitle = document.getElementById('studentModalTitle');
+
+    openAddStudentModalBtn?.addEventListener('click', () => {
+        studentForm?.reset();
+        studentIdEl.value = '';
+        const catEl = document.getElementById('studentCategory');
+        if (catEl) catEl.value = 'UG';
+        const studentPasswordHint = document.getElementById('studentPasswordHint');
+        if (studentPasswordHint) studentPasswordHint.textContent = '(required for new student)';
+        studentSubmitBtn.textContent = 'Add Student';
+        if (studentModalTitle) studentModalTitle.textContent = 'Add Student';
+        openModal('studentModalOverlay');
+    });
+
+    studentModalCloseBtn?.addEventListener('click', () => closeModal('studentModalOverlay'));
+    studentCancelBtn?.addEventListener('click', () => closeModal('studentModalOverlay'));
+    studentModalOverlay?.addEventListener('click', (e) => {
+        if (e.target === studentModalOverlay) closeModal('studentModalOverlay');
+    });
+
     function fillStudentForm(s) {
         studentIdEl.value = s.studentId ?? s.StudentId ?? '';
         document.getElementById('studentName').value = s.name ?? s.Name ?? '';
@@ -581,7 +623,8 @@ function initAdminApp() {
         const studentPasswordHint = document.getElementById('studentPasswordHint');
         if (studentPasswordHint) studentPasswordHint.textContent = '(leave blank to keep existing)';
         studentSubmitBtn.textContent = 'Update Student';
-        document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (studentModalTitle) studentModalTitle.textContent = 'Edit Student';
+        openModal('studentModalOverlay');
     }
 
     document.getElementById('studentResetBtn')?.addEventListener('click', () => {
@@ -645,6 +688,7 @@ function initAdminApp() {
                 return;
             }
             showToast('success', isEdit ? 'Student updated.' : 'Student added.');
+            closeModal('studentModalOverlay');
             studentForm.reset();
             studentIdEl.value = '';
             const catEl = document.getElementById('studentCategory');
@@ -767,6 +811,33 @@ function initAdminApp() {
         }
     });
 
+    // Staff Modal Controls
+    const staffModalOverlay = document.getElementById('staffModalOverlay');
+    const openAddStaffModalBtn = document.getElementById('openAddStaffModalBtn');
+    const staffModalCloseBtn = document.getElementById('staffModalCloseBtn');
+    const staffCancelBtn = document.getElementById('staffCancelBtn');
+    const staffModalTitle = document.getElementById('staffModalTitle');
+
+    openAddStaffModalBtn?.addEventListener('click', () => {
+        staffForm?.reset();
+        staffIdEl.value = '';
+        const catEl = document.getElementById('staffCategory');
+        if (catEl) catEl.value = 'UG';
+        const staffPasswordHint = document.getElementById('staffPasswordHint');
+        if (staffPasswordHint) staffPasswordHint.textContent = '(required for new staff)';
+        staffSubmitBtn.textContent = 'Add Staff';
+        if (staffModalTitle) staffModalTitle.textContent = 'Add Staff';
+        const previewDiv = document.getElementById('staffCurrentSignaturePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
+        openModal('staffModalOverlay');
+    });
+
+    staffModalCloseBtn?.addEventListener('click', () => closeModal('staffModalOverlay'));
+    staffCancelBtn?.addEventListener('click', () => closeModal('staffModalOverlay'));
+    staffModalOverlay?.addEventListener('click', (e) => {
+        if (e.target === staffModalOverlay) closeModal('staffModalOverlay');
+    });
+
     function fillStaffForm(s) {
         staffIdEl.value = s.staffId ?? s.StaffId ?? '';
         document.getElementById('staffName').value = s.name ?? s.Name ?? '';
@@ -781,6 +852,7 @@ function initAdminApp() {
         const staffPasswordHint = document.getElementById('staffPasswordHint');
         if (staffPasswordHint) staffPasswordHint.textContent = '(leave blank to keep existing)';
         staffSubmitBtn.textContent = 'Update Staff';
+        if (staffModalTitle) staffModalTitle.textContent = 'Edit Staff';
 
         // Show current signature preview if one exists
         const sigUrl = s.signatureUrl ?? s.DigitalSignature ?? null;
@@ -795,7 +867,7 @@ function initAdminApp() {
         }
         if (sigFile) sigFile.value = '';
 
-        document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        openModal('staffModalOverlay');
     }
 
     document.getElementById('staffRemoveSignatureBtn')?.addEventListener('click', async () => {
@@ -893,6 +965,7 @@ function initAdminApp() {
                 showToast('success', isEdit ? 'Staff updated.' : 'Staff added.');
             }
 
+            closeModal('staffModalOverlay');
             staffForm.reset();
             staffIdEl.value = '';
             const catEl = document.getElementById('staffCategory');
@@ -917,6 +990,33 @@ function initAdminApp() {
     const hodForm = document.getElementById('hodForm');
     const hodIdEl = document.getElementById('hodId');
     const hodSubmitBtn = document.getElementById('hodSubmitBtn');
+
+    // HOD Modal Controls
+    const hodModalOverlay = document.getElementById('hodModalOverlay');
+    const openAddHodModalBtn = document.getElementById('openAddHodModalBtn');
+    const hodModalCloseBtn = document.getElementById('hodModalCloseBtn');
+    const hodCancelBtn = document.getElementById('hodCancelBtn');
+    const hodModalTitle = document.getElementById('hodModalTitle');
+
+    openAddHodModalBtn?.addEventListener('click', () => {
+        hodForm?.reset();
+        hodIdEl.value = '';
+        const catEl = document.getElementById('hodCategory');
+        if (catEl) catEl.value = 'UG';
+        const hodPasswordHint = document.getElementById('hodPasswordHint');
+        if (hodPasswordHint) hodPasswordHint.textContent = '(required for new HOD)';
+        hodSubmitBtn.textContent = 'Add HOD';
+        if (hodModalTitle) hodModalTitle.textContent = 'Add HOD';
+        const previewDiv = document.getElementById('hodCurrentSignaturePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
+        openModal('hodModalOverlay');
+    });
+
+    hodModalCloseBtn?.addEventListener('click', () => closeModal('hodModalOverlay'));
+    hodCancelBtn?.addEventListener('click', () => closeModal('hodModalOverlay'));
+    hodModalOverlay?.addEventListener('click', (e) => {
+        if (e.target === hodModalOverlay) closeModal('hodModalOverlay');
+    });
 
     async function loadHods() {
         try {
@@ -1024,6 +1124,7 @@ function initAdminApp() {
         const hodPasswordHint = document.getElementById('hodPasswordHint');
         if (hodPasswordHint) hodPasswordHint.textContent = '(leave blank to keep existing)';
         hodSubmitBtn.textContent = 'Update HOD';
+        if (hodModalTitle) hodModalTitle.textContent = 'Edit HOD';
 
         // Show current signature preview if one exists
         const sigUrl = h.signatureUrl ?? h.DigitalSignature ?? null;
@@ -1038,7 +1139,7 @@ function initAdminApp() {
         }
         if (sigFile) sigFile.value = '';
 
-        document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        openModal('hodModalOverlay');
     }
 
     document.getElementById('hodRemoveSignatureBtn')?.addEventListener('click', async () => {
@@ -1130,6 +1231,7 @@ function initAdminApp() {
                 showToast('success', isEdit ? 'HOD updated.' : 'HOD added.');
             }
 
+            closeModal('hodModalOverlay');
             hodForm.reset();
             hodIdEl.value = '';
             const catEl = document.getElementById('hodCategory');

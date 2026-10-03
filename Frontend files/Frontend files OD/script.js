@@ -1,9 +1,32 @@
 const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('loginForm');
+    // ── Door Opening Intro Animation ─────────────────────────────────────
+    const doorOverlay = document.getElementById('doorIntroOverlay');
     const rollNumberInput = document.getElementById('rollNumber');
     const passwordInput = document.getElementById('password');
+
+    if (doorOverlay) {
+        let isOpened = false;
+        function openDoors() {
+            if (isOpened) return;
+            isOpened = true;
+            doorOverlay.classList.add('door-open');
+            setTimeout(() => {
+                doorOverlay.classList.add('door-finished');
+                rollNumberInput?.focus();
+            }, 1250);
+        }
+
+        // Trigger opening after brief logo presentation
+        setTimeout(openDoors, 600);
+
+        // Allow immediate skip on click or keypress
+        doorOverlay.addEventListener('click', openDoors);
+        window.addEventListener('keydown', openDoors, { once: true });
+    }
+
+    const loginForm = document.getElementById('loginForm');
     const togglePasswordBtn = document.getElementById('togglePassword');
     const loginButton = document.getElementById('loginButton');
 

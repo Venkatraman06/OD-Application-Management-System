@@ -1258,3 +1258,152 @@ input:focus-visible {
 .special-day-warning-modal .sdw-btn-edit { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; cursor: pointer; font-size: 0.875rem; }
 .special-day-warning-modal .sdw-btn-confirm { padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.25); color: #fca5a5; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
 .special-day-warning-modal .sdw-btn-confirm:hover { background: rgba(239,68,68,0.4); }
+
+/* ============================================
+   Project Brand Logo Styling
+   ============================================ */
+.brand-logo-icon {
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: 2px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35) !important;
+}
+
+.brand-logo-icon.small {
+    border: 1.5px solid rgba(99, 102, 241, 0.3) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
+}
+
+.brand-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    display: block;
+}
+
+/* ============================================
+   Door Opening Intro Animation
+   ============================================ */
+.door-intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    pointer-events: auto;
+    background: transparent;
+    transition: visibility 0.3s ease;
+}
+
+.door-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #0f172a 60%, #020617 100%);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
+    z-index: 1;
+    transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+    will-change: transform;
+}
+
+[data-theme="light"] .door-panel {
+    background: radial-gradient(circle at 50% 50%, #e0e7ff 0%, #f1f5f9 60%, #ffffff 100%);
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.2);
+}
+
+.door-panel-left {
+    left: 0;
+    border-right: 1px solid rgba(99, 102, 241, 0.35);
+    transform-origin: left center;
+}
+
+.door-panel-right {
+    right: 0;
+    border-left: 1px solid rgba(99, 102, 241, 0.35);
+    transform-origin: right center;
+}
+
+.door-center-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+    pointer-events: none;
+    padding: 24px;
+}
+
+.door-logo-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+
+.door-logo-img {
+    width: 110px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: 24px;
+    box-shadow: 0 12px 35px rgba(99, 102, 241, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.2);
+    animation: doorLogoPulse 2s ease-in-out infinite;
+}
+
+@keyframes doorLogoPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 12px 35px rgba(99, 102, 241, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.2); }
+    50% { transform: scale(1.04); box-shadow: 0 16px 45px rgba(99, 102, 241, 0.75), 0 0 0 4px rgba(99, 102, 241, 0.45); }
+}
+
+.door-brand-text h2 {
+    margin: 0;
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #ffffff;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .door-brand-text h2 {
+    color: #1e1b4b;
+    text-shadow: none;
+}
+
+.door-brand-text p {
+    margin: 6px 0 0;
+    font-size: 0.95rem;
+    color: #a5b4fc;
+    font-weight: 500;
+}
+
+[data-theme="light"] .door-brand-text p {
+    color: #4f46e5;
+}
+
+/* Door opened state */
+.door-intro-overlay.door-open .door-panel-left {
+    transform: translateX(-100%);
+}
+
+.door-intro-overlay.door-open .door-panel-right {
+    transform: translateX(100%);
+}
+
+.door-intro-overlay.door-open .door-center-content {
+    opacity: 0;
+    transform: scale(1.1);
+}
+
+.door-intro-overlay.door-finished {
+    display: none !important;
+    pointer-events: none !important;
+}
