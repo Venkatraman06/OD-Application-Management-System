@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('userSection',    sect);
             localStorage.setItem('userYear',       yr ? yr.toString() : '');
             localStorage.setItem('userSemester',   sem ? sem.toString() : '');
+            localStorage.setItem('userCategory',   s.category || s.Category || 'UG');
             localStorage.setItem('userCourse',     s.course || s.Course || 'B.Sc Computer Science');
             if (email) localStorage.setItem('userEmail', email);
         }

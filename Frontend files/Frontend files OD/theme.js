@@ -57,6 +57,14 @@
         }
     };
 
+    // Apply cached colors immediately (before paint)
+    try {
+        const cached = localStorage.getItem('od_calendar_colors');
+        if (cached) {
+            window.applyCalendarColors(JSON.parse(cached));
+        }
+    } catch (e) {}
+
     async function loadCalendarColors() {
         // First apply from cache if available
         try {

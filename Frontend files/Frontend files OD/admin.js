@@ -578,6 +578,8 @@ function initAdminApp() {
         document.getElementById('studentDob').value = dob ? String(dob).slice(0, 10) : '';
         document.getElementById('studentEmail').value = s.email ?? s.Email ?? '';
         document.getElementById('studentPassword').value = ''; // never prefill a password
+        const studentPasswordHint = document.getElementById('studentPasswordHint');
+        if (studentPasswordHint) studentPasswordHint.textContent = '(leave blank to keep existing)';
         studentSubmitBtn.textContent = 'Update Student';
         document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -587,6 +589,8 @@ function initAdminApp() {
         studentIdEl.value = '';
         const catEl = document.getElementById('studentCategory');
         if (catEl) catEl.value = 'UG';
+        const studentPasswordHint = document.getElementById('studentPasswordHint');
+        if (studentPasswordHint) studentPasswordHint.textContent = '(required for new student)';
         studentSubmitBtn.textContent = 'Add Student';
     });
 
@@ -621,9 +625,8 @@ function initAdminApp() {
         try {
             let res;
             if (isEdit) {
-                const existing = students.find(s => String(s.studentId ?? s.StudentId) === String(id));
                 const body = { ...payload, studentId: parseInt(id, 10) };
-                if (!body.password) body.password = existing ? (existing.password ?? existing.Password) : '';
+                if (!body.password) delete body.password;
                 res = await adminFetch(`${API_BASE}/api/Student/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -646,6 +649,8 @@ function initAdminApp() {
             studentIdEl.value = '';
             const catEl = document.getElementById('studentCategory');
             if (catEl) catEl.value = 'UG';
+            const studentPasswordHint = document.getElementById('studentPasswordHint');
+            if (studentPasswordHint) studentPasswordHint.textContent = '(required for new student)';
             studentSubmitBtn.textContent = 'Add Student';
             loadStudents();
         } catch (err) {
@@ -773,6 +778,8 @@ function initAdminApp() {
         document.getElementById('staffYear').value = s.year ?? s.Year ?? '';
         document.getElementById('staffEmail').value = s.email ?? s.Email ?? '';
         document.getElementById('staffPassword').value = '';
+        const staffPasswordHint = document.getElementById('staffPasswordHint');
+        if (staffPasswordHint) staffPasswordHint.textContent = '(leave blank to keep existing)';
         staffSubmitBtn.textContent = 'Update Staff';
         document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -782,6 +789,8 @@ function initAdminApp() {
         staffIdEl.value = '';
         const catEl = document.getElementById('staffCategory');
         if (catEl) catEl.value = 'UG';
+        const staffPasswordHint = document.getElementById('staffPasswordHint');
+        if (staffPasswordHint) staffPasswordHint.textContent = '(required for new staff)';
         staffSubmitBtn.textContent = 'Add Staff';
     });
 
@@ -815,9 +824,8 @@ function initAdminApp() {
         try {
             let res;
             if (isEdit) {
-                const existing = staff.find(s => String(s.staffId ?? s.StaffId) === String(id));
                 const body = { ...payload, staffId: parseInt(id, 10) };
-                if (!body.password) body.password = existing ? (existing.password ?? existing.Password) : '';
+                if (!body.password) delete body.password;
                 // UpdateStaff is a plain PUT api/Faculty (no id in the URL) — id lives in the body
                 res = await adminFetch(`${API_BASE}/api/Faculty`, {
                     method: 'PUT',
@@ -841,6 +849,8 @@ function initAdminApp() {
             staffIdEl.value = '';
             const catEl = document.getElementById('staffCategory');
             if (catEl) catEl.value = 'UG';
+            const staffPasswordHint = document.getElementById('staffPasswordHint');
+            if (staffPasswordHint) staffPasswordHint.textContent = '(required for new staff)';
             staffSubmitBtn.textContent = 'Add Staff';
             loadStaff();
         } catch (err) {
@@ -960,7 +970,9 @@ function initAdminApp() {
         if (catEl) catEl.value = h.category ?? h.Category ?? 'UG';
         document.getElementById('hodDeptInput').value = h.department ?? h.Department ?? '';
         document.getElementById('hodEmail').value = h.email ?? h.Email ?? '';
-        document.getElementById('hodPassword').value = ''; // Hod.Password is [JsonIgnore]d anyway
+        document.getElementById('hodPassword').value = '';
+        const hodPasswordHint = document.getElementById('hodPasswordHint');
+        if (hodPasswordHint) hodPasswordHint.textContent = '(leave blank to keep existing)';
         hodSubmitBtn.textContent = 'Update HOD';
         document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -970,6 +982,8 @@ function initAdminApp() {
         hodIdEl.value = '';
         const catEl = document.getElementById('hodCategory');
         if (catEl) catEl.value = 'UG';
+        const hodPasswordHint = document.getElementById('hodPasswordHint');
+        if (hodPasswordHint) hodPasswordHint.textContent = '(required for new HOD)';
         hodSubmitBtn.textContent = 'Add HOD';
     });
 
@@ -1001,14 +1015,7 @@ function initAdminApp() {
             let res;
             if (isEdit) {
                 const body = { ...payload, hodId: parseInt(id, 10) };
-                // Hod.Password is [JsonIgnore]'d on the way OUT but still bound on
-                // the way IN, so leaving it blank on edit would wipe the password.
-                // Warn instead of silently blanking it.
-                if (!body.password) {
-                    showToast('error', 'Re-enter the password to save changes to this HOD (it cannot be read back for editing).');
-                    hodSubmitBtn.disabled = false;
-                    return;
-                }
+                if (!body.password) delete body.password;
                 res = await adminFetch(`${API_BASE}/api/Hod`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -1031,6 +1038,8 @@ function initAdminApp() {
             hodIdEl.value = '';
             const catEl = document.getElementById('hodCategory');
             if (catEl) catEl.value = 'UG';
+            const hodPasswordHint = document.getElementById('hodPasswordHint');
+            if (hodPasswordHint) hodPasswordHint.textContent = '(required for new HOD)';
             hodSubmitBtn.textContent = 'Add HOD';
             loadHods();
         } catch (err) {

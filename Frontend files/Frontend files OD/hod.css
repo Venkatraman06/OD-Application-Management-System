@@ -2822,12 +2822,12 @@ body {
     margin-right: 6px;
     vertical-align: middle;
 }
-.calendar-legend .dot.working     { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.25); }
+.calendar-legend .dot.working     { background: var(--cal-working-color, #10b981); border: 1px solid var(--cal-working-color, #10b981); }
 .calendar-legend .dot.has-od      { background: var(--primary-500, #6366f1); }
-.calendar-legend .dot.non-working { background: rgba(239,68,68,0.35); }
+.calendar-legend .dot.non-working { background: var(--cal-weekend-color, #ef4444); }
 .calendar-legend .dot.outside     { background: transparent; border: 1px dashed rgba(255,255,255,0.2); }
-.calendar-legend .dot.cal-holiday-dot     { background: rgba(249,115,22,0.8); }
-.calendar-legend .dot.cal-examination-dot { background: rgba(16,185,129,0.8); }
+.calendar-legend .dot.cal-holiday-dot     { background: var(--cal-holiday-color, #f97316); }
+.calendar-legend .dot.cal-examination-dot { background: var(--cal-exam-color, #10b981); }
 
 /* Calendar: Today highlight */
 .calendar-day.cal-today {
@@ -2840,28 +2840,28 @@ body {
     font-weight: 700;
 }
 .calendar-day.non-working:not(.cal-holiday) {
-    border-color: var(--cal-weekend-color, rgba(239, 68, 68, 0.15));
+    border-color: var(--cal-weekend-color, rgba(239, 68, 68, 0.25));
 }
 
 /* Calendar: Holiday cell (orange) */
 .calendar-day.cal-holiday {
     background: rgba(249,115,22,0.13) !important;
-    border-color: var(--cal-holiday-color, rgba(249,115,22,0.4)) !important;
+    border-color: var(--cal-holiday-color, rgba(249,115,22,0.5)) !important;
     color: var(--cal-holiday-color, #fed7aa) !important;
 }
 .calendar-day.cal-holiday:hover {
     background: rgba(249,115,22,0.22) !important;
-    border-color: var(--cal-holiday-color, rgba(249,115,22,0.6)) !important;
+    border-color: var(--cal-holiday-color, rgba(249,115,22,0.7)) !important;
 }
 /* Calendar: Examination cell (green) */
 .calendar-day.cal-examination {
     background: rgba(16,185,129,0.12) !important;
-    border-color: var(--cal-exam-color, rgba(16,185,129,0.35)) !important;
+    border-color: var(--cal-exam-color, rgba(16,185,129,0.5)) !important;
     color: var(--cal-exam-color, #6ee7b7) !important;
 }
 .calendar-day.cal-examination:hover {
     background: rgba(16,185,129,0.2) !important;
-    border-color: var(--cal-exam-color, rgba(16,185,129,0.55)) !important;
+    border-color: var(--cal-exam-color, rgba(16,185,129,0.7)) !important;
 }
 .calendar-day .cal-special-label {
     font-size: 0.48rem;
@@ -2906,10 +2906,12 @@ body {
 .special-day-warning-modal .sdw-btn-edit { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; cursor: pointer; font-size: 0.875rem; }
 .special-day-warning-modal .sdw-btn-confirm { padding: 8px 18px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.25); color: #fca5a5; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
 .special-day-warning-modal .sdw-btn-confirm:hover { background: rgba(239,68,68,0.4); }
-[data-theme="light"] .calendar-legend .dot.cal-holiday-dot     { background: var(--cal-holiday-color, #f97316); }
-[data-theme="light"] .calendar-legend .dot.cal-examination-dot { background: var(--cal-exam-color, #10b981); }
-[data-theme="light"] .calendar-day.cal-holiday { background: #fff7ed !important; border-color: #fdba74 !important; color: #c2410c !important; }
-[data-theme="light"] .calendar-day.cal-examination { background: #f0fdf4 !important; border-color: #6ee7b7 !important; color: #065f46 !important; }
+[data-theme="light"] .calendar-legend .dot.cal-holiday-dot     { background: var(--cal-holiday-color, #f97316) !important; }
+[data-theme="light"] .calendar-legend .dot.cal-examination-dot { background: var(--cal-exam-color, #10b981) !important; }
+[data-theme="light"] .calendar-legend .dot.working             { background: var(--cal-working-color, #10b981) !important; border-color: var(--cal-working-color, #10b981) !important; }
+[data-theme="light"] .calendar-legend .dot.non-working         { background: var(--cal-weekend-color, #ef4444) !important; }
+[data-theme="light"] .calendar-day.cal-holiday { background: #fff7ed !important; border-color: var(--cal-holiday-color, #fdba74) !important; color: var(--cal-holiday-color, #c2410c) !important; }
+[data-theme="light"] .calendar-day.cal-examination { background: #f0fdf4 !important; border-color: var(--cal-exam-color, #6ee7b7) !important; color: var(--cal-exam-color, #065f46) !important; }
 
 .calendar-weekday-row {
     display: grid;
@@ -3649,6 +3651,70 @@ body {
 [data-theme="light"] .edit-cal-card select:focus {
     border-color: #4f46e5 !important;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+}
+
+/* ── Edit Calendar Modal Buttons (Dark & Light) ── */
+.edit-cal-card .btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 600;
+    padding: 9px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.edit-cal-card .btn-primary:hover {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+}
+.edit-cal-card .btn-primary:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
+}
+.edit-cal-card .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+.edit-cal-card .btn-secondary {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    font-weight: 600;
+    padding: 9px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.edit-cal-card .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+.edit-cal-card .btn-secondary:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-theme="light"] .edit-cal-card .btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+[data-theme="light"] .edit-cal-card .btn-primary:hover {
+    background: linear-gradient(135deg, #4338ca, #6d28d9) !important;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+}
+[data-theme="light"] .edit-cal-card .btn-secondary {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+[data-theme="light"] .edit-cal-card .btn-secondary:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
 }
 /* ── Global Modal Close Button for HOD ── */
 .modal {

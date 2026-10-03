@@ -167,9 +167,9 @@ namespace OnlineOD.Controllers
         // this will update the student details in the database
         [Authorize(Roles = "Student,Admin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateStudent(int id, [FromBody] Student student)
+        public async Task<IActionResult> UpdateStudent(int id, [FromBody] UpdateStudentDto dto)
         {
-            if (student == null) return BadRequest();
+            if (dto == null) return BadRequest();
 
             if (User.IsInRole("Student"))
             {
@@ -186,7 +186,7 @@ namespace OnlineOD.Controllers
                 var safeStudent = new Student
                 {
                     StudentId = existing.StudentId,
-                    Name = !string.IsNullOrWhiteSpace(student.Name) ? student.Name.Trim() : existing.Name,
+                    Name = !string.IsNullOrWhiteSpace(dto.Name) ? dto.Name.Trim() : existing.Name,
                     RegisterNumber = existing.RegisterNumber, // Locked
                     Department = existing.Department,         // Locked
                     Section = existing.Section,               // Locked
@@ -194,9 +194,9 @@ namespace OnlineOD.Controllers
                     semester = existing.semester,             // Locked
                     Category = existing.Category,             // Locked
                     IsActive = existing.IsActive,             // Locked
-                    DOB = student.DOB != default(DateTime) ? student.DOB : existing.DOB,
-                    Email = !string.IsNullOrWhiteSpace(student.Email) ? student.Email.Trim() : existing.Email,
-                    Password = !string.IsNullOrWhiteSpace(student.Password) ? student.Password : existing.Password
+                    DOB = dto.DOB != default(DateTime) ? dto.DOB : existing.DOB,
+                    Email = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : existing.Email,
+                    Password = !string.IsNullOrWhiteSpace(dto.Password) ? dto.Password : existing.Password
                 };
 
                 var updated = await _studentService.UpdateStudentAsync(safeStudent);
@@ -217,9 +217,27 @@ namespace OnlineOD.Controllers
             }
             else
             {
-                if (student.StudentId != id) return BadRequest();
-                if (string.IsNullOrWhiteSpace(student.Category)) student.Category = "UG";
-                var updated = await _studentService.UpdateStudentAsync(student);
+                if (dto.StudentId != id) return BadRequest();
+                var existingStudentForAdmin = await _studentService.GetStudentByIdAsync(id);
+                if (existingStudentForAdmin == null) return NotFound();
+
+                var studentEntity = new Student
+                {
+                    StudentId = id,
+                    Name = dto.Name,
+                    RegisterNumber = dto.RegisterNumber,
+                    Department = dto.Department,
+                    Section = dto.Section,
+                    Year = dto.Year,
+                    DOB = dto.DOB != default(DateTime) ? dto.DOB : existingStudentForAdmin.DOB,
+                    semester = dto.semester != 0 ? dto.semester : existingStudentForAdmin.semester,
+                    Category = string.IsNullOrWhiteSpace(dto.Category) ? (existingStudentForAdmin.Category ?? "UG") : dto.Category.Trim().ToUpper(),
+                    Email = dto.Email,
+                    Password = string.IsNullOrWhiteSpace(dto.Password) ? existingStudentForAdmin.Password : dto.Password,
+                    IsActive = dto.IsActive
+                };
+
+                var updated = await _studentService.UpdateStudentAsync(studentEntity);
                 if (updated == null) return NotFound();
                 return Ok(new
                 {

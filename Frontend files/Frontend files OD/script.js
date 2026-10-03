@@ -390,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userDept', studentResult.data.department);
             localStorage.setItem('userSection', studentResult.data.section || '');
             localStorage.setItem('userEmail', studentResult.data.email || '');
+            localStorage.setItem('userCategory', studentResult.data.category || 'UG');
             localStorage.setItem('registerNumber', studentResult.data.registerNumber);
             if (studentResult.data.year) localStorage.setItem('userYear', String(studentResult.data.year));
             if (studentResult.data.semester) localStorage.setItem('userSemester', String(studentResult.data.semester));
@@ -421,6 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userDept', facultyResult.data.department);
             localStorage.setItem('userSection', facultyResult.data.section || '');
             localStorage.setItem('userYear', facultyResult.data.year || '');
+            localStorage.setItem('userCategory', facultyResult.data.category || 'UG');
             showToast('success', 'Faculty login successful!');
             setTimeout(() => window.location.href = 'teacher.html', 300);
             return;
@@ -446,6 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('userName', hodResult.data.name);
             localStorage.setItem('userRollNumber', hodResult.data.rollNumber || '');
             localStorage.setItem('userDept', hodResult.data.department);
+            localStorage.setItem('userCategory', hodResult.data.category || 'UG');
             showToast('success', 'HOD login successful!');
             setTimeout(() => window.location.href = 'hod.html', 300);
             return;

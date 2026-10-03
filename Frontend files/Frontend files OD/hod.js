@@ -1536,7 +1536,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 department: s.department || null,
                                 course: s.course || null,
                                 year: s.year || null,
-                                section: s.section || null
+                                section: s.section || null,
+                                addedBy: s.addedBy || s.AddedBy || 'Staff'
                             });
                         }
                     });

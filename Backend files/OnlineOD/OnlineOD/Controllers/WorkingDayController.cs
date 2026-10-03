@@ -42,10 +42,10 @@ namespace OnlineOD.Controllers
                         var staff = await _context.Staffs.FindAsync(staffId);
                         if (staff != null)
                         {
-                            cleanDept ??= staff.Department;
-                            cleanYear ??= staff.Year;
-                            cleanSec ??= staff.Section;
-                            cleanCourse ??= staff.Category;
+                            cleanDept = staff.Department;
+                            cleanYear = staff.Year;
+                            cleanSec = staff.Section;
+                            cleanCourse = staff.Category ?? "UG";
                         }
                     }
                 }
@@ -57,7 +57,22 @@ namespace OnlineOD.Controllers
                         var hod = await _context.Hods.FindAsync(hodId);
                         if (hod != null)
                         {
-                            cleanDept ??= hod.Department;
+                            cleanDept = hod.Department;
+                        }
+                    }
+                }
+                else if (User.IsInRole("Student"))
+                {
+                    var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(studentIdClaim, out var studentId))
+                    {
+                        var student = await _context.Students.FindAsync(studentId);
+                        if (student != null)
+                        {
+                            cleanDept = student.Department;
+                            cleanYear = student.Year;
+                            cleanSec = student.Section;
+                            cleanCourse = student.Category ?? "UG";
                         }
                     }
                 }
@@ -93,6 +108,7 @@ namespace OnlineOD.Controllers
                 .ToListAsync();
 
             var staffList = await _context.Staffs.AsNoTracking().Where(s => s.IsActive).ToListAsync();
+            var hodList = await _context.Hods.AsNoTracking().Where(h => h.IsActive).ToListAsync();
 
             var specialDays = overrides
                 .Where(o => !string.IsNullOrEmpty(o.DayType) || !string.IsNullOrEmpty(o.Name) || !o.IsWorking)
@@ -101,12 +117,18 @@ namespace OnlineOD.Controllers
                     var matchedStaff = staffList.FirstOrDefault(s =>
                         (!string.IsNullOrEmpty(o.Department) && (s.Department.ToLower() == o.Department.ToLower() || s.Department.ToLower().Contains(o.Department.ToLower()) || o.Department.ToLower().Contains(s.Department.ToLower()))) &&
                         (!o.Year.HasValue || o.Year == 0 || s.Year == o.Year) &&
-                        (string.IsNullOrEmpty(o.Section) || o.Section == "All" || string.Equals(s.Section, o.Section, StringComparison.OrdinalIgnoreCase))
+                        (string.IsNullOrEmpty(o.Section) || o.Section == "All" || string.Equals(s.Section, o.Section, StringComparison.OrdinalIgnoreCase)) &&
+                        (string.IsNullOrEmpty(o.Course) || string.Equals(s.Category, o.Course, StringComparison.OrdinalIgnoreCase))
                     );
                     if (matchedStaff == null && !string.IsNullOrEmpty(o.Department))
                     {
                         matchedStaff = staffList.FirstOrDefault(s => s.Department.ToLower() == o.Department.ToLower() || s.Department.ToLower().Contains(o.Department.ToLower()) || o.Department.ToLower().Contains(s.Department.ToLower()));
                     }
+
+                    var matchedHod = (matchedStaff == null && !string.IsNullOrEmpty(o.Department))
+                        ? hodList.FirstOrDefault(h => h.Department.ToLower() == o.Department.ToLower() || h.Department.ToLower().Contains(o.Department.ToLower()) || o.Department.ToLower().Contains(h.Department.ToLower()))
+                        : null;
+
                     return new SpecialDayItem
                     {
                         Id = o.Id,
@@ -117,7 +139,7 @@ namespace OnlineOD.Controllers
                         Course = o.Course,
                         Year = o.Year,
                         Section = o.Section,
-                        AddedBy = matchedStaff?.Name ?? "Staff"
+                        AddedBy = matchedStaff?.Name ?? matchedHod?.Name ?? "Staff"
                     };
                 }).ToList();
 
@@ -131,11 +153,11 @@ namespace OnlineOD.Controllers
             });
         }
 
-        // GET /api/WorkingDay/CheckSpecialDays?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&dept=...&year=...&section=...
+        // GET /api/WorkingDay/CheckSpecialDays?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD&dept=...&year=...&section=...&category=...
         [AllowAnonymous]
         [HttpGet("CheckSpecialDays")]
         public async Task<IActionResult> CheckSpecialDays([FromQuery] string? fromDate, [FromQuery] string? toDate,
-            [FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section)
+            [FromQuery] string? dept, [FromQuery] int? year, [FromQuery] string? section, [FromQuery] string? category, [FromQuery] string? course)
         {
             if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate))
                 return BadRequest(new { message = "fromDate and toDate query parameters are required." });
@@ -143,13 +165,48 @@ namespace OnlineOD.Controllers
             var cleanDept = string.IsNullOrWhiteSpace(dept) ? null : dept.Trim();
             var cleanSec = string.IsNullOrWhiteSpace(section) || section.Equals("All", StringComparison.OrdinalIgnoreCase) ? null : section.Trim();
             var cleanYear = (year.HasValue && year.Value > 0) ? year.Value : (int?)null;
+            var cleanCourse = string.IsNullOrWhiteSpace(course) ? (string.IsNullOrWhiteSpace(category) ? null : category.Trim()) : course.Trim();
+
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                if (User.IsInRole("Student"))
+                {
+                    var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(studentIdClaim, out var studentId))
+                    {
+                        var student = await _context.Students.FindAsync(studentId);
+                        if (student != null)
+                        {
+                            cleanDept = student.Department;
+                            cleanYear = student.Year;
+                            cleanSec = student.Section;
+                            cleanCourse = student.Category ?? "UG";
+                        }
+                    }
+                }
+                else if (User.IsInRole("Staff"))
+                {
+                    var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(staffIdClaim, out var staffId))
+                    {
+                        var staff = await _context.Staffs.FindAsync(staffId);
+                        if (staff != null)
+                        {
+                            cleanDept = staff.Department;
+                            cleanYear = staff.Year;
+                            cleanSec = staff.Section;
+                            cleanCourse = staff.Category ?? "UG";
+                        }
+                    }
+                }
+            }
 
             var q = _context.WorkingDayOverrides.AsNoTracking()
                 .Where(o => string.Compare(o.Date, fromDate) >= 0 && string.Compare(o.Date, toDate) <= 0);
 
             if (!string.IsNullOrEmpty(cleanDept))
             {
-                q = q.Where(o => o.Department == null || o.Department == "" || o.Department == cleanDept || o.Department.Contains(cleanDept) || cleanDept.Contains(o.Department));
+                q = q.Where(o => o.Department == null || o.Department == "" || o.Department.ToLower() == cleanDept.ToLower() || o.Department.ToLower().Contains(cleanDept.ToLower()) || cleanDept.ToLower().Contains(o.Department.ToLower()));
             }
             if (cleanYear.HasValue)
             {
@@ -157,7 +214,11 @@ namespace OnlineOD.Controllers
             }
             if (!string.IsNullOrEmpty(cleanSec))
             {
-                q = q.Where(o => o.Section == null || o.Section == "" || o.Section == "All" || o.Section == cleanSec);
+                q = q.Where(o => o.Section == null || o.Section == "" || o.Section.ToLower() == "all" || o.Section.ToLower() == cleanSec.ToLower());
+            }
+            if (!string.IsNullOrEmpty(cleanCourse))
+            {
+                q = q.Where(o => o.Course == null || o.Course == "" || o.Course.ToLower() == cleanCourse.ToLower() || cleanCourse.ToLower().Contains(o.Course.ToLower()));
             }
 
             var dbOverrides = await q.OrderBy(o => o.Date).ToListAsync();

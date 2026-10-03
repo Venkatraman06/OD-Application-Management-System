@@ -182,9 +182,18 @@ const CollegeWorkingDays = (() => {
             if (myDept) params.append('dept', myDept);
             if (myYear) params.append('year', myYear);
             if (mySec && mySec !== 'All') params.append('section', mySec);
-            if (myCourse && myCourse !== 'All') params.append('course', myCourse);
+            if (myCourse && myCourse !== 'All') {
+                params.append('course', myCourse);
+                params.append('category', myCourse);
+            }
 
-            const res = await fetch(`${baseUrl}/api/WorkingDay?${params.toString()}`, { cache: 'no-store' });
+            const token = (typeof localStorage !== 'undefined') ? (localStorage.getItem('userToken') || localStorage.getItem('token')) : null;
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const res = await fetch(`${baseUrl}/api/WorkingDay?${params.toString()}`, { headers, cache: 'no-store' });
             if (!res.ok) return; // keep existing maps on network error
 
             const data = await res.json();

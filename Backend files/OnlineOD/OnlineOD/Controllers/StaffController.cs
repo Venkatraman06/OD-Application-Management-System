@@ -103,14 +103,14 @@ namespace OnlineOD.Controllers
 
         [Authorize(Roles = "Staff,Admin")]
         [HttpPut]
-        public async Task<IActionResult> UpdateStaff([FromBody] Staff staff)
+        public async Task<IActionResult> UpdateStaff([FromBody] UpdateStaffDto dto)
         {
-            if (staff == null) return BadRequest("Staff data is required.");
+            if (dto == null) return BadRequest("Staff data is required.");
 
             if (User.IsInRole("Staff"))
             {
                 var staffIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId != staff.StaffId)
+                if (string.IsNullOrEmpty(staffIdClaim) || !int.TryParse(staffIdClaim, out var authStaffId) || authStaffId != dto.StaffId)
                     return StatusCode(403, new { message = "You are not authorized to update another staff member's profile." });
 
                 // Load the existing record to lock institutional/identity fields
@@ -125,10 +125,11 @@ namespace OnlineOD.Controllers
                     Department   = existing.Department,     // Locked
                     Section      = existing.Section,        // Locked
                     Year         = existing.Year,           // Locked
+                    Category     = existing.Category,       // Locked
                     IsActive     = existing.IsActive,       // Locked
-                    Name         = !string.IsNullOrWhiteSpace(staff.Name)  ? staff.Name.Trim()  : existing.Name,
-                    Email        = !string.IsNullOrWhiteSpace(staff.Email) ? staff.Email.Trim() : existing.Email,
-                    Password     = !string.IsNullOrWhiteSpace(staff.Password) ? staff.Password : existing.Password
+                    Name         = !string.IsNullOrWhiteSpace(dto.Name)  ? dto.Name.Trim()  : existing.Name,
+                    Email        = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : existing.Email,
+                    Password     = !string.IsNullOrWhiteSpace(dto.Password) ? dto.Password : existing.Password
                 };
 
                 var updated = await _staffService.UpdateStaffAsync(safeStaff);
@@ -140,14 +141,33 @@ namespace OnlineOD.Controllers
                     department = updated.Department,
                     section = updated.Section,
                     year = updated.Year,
+                    category = updated.Category ?? "UG",
                     email = updated.Email,
                     isActive = updated.IsActive
                 });
             }
             else
             {
-                // Admin — full update, no restrictions
-                var updated = await _staffService.UpdateStaffAsync(staff);
+                // Admin — full update (blank password means "keep existing")
+                var existingStaffForAdmin = await _staffService.GetStaffByIdAsync(dto.StaffId);
+                if (existingStaffForAdmin == null) return NotFound();
+
+                var staffEntity = new Staff
+                {
+                    StaffId = dto.StaffId,
+                    Name = dto.Name,
+                    RollNumber = dto.RollNumber,
+                    Department = dto.Department,
+                    Section = dto.Section,
+                    Year = dto.Year ?? existingStaffForAdmin.Year,
+                    Category = string.IsNullOrWhiteSpace(dto.Category) ? (existingStaffForAdmin.Category ?? "UG") : dto.Category.Trim().ToUpper(),
+                    Email = dto.Email,
+                    Password = string.IsNullOrWhiteSpace(dto.Password) ? existingStaffForAdmin.Password : dto.Password,
+                    IsActive = dto.IsActive
+                };
+
+                var updated = await _staffService.UpdateStaffAsync(staffEntity);
+                if (updated == null) return NotFound();
                 return Ok(new
                 {
                     staffId = updated.StaffId,
@@ -156,6 +176,7 @@ namespace OnlineOD.Controllers
                     department = updated.Department,
                     section = updated.Section,
                     year = updated.Year,
+                    category = updated.Category ?? "UG",
                     email = updated.Email,
                     isActive = updated.IsActive
                 });
