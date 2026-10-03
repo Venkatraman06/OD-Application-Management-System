@@ -166,6 +166,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (regNo) setEl('studentRollNo', regNo);
             if (yr || sem) setEl('studentYear', `Year ${yr || '-'} / Sem ${sem || '-'}`);
             if (email) setEl('studentEmail', email);
+            const cachedCat = localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '';
+            if (cachedCat) setEl('studentCategory', cachedCat);
 
             const dobEl = document.getElementById('studentDOB');
             if (dobEl && dob) {
@@ -233,6 +235,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             setEl('studentRollNo', regNo);
             setEl('studentYear',   `Year ${yr} / Sem ${sem}`);
             setEl('studentEmail',  email || '-');
+            const cat = s.category || s.Category || '';
+            setEl('studentCategory', cat || 'UG');
 
             const dobEl = document.getElementById('studentDOB');
             if (dobEl && dob) {

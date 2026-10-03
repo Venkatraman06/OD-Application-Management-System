@@ -125,6 +125,19 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     display: flex; align-items: center; justify-content: center;
 }
 .admin-logo svg { width: 26px; height: 26px; }
+.admin-logo-img-wrap {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    overflow: hidden;
+}
+.admin-logo-img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    display: block;
+    border-radius: 12px;
+}
 .admin-brand h1 { margin: 0; font-size: 1.15rem; font-weight: 800; color: white; }
 .admin-brand p { margin: 0; font-size: 0.78rem; color: var(--surface-400); }
 .admin-logout-link {

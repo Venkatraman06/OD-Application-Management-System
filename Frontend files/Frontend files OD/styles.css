@@ -1407,3 +1407,33 @@ input:focus-visible {
     display: none !important;
     pointer-events: none !important;
 }
+
+/* ── Accessibility: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+    .door-intro-overlay {
+        display: none !important;
+    }
+
+    .door-panel-left,
+    .door-panel-right,
+    .door-center-content {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+/* ── Admin Logo Image ── */
+.admin-logo-img-wrap {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    overflow: hidden;
+}
+
+.admin-logo-img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    display: block;
+    border-radius: 12px;
+}

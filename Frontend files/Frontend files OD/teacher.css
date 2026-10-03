@@ -165,6 +165,21 @@ body {
     width: 22px; height: 22px;
 }
 
+.sidebar-logo-img-wrap {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    overflow: hidden;
+}
+
+.sidebar-logo-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    display: block;
+    border-radius: var(--radius-sm);
+}
+
 .logo-text {
     font-size: 1.2rem;
     font-weight: 800;

@@ -780,7 +780,10 @@
             // 2. Fallback: fetch directly from backend API if odId is provided in URL
             if (odId) {
                 try {
-                    const res = await fetch(`${API_BASE}/api/OdApply/${encodeURIComponent(odId)}`);
+                    const token = localStorage.getItem('userToken') || sessionStorage.getItem('adminToken');
+                    const fetchHeaders = {};
+                    if (token) fetchHeaders['Authorization'] = 'Bearer ' + token;
+                    const res = await fetch(`${API_BASE}/api/OdApply/${encodeURIComponent(odId)}`, { headers: fetchHeaders });
                     if (res.ok) {
                         const od = await res.json();
                         await fillOdReport(od);

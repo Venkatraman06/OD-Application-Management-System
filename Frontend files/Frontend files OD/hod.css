@@ -157,6 +157,21 @@ body {
 
 .logo-icon svg { width: 22px; height: 22px; }
 
+.sidebar-logo-img-wrap {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    overflow: hidden;
+}
+
+.sidebar-logo-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    display: block;
+    border-radius: var(--radius-sm);
+}
+
 .logo-info { display: flex; flex-direction: column; }
 
 .logo-text {

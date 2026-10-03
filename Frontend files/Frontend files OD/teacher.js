@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setEl('teacherID',   rollNumber || facultyId);
     setEl('teacherSection', section || '-');
     setEl('teacherYear', year ? `${year}${getOrdinal(parseInt(year, 10) || 0)} Year` : '-');
+    const teacherCat = localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '';
+    setEl('teacherCategory', teacherCat || 'UG');
     const avatar = document.getElementById('teacherAvatar');
     if (avatar) { const sp = avatar.querySelector('span'); if (sp) sp.textContent = name.charAt(0).toUpperCase(); }
 
