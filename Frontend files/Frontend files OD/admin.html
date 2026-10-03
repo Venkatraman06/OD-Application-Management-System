@@ -361,6 +361,15 @@
                                     <label>Password <span id="staffPasswordHint" style="font-size:0.75rem;color:var(--surface-400);">(required for new staff)</span></label>
                                     <input type="text" id="staffPassword" placeholder="Login password (leave blank to keep existing)">
                                 </div>
+                                <div class="form-row" id="staffSignatureRow">
+                                    <label>Digital Signature <span style="font-size:0.75rem;color:var(--surface-400);">(JPG/PNG/SVG, max 5MB — optional)</span></label>
+                                    <div id="staffCurrentSignaturePreview" style="display:none;margin-bottom:6px;">
+                                        <span style="font-size:0.78rem;color:var(--surface-400);">Current: </span>
+                                        <img id="staffCurrentSignatureImg" src="" alt="Current signature" style="max-height:48px;max-width:180px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:#fff;padding:2px;vertical-align:middle;">
+                                        <button type="button" id="staffRemoveSignatureBtn" style="margin-left:8px;font-size:0.75rem;color:#f87171;background:none;border:none;cursor:pointer;">Remove</button>
+                                    </div>
+                                    <input type="file" id="staffSignatureFile" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml" style="color:white;">
+                                </div>
                                 <div class="form-actions">
                                     <button type="button" class="btn-secondary" id="staffResetBtn">Clear</button>
                                     <button type="submit" class="btn-primary" id="staffSubmitBtn">Add Staff</button>
@@ -441,6 +450,15 @@
                                 <div class="form-row">
                                     <label>Password <span id="hodPasswordHint" style="font-size:0.75rem;color:var(--surface-400);">(required for new HOD)</span></label>
                                     <input type="text" id="hodPassword" placeholder="Login password (leave blank to keep existing)">
+                                </div>
+                                <div class="form-row" id="hodSignatureRow">
+                                    <label>Digital Signature <span style="font-size:0.75rem;color:var(--surface-400);">(JPG/PNG/SVG, max 5MB — optional)</span></label>
+                                    <div id="hodCurrentSignaturePreview" style="display:none;margin-bottom:6px;">
+                                        <span style="font-size:0.78rem;color:var(--surface-400);">Current: </span>
+                                        <img id="hodCurrentSignatureImg" src="" alt="Current signature" style="max-height:48px;max-width:180px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:#fff;padding:2px;vertical-align:middle;">
+                                        <button type="button" id="hodRemoveSignatureBtn" style="margin-left:8px;font-size:0.75rem;color:#f87171;background:none;border:none;cursor:pointer;">Remove</button>
+                                    </div>
+                                    <input type="file" id="hodSignatureFile" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml" style="color:white;">
                                 </div>
                                 <div class="form-actions">
                                     <button type="button" class="btn-secondary" id="hodResetBtn">Clear</button>

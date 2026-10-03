@@ -46,7 +46,8 @@ namespace OnlineOD.Controllers
                 year = s.Year,
                 category = s.Category ?? "UG",
                 email = s.Email,
-                isActive = s.IsActive
+                isActive = s.IsActive,
+                signatureUrl = s.DigitalSignature
             });
             return Ok(list);
         }
@@ -77,7 +78,8 @@ namespace OnlineOD.Controllers
                 year = staff.Year,
                 category = staff.Category ?? "UG",
                 email = staff.Email,
-                isActive = staff.IsActive
+                isActive = staff.IsActive,
+                signatureUrl = staff.DigitalSignature
             });
         }
 
@@ -97,7 +99,8 @@ namespace OnlineOD.Controllers
                 year = added.Year,
                 category = added.Category ?? "UG",
                 email = added.Email,
-                isActive = added.IsActive
+                isActive = added.IsActive,
+                signatureUrl = added.DigitalSignature
             });
         }
 
@@ -127,6 +130,7 @@ namespace OnlineOD.Controllers
                     Year         = existing.Year,           // Locked
                     Category     = existing.Category,       // Locked
                     IsActive     = existing.IsActive,       // Locked
+                    DigitalSignature = existing.DigitalSignature, // Preserved — only Admin can change via UploadSignature
                     Name         = !string.IsNullOrWhiteSpace(dto.Name)  ? dto.Name.Trim()  : existing.Name,
                     Email        = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : existing.Email,
                     Password     = !string.IsNullOrWhiteSpace(dto.Password) ? dto.Password : existing.Password
@@ -143,7 +147,8 @@ namespace OnlineOD.Controllers
                     year = updated.Year,
                     category = updated.Category ?? "UG",
                     email = updated.Email,
-                    isActive = updated.IsActive
+                    isActive = updated.IsActive,
+                    signatureUrl = updated.DigitalSignature
                 });
             }
             else
@@ -163,7 +168,9 @@ namespace OnlineOD.Controllers
                     Category = string.IsNullOrWhiteSpace(dto.Category) ? (existingStaffForAdmin.Category ?? "UG") : dto.Category.Trim().ToUpper(),
                     Email = dto.Email,
                     Password = string.IsNullOrWhiteSpace(dto.Password) ? existingStaffForAdmin.Password : dto.Password,
-                    IsActive = dto.IsActive
+                    IsActive = dto.IsActive,
+                    // Preserve existing signature — signature is only changed via the dedicated UploadSignature endpoint
+                    DigitalSignature = existingStaffForAdmin.DigitalSignature
                 };
 
                 var updated = await _staffService.UpdateStaffAsync(staffEntity);
@@ -178,7 +185,8 @@ namespace OnlineOD.Controllers
                     year = updated.Year,
                     category = updated.Category ?? "UG",
                     email = updated.Email,
-                    isActive = updated.IsActive
+                    isActive = updated.IsActive,
+                    signatureUrl = updated.DigitalSignature
                 });
             }
         }
@@ -219,7 +227,54 @@ namespace OnlineOD.Controllers
 
             if (match == null) return NotFound();
 
-            return Ok(new { name = match.Name, department = match.Department, section = match.Section });
+            return Ok(new { name = match.Name, department = match.Department, section = match.Section, signatureUrl = match.DigitalSignature });
+        }
+
+        // POST /api/Faculty/{id}/UploadSignature
+        // Admin-only: upload/replace the digital signature image for a specific staff member.
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/UploadSignature")]
+        public async Task<IActionResult> UploadSignature(int id, IFormFile signature)
+        {
+            if (signature == null || signature.Length == 0)
+                return BadRequest(new { message = "Signature image file is required." });
+
+            var ext = Path.GetExtension(signature.FileName).ToLowerInvariant();
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg" };
+            if (!allowedExtensions.Contains(ext))
+                return BadRequest(new { message = "Invalid file type. Allowed formats: JPG, PNG, GIF, WEBP, SVG." });
+
+            // Validate MIME type
+            var allowedMimes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml" };
+            if (!allowedMimes.Contains(signature.ContentType.ToLowerInvariant()))
+                return BadRequest(new { message = "Invalid file content type. Only image files are accepted." });
+
+            if (signature.Length > 5 * 1024 * 1024)
+                return BadRequest(new { message = "Signature file size must not exceed 5MB." });
+
+            var staff = await _staffService.GetStaffByIdAsync(id);
+            if (staff == null) return NotFound(new { message = "Staff member not found." });
+
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "signatures");
+            Directory.CreateDirectory(uploadsDir);
+
+            // Delete old signature file if it exists
+            if (!string.IsNullOrEmpty(staff.DigitalSignature))
+            {
+                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", staff.DigitalSignature.TrimStart('/'));
+                if (System.IO.File.Exists(oldPath))
+                    System.IO.File.Delete(oldPath);
+            }
+
+            var fileName = $"staff_{id}_{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            using var stream = System.IO.File.Create(filePath);
+            await signature.CopyToAsync(stream);
+
+            staff.DigitalSignature = $"/uploads/signatures/{fileName}";
+            await _staffService.UpdateStaffAsync(staff);
+
+            return Ok(new { message = "Signature uploaded successfully.", signatureUrl = staff.DigitalSignature });
         }
 
         [HttpPost("Login")]

@@ -781,8 +781,32 @@ function initAdminApp() {
         const staffPasswordHint = document.getElementById('staffPasswordHint');
         if (staffPasswordHint) staffPasswordHint.textContent = '(leave blank to keep existing)';
         staffSubmitBtn.textContent = 'Update Staff';
+
+        // Show current signature preview if one exists
+        const sigUrl = s.signatureUrl ?? s.DigitalSignature ?? null;
+        const previewDiv = document.getElementById('staffCurrentSignaturePreview');
+        const previewImg = document.getElementById('staffCurrentSignatureImg');
+        const sigFile = document.getElementById('staffSignatureFile');
+        if (sigUrl && previewDiv && previewImg) {
+            previewImg.src = `${API_BASE}${sigUrl}`;
+            previewDiv.style.display = 'block';
+        } else if (previewDiv) {
+            previewDiv.style.display = 'none';
+        }
+        if (sigFile) sigFile.value = '';
+
         document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    document.getElementById('staffRemoveSignatureBtn')?.addEventListener('click', async () => {
+        const id = staffIdEl.value;
+        if (!id) return;
+        // To remove, we cannot delete via API in this version — just clear the preview to indicate no new upload
+        // (Backend will not delete the file without explicit delete endpoint)
+        const previewDiv = document.getElementById('staffCurrentSignaturePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
+        showToast('info', 'Signature preview cleared. Upload a new signature to replace it.');
+    });
 
     document.getElementById('staffResetBtn')?.addEventListener('click', () => {
         staffForm.reset();
@@ -792,6 +816,8 @@ function initAdminApp() {
         const staffPasswordHint = document.getElementById('staffPasswordHint');
         if (staffPasswordHint) staffPasswordHint.textContent = '(required for new staff)';
         staffSubmitBtn.textContent = 'Add Staff';
+        const previewDiv = document.getElementById('staffCurrentSignaturePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
     });
 
     staffForm?.addEventListener('submit', async (e) => {
@@ -823,6 +849,7 @@ function initAdminApp() {
         staffSubmitBtn.disabled = true;
         try {
             let res;
+            let savedId = id ? parseInt(id, 10) : null;
             if (isEdit) {
                 const body = { ...payload, staffId: parseInt(id, 10) };
                 if (!body.password) delete body.password;
@@ -844,7 +871,28 @@ function initAdminApp() {
                 showToast('error', text || 'Could not save staff.');
                 return;
             }
-            showToast('success', isEdit ? 'Staff updated.' : 'Staff added.');
+            const saved = await res.json().catch(() => null);
+            savedId = saved?.staffId ?? saved?.StaffId ?? savedId;
+
+            // Upload signature if a file was selected
+            const sigFile = document.getElementById('staffSignatureFile');
+            if (sigFile?.files?.length && savedId) {
+                const formData = new FormData();
+                formData.append('signature', sigFile.files[0]);
+                const sigRes = await adminFetch(`${API_BASE}/api/Faculty/${savedId}/UploadSignature`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!sigRes.ok) {
+                    const sigText = await sigRes.text().catch(() => '');
+                    showToast('warning', `Staff saved but signature upload failed: ${sigText || 'Unknown error'}`);
+                } else {
+                    showToast('success', isEdit ? 'Staff updated with new signature.' : 'Staff added with signature.');
+                }
+            } else {
+                showToast('success', isEdit ? 'Staff updated.' : 'Staff added.');
+            }
+
             staffForm.reset();
             staffIdEl.value = '';
             const catEl = document.getElementById('staffCategory');
@@ -852,6 +900,8 @@ function initAdminApp() {
             const staffPasswordHint = document.getElementById('staffPasswordHint');
             if (staffPasswordHint) staffPasswordHint.textContent = '(required for new staff)';
             staffSubmitBtn.textContent = 'Add Staff';
+            const previewDiv = document.getElementById('staffCurrentSignaturePreview');
+            if (previewDiv) previewDiv.style.display = 'none';
             loadStaff();
         } catch (err) {
             console.error(err);
@@ -974,8 +1024,30 @@ function initAdminApp() {
         const hodPasswordHint = document.getElementById('hodPasswordHint');
         if (hodPasswordHint) hodPasswordHint.textContent = '(leave blank to keep existing)';
         hodSubmitBtn.textContent = 'Update HOD';
+
+        // Show current signature preview if one exists
+        const sigUrl = h.signatureUrl ?? h.DigitalSignature ?? null;
+        const previewDiv = document.getElementById('hodCurrentSignaturePreview');
+        const previewImg = document.getElementById('hodCurrentSignatureImg');
+        const sigFile = document.getElementById('hodSignatureFile');
+        if (sigUrl && previewDiv && previewImg) {
+            previewImg.src = `${API_BASE}${sigUrl}`;
+            previewDiv.style.display = 'block';
+        } else if (previewDiv) {
+            previewDiv.style.display = 'none';
+        }
+        if (sigFile) sigFile.value = '';
+
         document.getElementById('panel-users')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    document.getElementById('hodRemoveSignatureBtn')?.addEventListener('click', async () => {
+        const id = hodIdEl.value;
+        if (!id) return;
+        const previewDiv = document.getElementById('hodCurrentSignaturePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
+        showToast('info', 'Signature preview cleared. Upload a new signature to replace it.');
+    });
 
     document.getElementById('hodResetBtn')?.addEventListener('click', () => {
         hodForm.reset();
@@ -985,6 +1057,8 @@ function initAdminApp() {
         const hodPasswordHint = document.getElementById('hodPasswordHint');
         if (hodPasswordHint) hodPasswordHint.textContent = '(required for new HOD)';
         hodSubmitBtn.textContent = 'Add HOD';
+        const previewDiv = document.getElementById('hodCurrentSignaturePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
     });
 
     hodForm?.addEventListener('submit', async (e) => {
@@ -1013,6 +1087,7 @@ function initAdminApp() {
         hodSubmitBtn.disabled = true;
         try {
             let res;
+            let savedId = id ? parseInt(id, 10) : null;
             if (isEdit) {
                 const body = { ...payload, hodId: parseInt(id, 10) };
                 if (!body.password) delete body.password;
@@ -1033,7 +1108,28 @@ function initAdminApp() {
                 showToast('error', text || 'Could not save HOD.');
                 return;
             }
-            showToast('success', isEdit ? 'HOD updated.' : 'HOD added.');
+            const saved = await res.json().catch(() => null);
+            savedId = saved?.hodId ?? saved?.HodId ?? savedId;
+
+            // Upload signature if a file was selected
+            const sigFile = document.getElementById('hodSignatureFile');
+            if (sigFile?.files?.length && savedId) {
+                const formData = new FormData();
+                formData.append('signature', sigFile.files[0]);
+                const sigRes = await adminFetch(`${API_BASE}/api/Hod/${savedId}/UploadSignature`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!sigRes.ok) {
+                    const sigText = await sigRes.text().catch(() => '');
+                    showToast('warning', `HOD saved but signature upload failed: ${sigText || 'Unknown error'}`);
+                } else {
+                    showToast('success', isEdit ? 'HOD updated with new signature.' : 'HOD added with signature.');
+                }
+            } else {
+                showToast('success', isEdit ? 'HOD updated.' : 'HOD added.');
+            }
+
             hodForm.reset();
             hodIdEl.value = '';
             const catEl = document.getElementById('hodCategory');
@@ -1041,6 +1137,8 @@ function initAdminApp() {
             const hodPasswordHint = document.getElementById('hodPasswordHint');
             if (hodPasswordHint) hodPasswordHint.textContent = '(required for new HOD)';
             hodSubmitBtn.textContent = 'Add HOD';
+            const previewDiv = document.getElementById('hodCurrentSignaturePreview');
+            if (previewDiv) previewDiv.style.display = 'none';
             loadHods();
         } catch (err) {
             console.error(err);

@@ -20,5 +20,9 @@ namespace OnlineOD.Models
         public string Category { get; set; } = "UG";
 
         public bool IsActive { get; set; } = true;
+
+        // Relative URL of the uploaded digital signature image (e.g. /uploads/signatures/hod_1_abc.png).
+        // Null when no signature has been uploaded yet.
+        public string? DigitalSignature { get; set; }
     }
 }

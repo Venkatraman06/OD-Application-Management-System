@@ -226,9 +226,29 @@
     .status-pending  { color: #b45309; }
     .status-rejected { color: #b91c1c; }
 
+    /* ===== Spacing between approval status boxes and signature section ===== */
+    .approval-gap {
+        margin-bottom: 20px;
+    }
+
+    /* ===== Digital signature image above each dash line ===== */
+    .sign-img-wrap {
+        height: 52px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        margin-bottom: 4px;
+    }
+
+    .sign-img {
+        max-height: 50px;
+        max-width: 140px;
+        object-fit: contain;
+    }
+
     /* ===== Signature Section ===== */
     .signature-section {
-        margin-top: 28px;
+        margin-top: 0;
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
@@ -442,7 +462,7 @@
         </div>
 
         <!-- ===== Approval Status ===== -->
-        <div class="approval-status">
+        <div class="approval-status approval-gap">
             <div class="status-box">
                 <span class="box-label">Faculty Approval</span>
                 <span class="status-value status-pending" id="facultyStatus">Pending</span>
@@ -456,16 +476,23 @@
         <!-- ===== Signature Section ===== -->
         <div class="signature-section">
             <div class="sign-block">
+                <div class="sign-img-wrap">
+                    <img id="signStaffImg" class="sign-img" src="" alt="" style="display:none;">
+                </div>
                 <div class="sign-line"></div>
                 <div class="sign-label">Staff Signature</div>
                 <div class="sign-sub" id="signStaffName">Class Advisor</div>
             </div>
             <div class="sign-block">
+                <div class="sign-img-wrap">
+                    <img id="signHodImg" class="sign-img" src="" alt="" style="display:none;">
+                </div>
                 <div class="sign-line"></div>
                 <div class="sign-label">HOD Signature</div>
                 <div class="sign-sub" id="signHodName">HOD</div>
             </div>
             <div class="sign-block">
+                <div class="sign-img-wrap"></div>
                 <div class="sign-line"></div>
                 <div class="sign-label">Principal Signature</div>
                 <div class="sign-sub">Principal</div>
@@ -543,7 +570,7 @@
                 const res = await fetch(`${API_BASE}/api/Faculty/ByDepartmentSection?${params.toString()}`, { headers });
                 if (!res.ok) return null;
                 const data = await res.json();
-                return data.name || null;
+                return data.name ? data : null;
             } catch (err) {
                 console.error('Failed to fetch class staff name:', err);
                 return null;
@@ -560,7 +587,7 @@
                 const res = await fetch(`${API_BASE}/api/Hod/ByDepartment?department=${encodeURIComponent(department)}`, { headers });
                 if (!res.ok) return null;
                 const data = await res.json();
-                return data.name || null;
+                return data.name ? data : null;
             } catch (err) {
                 console.error('Failed to fetch HOD name:', err);
                 return null;
@@ -641,18 +668,32 @@
             setText('numberOfDays', numberOfDays);
             setText('reason', reason);
 
-            // Staff Signature line lookup
+            // Staff Signature line lookup + digital signature image
             setText('signStaffName', department ? `${department} Department` : 'Class Advisor');
-            const staffName = await fetchClassStaffName(department, section);
-            if (staffName) setText('signStaffName', staffName);
+            const staffData = await fetchClassStaffName(department, section);
+            if (staffData) {
+                setText('signStaffName', staffData.name);
+                const staffImg = document.getElementById('signStaffImg');
+                if (staffImg && staffData.signatureUrl) {
+                    staffImg.src = `${API_BASE}${staffData.signatureUrl}`;
+                    staffImg.style.display = 'block';
+                    staffImg.onerror = () => { staffImg.style.display = 'none'; };
+                }
+            }
 
-            // HOD Signature line lookup with Dr. prefix
-            const hodName = await fetchHodName(department);
-            if (hodName) {
-                const cleanName = hodName.replace(/^dr\.?\s+/i, '');
+            // HOD Signature line lookup with Dr. prefix + digital signature image
+            const hodData = await fetchHodName(department);
+            if (hodData) {
+                const cleanName = hodData.name.replace(/^dr\.?\s+/i, '');
                 const signHodEl = document.getElementById('signHodName');
                 if (signHodEl) {
                     signHodEl.innerHTML = `Dr. ${escHtml(cleanName)}<br><span style="font-size:10px;font-weight:normal;opacity:0.8">HOD</span>`;
+                }
+                const hodImg = document.getElementById('signHodImg');
+                if (hodImg && hodData.signatureUrl) {
+                    hodImg.src = `${API_BASE}${hodData.signatureUrl}`;
+                    hodImg.style.display = 'block';
+                    hodImg.onerror = () => { hodImg.style.display = 'none'; };
                 }
             } else {
                 setText('signHodName', department ? `${department} HOD` : 'HOD');

@@ -38,7 +38,8 @@ namespace OnlineOD.Controllers
                 department = h.Department,
                 category = h.Category ?? "UG",
                 email = h.Email,
-                isActive = h.IsActive
+                isActive = h.IsActive,
+                signatureUrl = h.DigitalSignature
             });
             return Ok(list);
         }
@@ -69,7 +70,8 @@ namespace OnlineOD.Controllers
                 department = hod.Department,
                 category = hod.Category ?? "UG",
                 email = hod.Email,
-                isActive = hod.IsActive
+                isActive = hod.IsActive,
+                signatureUrl = hod.DigitalSignature
             });
         }
 
@@ -99,7 +101,8 @@ namespace OnlineOD.Controllers
                 department = added.Department,
                 category = added.Category ?? "UG",
                 email = added.Email,
-                isActive = added.IsActive
+                isActive = added.IsActive,
+                signatureUrl = added.DigitalSignature
             });
         }
 
@@ -127,6 +130,7 @@ namespace OnlineOD.Controllers
                     RollNumber = existing.RollNumber,   // Locked
                     Department = existing.Department,   // Locked
                     IsActive   = existing.IsActive,     // Locked
+                    DigitalSignature = existing.DigitalSignature, // Preserved — only Admin can change via UploadSignature
                     Name       = !string.IsNullOrWhiteSpace(dto.Name)  ? dto.Name.Trim()  : existing.Name,
                     Email      = !string.IsNullOrWhiteSpace(dto.Email) ? dto.Email.Trim() : existing.Email,
                     Password   = !string.IsNullOrWhiteSpace(dto.Password) ? dto.Password : existing.Password
@@ -140,7 +144,8 @@ namespace OnlineOD.Controllers
                     rollNumber = updated.RollNumber,
                     department = updated.Department,
                     email = updated.Email,
-                    isActive = updated.IsActive
+                    isActive = updated.IsActive,
+                    signatureUrl = updated.DigitalSignature
                 });
             }
             else
@@ -158,7 +163,9 @@ namespace OnlineOD.Controllers
                     Email = dto.Email,
                     // If Admin left password blank, keep the existing hash by passing it through unchanged.
                     // HodService only re-hashes when the value differs from the stored hash.
-                    Password = string.IsNullOrWhiteSpace(dto.Password) ? existingHodForAdmin.Password : dto.Password
+                    Password = string.IsNullOrWhiteSpace(dto.Password) ? existingHodForAdmin.Password : dto.Password,
+                    // Preserve existing signature — signature is only changed via the dedicated UploadSignature endpoint
+                    DigitalSignature = existingHodForAdmin.DigitalSignature
                 };
                 var updated = await _hodService.UpdateHodAsync(hod);
                 if (updated == null) return NotFound();
@@ -169,7 +176,8 @@ namespace OnlineOD.Controllers
                     rollNumber = updated.RollNumber,
                     department = updated.Department,
                     email = updated.Email,
-                    isActive = updated.IsActive
+                    isActive = updated.IsActive,
+                    signatureUrl = updated.DigitalSignature
                 });
             }
         }
@@ -259,7 +267,53 @@ namespace OnlineOD.Controllers
             var match = allHods.FirstOrDefault(h => (h.Department ?? "").Trim().ToLower() == dept && h.IsActive);
             if (match == null) return NotFound();
 
-            return Ok(new { name = match.Name, department = match.Department, rollNumber = match.RollNumber });
+            return Ok(new { name = match.Name, department = match.Department, rollNumber = match.RollNumber, signatureUrl = match.DigitalSignature });
+        }
+
+        // POST /api/Hod/{id}/UploadSignature
+        // Admin-only: upload/replace the digital signature image for a specific HOD.
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{id}/UploadSignature")]
+        public async Task<IActionResult> UploadSignature(int id, IFormFile signature)
+        {
+            if (signature == null || signature.Length == 0)
+                return BadRequest(new { message = "Signature image file is required." });
+
+            var ext = Path.GetExtension(signature.FileName).ToLowerInvariant();
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg" };
+            if (!allowedExtensions.Contains(ext))
+                return BadRequest(new { message = "Invalid file type. Allowed formats: JPG, PNG, GIF, WEBP, SVG." });
+
+            var allowedMimes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml" };
+            if (!allowedMimes.Contains(signature.ContentType.ToLowerInvariant()))
+                return BadRequest(new { message = "Invalid file content type. Only image files are accepted." });
+
+            if (signature.Length > 5 * 1024 * 1024)
+                return BadRequest(new { message = "Signature file size must not exceed 5MB." });
+
+            var hod = await _hodService.GetHodByIdAsync(id);
+            if (hod == null) return NotFound(new { message = "HOD not found." });
+
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "signatures");
+            Directory.CreateDirectory(uploadsDir);
+
+            // Delete old signature file if it exists
+            if (!string.IsNullOrEmpty(hod.DigitalSignature))
+            {
+                var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", hod.DigitalSignature.TrimStart('/'));
+                if (System.IO.File.Exists(oldPath))
+                    System.IO.File.Delete(oldPath);
+            }
+
+            var fileName = $"hod_{id}_{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            using var stream = System.IO.File.Create(filePath);
+            await signature.CopyToAsync(stream);
+
+            hod.DigitalSignature = $"/uploads/signatures/{fileName}";
+            await _hodService.UpdateHodAsync(hod);
+
+            return Ok(new { message = "Signature uploaded successfully.", signatureUrl = hod.DigitalSignature });
         }
 
 
