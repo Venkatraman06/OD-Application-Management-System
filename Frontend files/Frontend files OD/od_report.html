@@ -559,6 +559,15 @@
 
         const API_BASE = 'https://od-application-backend.onrender.com';
 
+        function resolveSigUrl(url) {
+            if (!url) return '';
+            const value = String(url).trim();
+            if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) {
+                return value;
+            }
+            return `${API_BASE}${value.startsWith('/') ? '' : '/'}${value}`;
+        }
+
         // Looks up the actual class staff (advisor) assigned to this Department + Section
         async function fetchClassStaffName(department, section) {
             try {
@@ -676,43 +685,45 @@
             setText('signStaffName', department ? `${department} Department` : 'Class Advisor');
             const staffData = await fetchClassStaffName(department, section);
             const staffImg = document.getElementById('signStaffImg');
+            const staffSig = staffData?.signatureUrl || staffData?.SignatureUrl || staffData?.digitalSignature || staffData?.DigitalSignature || null;
             if (staffData) {
                 setText('signStaffName', staffData.name);
-                if (isFacultyApproved && staffData.signatureUrl && staffImg) {
-                    staffImg.src = `${API_BASE}${staffData.signatureUrl}`;
+                if (isFacultyApproved && staffSig && staffImg) {
+                    staffImg.src = resolveSigUrl(staffSig);
                     staffImg.style.display = 'block';
-                    staffImg.onerror = () => { staffImg.style.display = 'none'; staffImg.src = ''; };
+                    staffImg.onerror = () => { staffImg.style.display = 'none'; staffImg.removeAttribute('src'); };
                 } else if (staffImg) {
                     staffImg.style.display = 'none';
-                    staffImg.src = '';
+                    staffImg.removeAttribute('src');
                 }
             } else if (staffImg) {
                 staffImg.style.display = 'none';
-                staffImg.src = '';
+                staffImg.removeAttribute('src');
             }
 
             // HOD Signature line lookup with Dr. prefix + digital signature image (shown ONLY when HOD approval is Approved)
             const hodData = await fetchHodName(department);
             const hodImg = document.getElementById('signHodImg');
+            const hodSig = hodData?.signatureUrl || hodData?.SignatureUrl || hodData?.digitalSignature || hodData?.DigitalSignature || null;
             if (hodData) {
                 const cleanName = (hodData.name || '').replace(/^dr\.?\s+/i, '');
                 const signHodEl = document.getElementById('signHodName');
                 if (signHodEl) {
                     signHodEl.innerHTML = `Dr. ${escHtml(cleanName)}<br><span style="font-size:10px;font-weight:normal;opacity:0.8">HOD</span>`;
                 }
-                if (isHodApproved && hodData.signatureUrl && hodImg) {
-                    hodImg.src = `${API_BASE}${hodData.signatureUrl}`;
+                if (isHodApproved && hodSig && hodImg) {
+                    hodImg.src = resolveSigUrl(hodSig);
                     hodImg.style.display = 'block';
-                    hodImg.onerror = () => { hodImg.style.display = 'none'; hodImg.src = ''; };
+                    hodImg.onerror = () => { hodImg.style.display = 'none'; hodImg.removeAttribute('src'); };
                 } else if (hodImg) {
                     hodImg.style.display = 'none';
-                    hodImg.src = '';
+                    hodImg.removeAttribute('src');
                 }
             } else {
                 setText('signHodName', department ? `${department} HOD` : 'HOD');
                 if (hodImg) {
                     hodImg.style.display = 'none';
-                    hodImg.src = '';
+                    hodImg.removeAttribute('src');
                 }
             }
 
