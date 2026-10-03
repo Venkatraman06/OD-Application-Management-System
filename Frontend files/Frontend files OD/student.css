@@ -369,7 +369,8 @@ body {
    ============================================ */
 .tab-pane {
     display: none;
-    animation: tabFade 0.35s ease;
+    animation: tabFade 0.3s ease both;
+    will-change: opacity, transform;
 }
 
 .tab-pane.active {
@@ -379,7 +380,7 @@ body {
 @keyframes tabFade {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
     }
     to {
         opacity: 1;

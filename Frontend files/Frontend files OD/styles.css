@@ -1310,7 +1310,7 @@ input:focus-visible {
     pointer-events: none;
     background: radial-gradient(circle at 50% 50%, rgba(30, 27, 75, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
     backdrop-filter: blur(12px);
-    animation: overlayFadeOut 1.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: overlayFadeOut 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 [data-theme="light"] .logo-reveal-overlay {
@@ -1324,7 +1324,7 @@ input:focus-visible {
     justify-content: center;
     text-align: center;
     gap: 14px;
-    animation: logoIntroSequence 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: logoIntroSequence 2.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     will-change: transform, opacity;
 }
 

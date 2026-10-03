@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    OD Application - Teacher Dashboard Styles
    ============================================ */
 
@@ -193,6 +193,19 @@ body {
     font-weight: 800;
     color: white;
     letter-spacing: -0.5px;
+}
+.logo-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.logo-role {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #a5b4fc;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
 }
 
 /* Sidebar Nav */
@@ -636,7 +649,7 @@ body {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
-/* ── OD start/end countdown banner (top of each request card) ── */
+/* â”€â”€ OD start/end countdown banner (top of each request card) â”€â”€ */
 .od-countdown-banner {
     padding: 7px 18px;
     font-size: 0.76rem;
@@ -1202,7 +1215,7 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 
-/* ── OD Request Cards ── */
+/* â”€â”€ OD Request Cards â”€â”€ */
 .request-card {
     background: linear-gradient(135deg, #1a1f3e 0%, #252b4a 100%);
     border: 1px solid rgba(99,102,241,0.2);
@@ -1285,7 +1298,7 @@ body {
 .status-badge.rejected { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid rgba(239,68,68,0.3);  border-radius: 8px; padding: 3px 12px; font-size: 12px; font-weight: 600; }
 .status-badge.pending  { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 3px 12px; font-size: 12px; font-weight: 600; }
 
-/* ── Search Box ── */
+/* â”€â”€ Search Box â”€â”€ */
 .search-box { margin-bottom: 16px; }
 .search-input-wrap {
     display: flex; align-items: center; gap: 10px;
@@ -1307,7 +1320,7 @@ body {
 }
 .search-input-wrap #clearSearch:hover { color: #ef4444; }
 
-/* ── Empty State ── */
+/* â”€â”€ Empty State â”€â”€ */
 .empty-state {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; padding: 48px 24px; text-align: center;
@@ -1322,7 +1335,7 @@ body {
 .empty-state p  { font-size: 13px; color: #64748b; margin: 0; }
 
 /* ============================================
-   Certificates — view-only card, badge, preview
+   Certificates â€” view-only card, badge, preview
    ============================================ */
 .cert-badge {
     background: rgba(99,102,241,0.15);
@@ -1407,7 +1420,7 @@ body {
     border-top: 1px solid rgba(255,255,255,0.07);
 }
 
-/* ── Verify Certificate row ── */
+/* â”€â”€ Verify Certificate row â”€â”€ */
 .cert-verify-row {
     display: flex;
     justify-content: flex-end;
@@ -1445,7 +1458,7 @@ body {
     gap: 6px;
 }
 
-/* ── Group OD certificate card: expandable member details ── */
+/* â”€â”€ Group OD certificate card: expandable member details â”€â”€ */
 .cert-expand-btn {
     display: flex;
     align-items: center;
@@ -1755,7 +1768,7 @@ body {
     font-weight: 600;
 }
 
-/* ── Analytics & Reports ───────────────────────────────────────── */
+/* â”€â”€ Analytics & Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .analytics-stats-row {
     display: flex;
@@ -1890,14 +1903,14 @@ body {
 .result-tag.other   { background: rgba(51,65,85,0.5);     color: #94a3b8; }
 .result-tag.empty   { background: rgba(148,163,184,0.08); color: #64748b; border: 1px dashed rgba(148,163,184,0.25); }
 
-/* ── 4th Box: OD Student / Report Search ── */
+/* â”€â”€ 4th Box: OD Student / Report Search â”€â”€ */
 .report-search-card {
     margin-top: 20px;
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    /* overflow: hidden removed — it blocked inner table from scrolling horizontally */
+    /* overflow: hidden removed â€” it blocked inner table from scrolling horizontally */
     overflow: visible;
 }
 
@@ -2224,7 +2237,7 @@ body {
 }
 
 
-/* ── Time Period Filter Bar ────────────────────────────────────── */
+/* â”€â”€ Time Period Filter Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .time-filter-bar {
     display: flex;
@@ -2259,7 +2272,7 @@ body {
 }
 
 
-/* ── Alter OD Days panel ───────────────────────────────────────── */
+/* â”€â”€ Alter OD Days panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .btn-edit-dates {
     margin-top: 4px;
@@ -2421,7 +2434,7 @@ body {
     color: #ffffff !important;
 }
 
-/* ── Competition Type Tag (shared) ── */
+/* â”€â”€ Competition Type Tag (shared) â”€â”€ */
 .competition-tag {
     display: inline-flex;
     align-items: center;
@@ -2436,11 +2449,11 @@ body {
     border: 1px solid rgba(99,102,241,0.25);
     vertical-align: middle;
 }
-/* ══════════════════════════════════════════════════
-   THEME SYSTEM — Light / Dark
-   ══════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   THEME SYSTEM â€” Light / Dark
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Toggle Button ── */
+/* â”€â”€ Toggle Button â”€â”€ */
 .theme-toggle-btn {
     display: inline-flex;
     align-items: center;
@@ -2462,18 +2475,18 @@ body {
     transform: rotate(20deg) scale(1.08);
 }
 
-/* ── Light theme overrides ── */
+/* â”€â”€ Light theme overrides â”€â”€ */
 
-/* ══════════════════════════════════════════════════
-   LIGHT THEME — Pure White
-   ══════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   LIGHT THEME â€” Pure White
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 
-/* ══════════════════════════════════════════════════
-   LIGHT THEME — Pure White & High Contrast Dark Text (teacher.css)
-   ══════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   LIGHT THEME â€” Pure White & High Contrast Dark Text (teacher.css)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Page background & floating shapes ── */
+/* â”€â”€ Page background & floating shapes â”€â”€ */
 [data-theme="light"] body {
     background: #ffffff !important;
     color: #0f172a !important;
@@ -2485,7 +2498,7 @@ body {
     display: none !important;
 }
 
-/* ── App container & layout ── */
+/* â”€â”€ App container & layout â”€â”€ */
 [data-theme="light"] .app-layout {
     background: transparent;
 }
@@ -2493,7 +2506,7 @@ body {
     background: #f8fafc !important;
 }
 
-/* ── Content header ── */
+/* â”€â”€ Content header â”€â”€ */
 [data-theme="light"] .content-header {
     background: #ffffff !important;
     border-bottom: 1px solid #cbd5e1 !important;
@@ -2506,7 +2519,7 @@ body {
     color: #334155 !important;
 }
 
-/* ── Sidebar (teacher) ── */
+/* â”€â”€ Sidebar (teacher) â”€â”€ */
 [data-theme="light"] .sidebar {
     background: #ffffff !important;
     border-right: 1px solid #cbd5e1 !important;
@@ -2555,7 +2568,7 @@ body {
     background: #ffe4e6 !important;
 }
 
-/* ── OD Cards (Pending & History list) ── */
+/* â”€â”€ OD Cards (Pending & History list) â”€â”€ */
 [data-theme="light"] .od-card {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
@@ -2583,7 +2596,7 @@ body {
     color: #0f172a !important;
 }
 
-/* ── OD Detail Panel (Right panel) ── */
+/* â”€â”€ OD Detail Panel (Right panel) â”€â”€ */
 [data-theme="light"] .od-detail-panel,
 [data-theme="light"] .od-panel {
     background: #ffffff !important;
@@ -2609,7 +2622,7 @@ body {
     font-weight: 700 !important;
 }
 
-/* ── Form labels & inputs ── */
+/* â”€â”€ Form labels & inputs â”€â”€ */
 [data-theme="light"] .input-group label,
 [data-theme="light"] .form-group label {
     color: #0f172a !important;
@@ -2640,7 +2653,7 @@ body {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
 }
 
-/* ── Buttons ── */
+/* â”€â”€ Buttons â”€â”€ */
 [data-theme="light"] .btn-primary,
 [data-theme="light"] button[type="submit"],
 [data-theme="light"] .submit-btn {
@@ -2678,7 +2691,7 @@ body {
     border-color: #6366f1 !important;
 }
 
-/* ── Filter buttons ── */
+/* â”€â”€ Filter buttons â”€â”€ */
 [data-theme="light"] .filter-btn {
     background: #f1f5f9 !important;
     border: 1px solid #cbd5e1 !important;
@@ -2693,7 +2706,7 @@ body {
     border-color: transparent !important;
 }
 
-/* ── Stat cards & Analytics ── */
+/* â”€â”€ Stat cards & Analytics â”€â”€ */
 [data-theme="light"] .analytics-card,
 [data-theme="light"] .stat-card {
     background: #ffffff !important;
@@ -2709,7 +2722,7 @@ body {
     font-weight: 800 !important;
 }
 
-/* ── Empty state ── */
+/* â”€â”€ Empty state â”€â”€ */
 [data-theme="light"] .empty-state h3 {
     color: #0f172a !important;
     font-weight: 700 !important;
@@ -2718,7 +2731,7 @@ body {
     color: #475569 !important;
 }
 
-/* ── Theme toggle button ── */
+/* â”€â”€ Theme toggle button â”€â”€ */
 [data-theme="light"] #themeToggleBtn {
     background: #ffffff !important;
     border: 1.5px solid #6366f1 !important;
@@ -2726,7 +2739,7 @@ body {
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15) !important;
 }
 
-/* ── Search inputs ── */
+/* â”€â”€ Search inputs â”€â”€ */
 [data-theme="light"] .search-input,
 [data-theme="light"] .filter-select {
     background: #ffffff !important;
@@ -2734,7 +2747,7 @@ body {
     color: #0f172a !important;
 }
 
-/* ── Toast ── */
+/* â”€â”€ Toast â”€â”€ */
 [data-theme="light"] .toast {
     background: #ffffff !important;
     color: #0f172a !important;
@@ -2757,7 +2770,7 @@ body {
     color: #1e40af !important;
 }
 
-/* ── Countdown / program tags ── */
+/* â”€â”€ Countdown / program tags â”€â”€ */
 [data-theme="light"] .od-countdown-tag {
     background: #ede9fe !important;
     color: #4f46e5 !important;
@@ -2767,7 +2780,7 @@ body {
     color: #4f46e5 !important;
 }
 
-/* ── Mobile Responsive Updates ── */
+/* â”€â”€ Mobile Responsive Updates â”€â”€ */
 @media (max-width: 768px) {
     .alter-days-fields {
         display: flex !important;
@@ -2806,7 +2819,7 @@ body {
     }
 }
 
-/* ── Circular Analog Clock Picker CSS ── */
+/* â”€â”€ Circular Analog Clock Picker CSS â”€â”€ */
 .clock-picker-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -3652,7 +3665,7 @@ body {
     border: 1px solid rgba(99,102,241,0.25);
 }
 
-/* ── Switch Toggle (Active / Deactivate) ── */
+/* â”€â”€ Switch Toggle (Active / Deactivate) â”€â”€ */
 .switch-toggle {
     position: relative;
     display: inline-block;
@@ -3774,7 +3787,7 @@ input:checked + .switch-slider:before {
     color: #991b1b !important;
 }
 
-/* ── Edit Calendar Form Modal Card (Light + Dark Theme) ── */
+/* â”€â”€ Edit Calendar Form Modal Card (Light + Dark Theme) â”€â”€ */
 .edit-cal-card {
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -3855,7 +3868,7 @@ input:checked + .switch-slider:before {
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
 }
 
-/* ── Staff Day Detail Special Actions & Buttons (Light & Dark) ── */
+/* â”€â”€ Staff Day Detail Special Actions & Buttons (Light & Dark) â”€â”€ */
 .day-detail-actions {
     margin-top: 18px;
     display: flex;
@@ -4016,7 +4029,7 @@ input:checked + .switch-slider:before {
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2) !important;
 }
 
-/* ── Global Modal Close "×" Button ── */
+/* â”€â”€ Global Modal Close "Ã—" Button â”€â”€ */
 .modal-close {
     position: absolute;
     top: 16px;
@@ -4055,7 +4068,7 @@ input:checked + .switch-slider:before {
     border-color: #fca5a5 !important;
 }
 
-/* ── Edit Calendar Modal (Add/Edit Calendar Range) ── */
+/* â”€â”€ Edit Calendar Modal (Add/Edit Calendar Range) â”€â”€ */
 .edit-cal-modal-card {
     max-width: 480px;
     width: 92%;
@@ -4177,7 +4190,7 @@ input:checked + .switch-slider:before {
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
 }
 
-/* ── Light theme: Edit Calendar Modal ── */
+/* â”€â”€ Light theme: Edit Calendar Modal â”€â”€ */
 [data-theme="light"] .edit-cal-modal-card {
     background: #ffffff !important;
     color: #0f172a !important;
@@ -4236,7 +4249,7 @@ input:checked + .switch-slider:before {
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
 }
 
-/* ── confirm-modal-card: Clean confirmation dialog styling ── */
+/* â”€â”€ confirm-modal-card: Clean confirmation dialog styling â”€â”€ */
 .confirm-modal-card {
     position: relative;
     max-width: 440px;
@@ -4292,7 +4305,7 @@ input:checked + .switch-slider:before {
 [data-theme="light"] .confirm-modal-card p#modalMessage {
     color: #475569 !important;
 }
-/* ── Dropdown option theme fixes for Staff page ── */
+/* â”€â”€ Dropdown option theme fixes for Staff page â”€â”€ */
 select option,
 .edit-cal-form select option,
 .report-search-select option {
@@ -4573,11 +4586,11 @@ select option,
     }
 }
 
-/* ══════════════════════════════════════════════════
-   LIGHT THEME & TOTAL BADGES — Teacher Dashboard
-   ══════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   LIGHT THEME & TOTAL BADGES â€” Teacher Dashboard
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── Page total badge ── */
+/* â”€â”€ Page total badge â”€â”€ */
 .page-total-badge {
     display: inline-flex;
     align-items: center;
@@ -4598,7 +4611,7 @@ select option,
     border-color: #c7d2fe !important;
 }
 
-/* ── Teacher Header (User details card) ── */
+/* â”€â”€ Teacher Header (User details card) â”€â”€ */
 [data-theme="light"] .teacher-header {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
@@ -4644,7 +4657,7 @@ select option,
     color: #0f172a !important;
 }
 
-/* ── Section Title & Headings ── */
+/* â”€â”€ Section Title & Headings â”€â”€ */
 [data-theme="light"] .section-title h2 {
     color: #0f172a !important;
 }
@@ -4661,7 +4674,7 @@ select option,
     color: #475569 !important;
 }
 
-/* ── OD Request Cards (Pending, Ongoing/No Action, Approved, Rejected, Certificates) ── */
+/* â”€â”€ OD Request Cards (Pending, Ongoing/No Action, Approved, Rejected, Certificates) â”€â”€ */
 [data-theme="light"] .request-card {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
@@ -4705,7 +4718,7 @@ select option,
     color: #000000 !important;
 }
 
-/* ── Time filter bar ── */
+/* â”€â”€ Time filter bar â”€â”€ */
 [data-theme="light"] .time-filter-bar {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
@@ -4725,7 +4738,7 @@ select option,
     color: #ffffff !important;
 }
 
-/* ── Sidebar Logo "On Duty Application" Light Theme ── */
+/* â”€â”€ Sidebar Logo "On Duty Application" Light Theme â”€â”€ */
 [data-theme="light"] .logo-text {
     color: #0f172a !important;
 }

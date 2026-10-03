@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('keydown', finishIntro, { once: true });
 
         // Auto-cleanup after CSS animation completes
-        setTimeout(finishIntro, 1020);
+        setTimeout(finishIntro, 2020);
     }
 
     const loginForm = document.getElementById('loginForm');
