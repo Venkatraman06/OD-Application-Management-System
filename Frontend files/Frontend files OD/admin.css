@@ -140,9 +140,31 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 .admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 
 /* ── Layout with Sidebar ── */
+.admin-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.admin-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+}
+
 .admin-body-layout {
     display: flex;
-    min-height: calc(100vh - 81px);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .admin-sidebar {
@@ -155,11 +177,11 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    position: sticky;
-    top: 81px;
-    height: calc(100vh - 81px);
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.7);
 }
 
 .admin-sidebar-nav {
@@ -416,9 +438,13 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 /* ── Main / panels ── */
 .admin-main {
     flex: 1;
+    height: 100%;
     padding: 26px 32px 60px;
-    overflow-x: hidden;
+    overflow-y: auto;
+    overflow-x: auto;
     min-width: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.7);
 }
 .admin-panel { display: none; animation: fadeIn 0.25s ease; }
 .admin-panel.active { display: block; }
@@ -431,9 +457,33 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     align-items: start;
 }
 @media (max-width: 900px) {
-    .admin-body-layout { flex-direction: column; }
-    .admin-sidebar { width: 100%; border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08); overflow-x: auto; }
-    .admin-sidebar-nav { flex-direction: row; flex-wrap: nowrap; }
+    .admin-shell {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+    .admin-body-layout {
+        flex-direction: column;
+        overflow: visible;
+        height: auto;
+    }
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        overflow-x: auto;
+    }
+    .admin-sidebar-nav {
+        flex-direction: row;
+        flex-wrap: nowrap;
+    }
+    .admin-main {
+        height: auto;
+        overflow-y: visible;
+        overflow-x: auto;
+        padding: 16px;
+    }
     .admin-grid { grid-template-columns: 1fr; }
 }
 

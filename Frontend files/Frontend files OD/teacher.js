@@ -2468,7 +2468,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 closeStaffDayDetail();
 
                 if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
-                    const staffCourse = (localStorage.getItem('userCourse') || '').trim() || null;
+                    const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim() || null;
                     await CollegeWorkingDays.syncWithBackend(API_BASE, dept, year, section, staffCourse);
                 }
                 calendarOverridesLoaded = false;
@@ -2557,7 +2557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 _calSaving = true;
                 if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
 
-                const staffCourse = (localStorage.getItem('userCourse') || '').trim() || null;
+                const staffCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim() || null;
                 const payload = {
                     fromDate,
                     toDate,

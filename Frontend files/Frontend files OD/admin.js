@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function unlock() {
         gateOverlay.style.display = 'none';
-        adminShell.style.display  = 'block';
+        adminShell.style.display  = 'flex';
         initAdminApp();
     }
 

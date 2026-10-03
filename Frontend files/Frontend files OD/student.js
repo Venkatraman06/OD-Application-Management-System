@@ -894,6 +894,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 matchStatus = (myFacultyStatus === 'Approved' && hodStatus === 'Pending' && !started);
             } else if (statusFilter === 'all-approved') {
                 matchStatus = (myFacultyStatus === 'Approved' && hodStatus === 'Approved');
+            } else if (statusFilter === 'completed') {
+                const toDateStr = od.ToDate ?? od.toDate ?? od.FromDate ?? od.fromDate ?? '';
+                const isCompleted = isOdCompleted(toDateStr);
+                matchStatus = (myFacultyStatus === 'Approved' && hodStatus === 'Approved' && !iAmRejected && isCompleted);
             } else if (statusFilter === 'staff-approved') {
                 matchStatus = (myFacultyStatus === 'Approved');
             } else if (statusFilter === 'all-rejected') {
@@ -2641,7 +2645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const myDept   = (localStorage.getItem('userDept')    || '').trim();
             const myYear   = (localStorage.getItem('userYear')     || '').trim();
             const mySec    = (localStorage.getItem('userSection')  || '').trim();
-            const myCourse = (localStorage.getItem('userCourse')   || '').trim();
+            const myCourse = (localStorage.getItem('userCategory') || localStorage.getItem('userCourse') || '').trim();
 
             if (typeof CollegeWorkingDays !== 'undefined' && CollegeWorkingDays.syncWithBackend) {
                 await CollegeWorkingDays.syncWithBackend(API_BASE, myDept, myYear, mySec, myCourse);
