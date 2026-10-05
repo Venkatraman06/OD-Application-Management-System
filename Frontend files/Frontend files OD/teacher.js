@@ -1,4 +1,4 @@
-const API_BASE = 'https://od-application-backend.onrender.com';
+﻿const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const facultyId = localStorage.getItem('facultyId');
@@ -202,162 +202,138 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) { console.error(err); showToast('error', 'Failed to load ODs'); }
     }
 
-    // ── Analytics report — event/win-count summary + per-student breakdown ──
-    let winningStatusChartInstance = null;
-    let eventChartInstance = null;
-    let companyChartInstance = null;
+    // ── Analytics — four-box class-scoped analytics ──
+    let odTrendChartInst = null;
+    let odStatusChartInst = null;
+    let odBreakdownChartInst = null;
+    let studentChartInst = null;
+
+    function chartTextColor() {
+        return document.documentElement.getAttribute('data-theme') === 'light' ? '#334155' : '#cbd5e1';
+    }
+    function chartGridColor() {
+        return document.documentElement.getAttribute('data-theme') === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+    }
 
     async function loadAnalytics() {
         try {
-            const res = await authFetch(`${API_BASE}/api/OdApply/Analytics/${encodeURIComponent(dept)}?_=${Date.now()}`, { cache: 'no-store' });
-            if (!res.ok) { showToast('error', 'Failed to load analytics'); return; }
-            const data = await res.json();
+            // Show class info banner
+            const infoEl = document.getElementById('analyticsClassInfo');
+            if (infoEl) {
+                const parts = [
+                    dept    ? `Department: ${dept}` : null,
+                    year    ? `Year: ${year}` : null,
+                    section ? `Section: ${section}` : null
+                ].filter(Boolean);
+                infoEl.textContent = parts.join('  ·  ') || 'Analytics — all assigned classes';
+            }
 
-            // Apply time-period filter to the student rows
-            if (currentPeriod !== 'all') {
-                const start = periodStart(currentPeriod);
-                const filtered = (data.students || []).filter(s => {
-                    const d = s.fromDate ? new Date(s.fromDate) : null;
-                    return d && d >= start;
-                });
+            // Filter allODs to only this staff's dept + section + year
+            const myDept = (dept || '').trim().toLowerCase();
+            const mySec  = (section || '').trim().toLowerCase();
+            const myYear = String(year || '').trim();
 
-                // Recompute summary counts from filtered rows
-                let first = 0, second = 0, third = 0, participated = 0, other = 0;
-                const eventMap = {};
-                const companyMap = {}; // company -> { odCount, certCount } within this period
-                const regSet = new Set();
-                filtered.forEach(s => {
-                    regSet.add((s.registerNumber || '').toLowerCase());
-                    const ev = s.event || 'Unspecified';
-                    eventMap[ev] = (eventMap[ev] || 0) + 1;
-                    const co = s.collegeIndustry || 'Unspecified';
-                    if (!companyMap[co]) companyMap[co] = { odCount: 0, certCount: 0 };
-                    // Every row here already has a certificate (this table is
-                    // certificate-linked rows only), so odCount and certCount
-                    // move together for this period-limited view.
-                    companyMap[co].odCount++;
-                    companyMap[co].certCount++;
-                    switch (s.winningStatus) {
-                        case '1st Prize':   first++;        break;
-                        case '2nd Prize':   second++;       break;
-                        case '3rd Prize':   third++;        break;
-                        case 'Participated': participated++; break;
-                        default:            other++;        break;
+            const scopedODs = (allODs || []).filter(o => {
+                const oDept = (o.department || o.Department || '').trim().toLowerCase();
+                const oSec  = (o.section    || o.Section    || '').trim().toLowerCase();
+                const oYear = String(o.year ?? o.Year ?? '').trim();
+                const deptOk = myDept ? oDept === myDept : true;
+                const secOk  = mySec  ? oSec  === mySec  : true;
+                const yearOk = myYear ? oYear === myYear : true;
+                return deptOk && secOk && yearOk;
+            });
+
+            renderStaffAnalytics(scopedODs);
+        } catch (err) {
+            console.error('Analytics error:', err);
+            showToast('error', 'Network error loading analytics');
+        }
+    }
+
+    function renderStaffAnalytics(ods) {
+        const tc = chartTextColor();
+        const gc = chartGridColor();
+
+        // ── BOX 1: OD Application Trend (monthly line chart) ──
+        const monthMap = {};
+        ods.forEach(o => {
+            const raw = o.appliedDate ?? o.AppliedDate ?? o.fromDate ?? o.FromDate;
+            if (!raw) return;
+            const d = new Date(raw);
+            if (isNaN(d)) return;
+            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            monthMap[key] = (monthMap[key] || 0) + 1;
+        });
+        const sortedMonths = Object.keys(monthMap).sort().slice(-12);
+        const trendLabels  = sortedMonths.map(k => {
+            const [y, m] = k.split('-');
+            return new Date(+y, +m-1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        });
+        const trendData = sortedMonths.map(k => monthMap[k]);
+
+        const trendBadge = document.getElementById('trendBadge');
+        if (trendBadge) trendBadge.textContent = `${ods.length} total`;
+
+        const trendCtx = document.getElementById('odTrendChart');
+        if (trendCtx && window.Chart) {
+            if (odTrendChartInst) odTrendChartInst.destroy();
+            odTrendChartInst = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: trendLabels.length ? trendLabels : ['No Data'],
+                    datasets: [{
+                        label: 'OD Applications',
+                        data: trendData.length ? trendData : [0],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99,102,241,0.12)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#6366f1',
+                        borderWidth: 2.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    scales: {
+                        x: { ticks: { color: tc, font: { size: 10 } }, grid: { color: gc } },
+                        y: { beginAtZero: true, ticks: { color: tc, stepSize: 1, precision: 0 }, grid: { color: gc } }
                     }
-                });
-                const eventCounts = Object.entries(eventMap)
-                    .map(([event, count]) => ({ event, count }))
-                    .sort((a, b) => b.count - a.count);
-                const companyCounts = Object.entries(companyMap)
-                    .map(([collegeIndustry, c]) => ({ collegeIndustry, odCount: c.odCount, certificateCount: c.certCount }))
-                    .sort((a, b) => b.odCount - a.odCount);
-
-                data.students          = filtered;
-                data.totalCertificates = filtered.length;
-                data.totalParticipants = regSet.size;
-                data.totalEvents       = eventCounts.length;
-                // Total OD Applications isn't period-filtered here since the
-                // all-status dataset it's drawn from isn't fetched per-row;
-                // it stays as the all-time department total.
-                data.firstPrizeCount   = first;
-                data.secondPrizeCount  = second;
-                data.thirdPrizeCount   = third;
-                data.participatedCount = participated;
-                data.otherCount        = other;
-                data.eventCounts       = eventCounts;
-                data.companyCounts     = companyCounts;
-            }
-
-            renderAnalytics(data);
-        } catch (err) { console.error(err); showToast('error', 'Network error loading analytics'); }
-    }
-
-    function resultTagClass(status) {
-        if (!status) return 'other';
-        const s = status.toLowerCase();
-        if (s.includes('1st') || s.includes('first')) return 'gold';
-        if (s.includes('2nd') || s.includes('second')) return 'silver';
-        if (s.includes('3rd') || s.includes('third')) return 'bronze';
-        if (s.includes('participat')) return 'neutral';
-        if (s.includes('not submitted')) return 'empty';
-        return 'other';
-    }
-
-    function renderAnalytics(data) {
-        const statsRow = document.getElementById('analyticsStatsRow');
-        const hasData  = (data.totalOdApplications ?? 0) > 0 || (data.totalCertificates ?? 0) > 0;
-
-        if (statsRow) {
-            statsRow.innerHTML = `
-                <div class="analytics-stat-pill">
-                    <span class="stat-num">${data.totalOdApplications ?? 0}</span>
-                    <span class="stat-lbl">Total OD Applications</span>
-                </div>
-                <div class="analytics-stat-pill">
-                    <span class="stat-num">${data.totalEvents ?? 0}</span>
-                    <span class="stat-lbl">Events</span>
-                </div>
-                <div class="analytics-stat-pill">
-                    <span class="stat-num">${data.totalParticipants ?? 0}</span>
-                    <span class="stat-lbl">Participants</span>
-                </div>
-                <div class="analytics-stat-pill">
-                    <span class="stat-num">${data.totalCertificates ?? 0}</span>
-                    <span class="stat-lbl">Certificates</span>
-                </div>
-                <div class="analytics-stat-pill gold">
-                    <span class="stat-num">${data.firstPrizeCount ?? 0}</span>
-                    <span class="stat-lbl">1st Prize</span>
-                </div>
-                <div class="analytics-stat-pill silver">
-                    <span class="stat-num">${data.secondPrizeCount ?? 0}</span>
-                    <span class="stat-lbl">2nd Prize</span>
-                </div>
-                <div class="analytics-stat-pill bronze">
-                    <span class="stat-num">${data.thirdPrizeCount ?? 0}</span>
-                    <span class="stat-lbl">3rd Prize</span>
-                </div>
-                <div class="analytics-stat-pill">
-                    <span class="stat-num">${data.participatedCount ?? 0}</span>
-                    <span class="stat-lbl">Participated Only</span>
-                </div>
-            `;
+                }
+            });
         }
 
-        // Show empty-state placeholder when no certificates have been uploaded yet
-        const chartsRow = document.querySelector('.analytics-charts-row');
-        const tableCard  = document.querySelector('.analytics-table-card');
-        if (!hasData) {
-            if (chartsRow) chartsRow.innerHTML = `
-                <div class="analytics-empty" style="grid-column:1/-1">
-                    <div class="empty-icon">📊</div>
-                    <p>No certificate data yet for <strong>${escHtml(dept)}</strong> department.<br>
-                       Charts will appear once students upload their event certificates.</p>
-                </div>`;
-            const tBodyEl = document.getElementById('analyticsTableBody');
-            if (tBodyEl) {
-                tBodyEl.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">No certificates uploaded yet.</td></tr>`;
-            }
-            return;
-        }
+        // ── BOX 2: OD Status Distribution (donut) ──
+        const statusCounts = { Approved: 0, Pending: 0, Rejected: 0, 'No Action': 0 };
+        ods.forEach(o => {
+            const fs = (o.facultyStatus || o.FacultyStatus || '').toLowerCase();
+            const hs = (o.hodStatus    || o.HodStatus    || '').toLowerCase();
+            if (fs === 'approved' && hs === 'approved') statusCounts['Approved']++;
+            else if (fs === 'rejected' || hs === 'rejected') statusCounts['Rejected']++;
+            else if (fs === 'pending' || hs === 'pending') statusCounts['Pending']++;
+            else statusCounts['No Action']++;
+        });
+        const sLabels = Object.keys(statusCounts).filter(k => statusCounts[k] > 0);
+        const sData   = sLabels.map(k => statusCounts[k]);
+        const sColors = { Approved: '#22c55e', Pending: '#f59e0b', Rejected: '#ef4444', 'No Action': '#64748b' };
 
-        const winCtx = document.getElementById('winningStatusChart');
-        if (winCtx && window.Chart) {
-            if (winningStatusChartInstance) winningStatusChartInstance.destroy();
-            winningStatusChartInstance = new Chart(winCtx, {
+        const statusBadge = document.getElementById('statusBadge');
+        if (statusBadge) statusBadge.textContent = statusCounts['Approved'] + ' approved';
+
+        const statusCtx = document.getElementById('odStatusChart');
+        if (statusCtx && window.Chart) {
+            if (odStatusChartInst) odStatusChartInst.destroy();
+            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+            odStatusChartInst = new Chart(statusCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['1st Prize', '2nd Prize', '3rd Prize', 'Participated', 'Other'],
+                    labels: sLabels.length ? sLabels : ['No Data'],
                     datasets: [{
-                        data: [
-                            data.firstPrizeCount ?? 0,
-                            data.secondPrizeCount ?? 0,
-                            data.thirdPrizeCount ?? 0,
-                            data.participatedCount ?? 0,
-                            data.otherCount ?? 0
-                        ],
-                        backgroundColor: ['#facc15', '#94a3b8', '#c2703d', '#6366f1', '#334155'],
-                        borderColor: 'rgba(15,23,42,0.9)',
+                        data: sData.length ? sData : [1],
+                        backgroundColor: sLabels.length ? sLabels.map(k => sColors[k] || '#64748b') : ['#334155'],
+                        borderColor: isDark ? 'rgba(15,23,42,0.9)' : '#ffffff',
                         borderWidth: 3
                     }]
                 },
@@ -366,26 +342,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                     maintainAspectRatio: false,
                     cutout: '68%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14 } }
+                        legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, padding: 12 } }
                     }
                 }
             });
         }
 
-        const evCtx = document.getElementById('eventChart');
-        if (evCtx && window.Chart) {
-            if (eventChartInstance) eventChartInstance.destroy();
-            const top = (data.eventCounts || []).slice(0, 8);
-            eventChartInstance = new Chart(evCtx, {
+        // ── BOX 3: Individual vs Group OD ──
+        let soloCount = 0, groupCount = 0;
+        ods.forEach(o => {
+            const gn = (o.groupName ?? o.GroupName ?? '');
+            if (gn && String(gn).trim()) groupCount++; else soloCount++;
+        });
+
+        const breakdownBadge = document.getElementById('breakdownBadge');
+        if (breakdownBadge) breakdownBadge.textContent = `${groupCount} group`;
+
+        const breakCtx = document.getElementById('odBreakdownChart');
+        if (breakCtx && window.Chart) {
+            if (odBreakdownChartInst) odBreakdownChartInst.destroy();
+            odBreakdownChartInst = new Chart(breakCtx, {
                 type: 'bar',
                 data: {
-                    labels: top.map(e => e.event),
+                    labels: ['Individual OD', 'Group OD'],
                     datasets: [{
-                        label: 'Participants',
-                        data: top.map(e => e.count),
-                        backgroundColor: '#8b5cf6',
-                        borderRadius: 6,
-                        maxBarThickness: 42
+                        label: 'Applications',
+                        data: [soloCount, groupCount],
+                        backgroundColor: ['#6366f1', '#a855f7'],
+                        borderRadius: 8,
+                        maxBarThickness: 60
                     }]
                 },
                 options: {
@@ -393,70 +378,114 @@ document.addEventListener('DOMContentLoaded', async () => {
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                        x: { ticks: { color: tc, font: { size: 12 } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { color: tc, stepSize: 1, precision: 0 }, grid: { color: gc } }
                     }
                 }
             });
         }
+    }
 
-        const coCtx = document.getElementById('companyChart');
-        if (coCtx && window.Chart) {
-            if (companyChartInstance) companyChartInstance.destroy();
-            // companyCounts comes sorted by odCount desc from the backend;
-            // top 8 keeps the chart readable.
-            const topCo = (data.companyCounts || []).slice(0, 8);
-            companyChartInstance = new Chart(coCtx, {
-                type: 'bar',
+    // ── BOX 4: Student register number search ──
+    function renderStudentAnalytics(studentODs, regNum) {
+        const resultEl = document.getElementById('studentAnalyticsResult');
+        if (!resultEl) return;
+
+        if (!studentODs || studentODs.length === 0) {
+            resultEl.innerHTML = `<div class="student-analytics-empty"><span>⚠️</span><p>Student not found in your assigned class.</p></div>`;
+            return;
+        }
+
+        const tc = chartTextColor();
+        const first = studentODs[0];
+        const sName = first.studentName || first.StudentName || first.name || first.Name || regNum;
+
+        const sc = { Approved: 0, Pending: 0, Rejected: 0, 'No Action': 0 };
+        studentODs.forEach(o => {
+            const fs = (o.facultyStatus || o.FacultyStatus || '').toLowerCase();
+            const hs = (o.hodStatus    || o.HodStatus    || '').toLowerCase();
+            if (fs === 'approved' && hs === 'approved') sc['Approved']++;
+            else if (fs === 'rejected' || hs === 'rejected') sc['Rejected']++;
+            else if (fs === 'pending' || hs === 'pending') sc['Pending']++;
+            else sc['No Action']++;
+        });
+        const stLabels = Object.keys(sc).filter(k => sc[k] > 0);
+        const stData   = stLabels.map(k => sc[k]);
+        const stColors = { Approved: '#22c55e', Pending: '#f59e0b', Rejected: '#ef4444', 'No Action': '#64748b' };
+
+        resultEl.innerHTML = `
+            <div class="student-info-header">
+                <strong>${escHtml(sName)}</strong>
+                <span>${escHtml(regNum.toUpperCase())}</span>
+                <span>${studentODs.length} OD(s)</span>
+            </div>
+            <div class="student-chart-wrap">
+                <canvas id="studentIndividualChart"></canvas>
+            </div>
+        `;
+
+        if (studentChartInst) { studentChartInst.destroy(); studentChartInst = null; }
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const sCtx = document.getElementById('studentIndividualChart');
+        if (sCtx && window.Chart) {
+            studentChartInst = new Chart(sCtx, {
+                type: 'doughnut',
                 data: {
-                    labels: topCo.map(c => c.collegeIndustry),
-                    datasets: [
-                        {
-                            label: 'OD Applications',
-                            data: topCo.map(c => c.odCount),
-                            backgroundColor: '#6366f1',
-                            borderRadius: 6,
-                            maxBarThickness: 28
-                        },
-                        {
-                            label: 'Certificates',
-                            data: topCo.map(c => c.certificateCount),
-                            backgroundColor: '#22c55e',
-                            borderRadius: 6,
-                            maxBarThickness: 28
-                        }
-                    ]
+                    labels: stLabels.length ? stLabels : ['No Data'],
+                    datasets: [{
+                        data: stData.length ? stData : [1],
+                        backgroundColor: stLabels.length ? stLabels.map(k => stColors[k] || '#64748b') : ['#334155'],
+                        borderColor: isDark ? 'rgba(15,23,42,0.9)' : '#ffffff',
+                        borderWidth: 3
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '60%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14 } }
-                    },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                        legend: { position: 'bottom', labels: { color: tc, font: { size: 10 }, padding: 10 } }
                     }
                 }
             });
         }
-
-        const tbody = document.getElementById('analyticsTableBody');
-        if (tbody) {
-            const students = data.students || [];
-            tbody.innerHTML = students.length ? students.map(s => `
-                <tr>
-                    <td>${escHtml(s.registerNumber)}</td>
-                    <td>${escHtml(s.studentName)}</td>
-                    <td>${escHtml(s.section || s.Section) || '-'}</td>
-                    <td>${escHtml(s.event)}</td>
-                    <td>${escHtml(s.collegeIndustry)}</td>
-                    <td><span class="result-tag ${resultTagClass(s.winningStatus)}">${escHtml(s.winningStatus)}</span></td>
-                    <td>${fmtDate(s.fromDate)} → ${fmtDate(s.toDate)}</td>
-                </tr>
-            `).join('') : `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px">No certificate data yet.</td></tr>`;
-        }
     }
+
+    const analyticsSearchBtn = document.getElementById('analyticsSearchBtn');
+    const analyticsRegInput  = document.getElementById('analyticsRegInput');
+
+    if (analyticsSearchBtn && analyticsRegInput) {
+        analyticsSearchBtn.addEventListener('click', () => {
+            const rawReg = (analyticsRegInput.value || '').trim();
+            if (!rawReg) {
+                const el = document.getElementById('studentAnalyticsResult');
+                if (el) el.innerHTML = `<div class="student-analytics-empty"><span>⚠️</span><p>Please enter a register number.</p></div>`;
+                return;
+            }
+            const regLower = rawReg.toLowerCase();
+            const myDeptL = (dept || '').trim().toLowerCase();
+            const mySecL  = (section || '').trim().toLowerCase();
+            const myYearS = String(year || '').trim();
+
+            const studentODs = (allODs || []).filter(o => {
+                const oReg  = (o.registerNumber || o.RegisterNumber || '').trim().toLowerCase();
+                const oDept = (o.department    || o.Department    || '').trim().toLowerCase();
+                const oSec  = (o.section       || o.Section       || '').trim().toLowerCase();
+                const oYear = String(o.year ?? o.Year ?? '').trim();
+                return oReg === regLower
+                    && (myDeptL ? oDept === myDeptL : true)
+                    && (mySecL  ? oSec  === mySecL  : true)
+                    && (myYearS ? oYear === myYearS : true);
+            });
+
+            renderStudentAnalytics(studentODs, rawReg);
+        });
+
+        analyticsRegInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') analyticsSearchBtn.click();
+        });
+    }
+
 
     // ============================================
     // 4th Box: OD Student / Report Search

@@ -3058,3 +3058,32 @@ function initAdminApp() {
         }
     });
 }
+// ── Admin mobile navigation drawer ──
+(function initAdminMobileNav() {
+    const menuBtn  = document.getElementById('adminMobileMenuBtn');
+    const sidebar  = document.querySelector('.admin-sidebar');
+    const backdrop = document.getElementById('adminMobileBackdrop');
+
+    function openMenu() {
+        if (sidebar)  sidebar.classList.add('admin-mobile-open');
+        if (backdrop) backdrop.classList.add('active');
+        if (menuBtn)  menuBtn.setAttribute('aria-expanded', 'true');
+    }
+    function closeMenu() {
+        if (sidebar)  sidebar.classList.remove('admin-mobile-open');
+        if (backdrop) backdrop.classList.remove('active');
+        if (menuBtn)  menuBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', () => {
+        sidebar && sidebar.classList.contains('admin-mobile-open') ? closeMenu() : openMenu();
+    });
+    if (backdrop) backdrop.addEventListener('click', closeMenu);
+
+    // Close menu on nav item click (mobile only)
+    document.querySelectorAll('.admin-nav-item, .admin-nav-child').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (window.innerWidth <= 900) closeMenu();
+        });
+    });
+})();

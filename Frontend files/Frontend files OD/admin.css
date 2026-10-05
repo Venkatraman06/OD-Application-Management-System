@@ -1430,3 +1430,70 @@ button#btnResetHod:hover {
 [data-theme="light"] .list-card-header h2 {
     color: #0f172a !important;
 }
+
+/* ── Admin Mobile Navigation Drawer ── */
+.admin-mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+.admin-mobile-menu-btn:hover { background: rgba(255,255,255,0.12); }
+[data-theme="light"] .admin-mobile-menu-btn {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
+}
+
+.admin-mobile-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 999;
+}
+.admin-mobile-backdrop.active { display: block; }
+[data-theme="light"] .admin-mobile-backdrop { background: rgba(15,23,42,0.35); }
+
+@media (max-width: 900px) {
+    .admin-mobile-menu-btn { display: flex; }
+
+    /* Override horizontal scroll with a proper side drawer */
+    .admin-sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 280px !important;
+        height: 100vh !important;
+        z-index: 1000 !important;
+        border-right: 1px solid rgba(255,255,255,0.1) !important;
+        border-bottom: none !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.28s cubic-bezier(0.16,1,0.3,1) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+    .admin-sidebar.admin-mobile-open {
+        transform: translateX(0) !important;
+    }
+    .admin-sidebar-nav {
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        padding: 16px 12px !important;
+        overflow-x: visible !important;
+    }
+    .admin-nav-item { width: 100% !important; text-align: left !important; }
+    .admin-nav-children { width: 100% !important; }
+    .admin-body-layout { flex-direction: column !important; }
+    .admin-main { padding: 16px !important; height: auto !important; overflow-y: visible !important; }
+}

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -290,31 +290,81 @@
 
             <!-- Analytics / Reports View -->
             <div class="analytics-view" id="analyticsView" style="display:none">
-                <div class="analytics-stats-row" id="analyticsStatsRow"></div>
+                <!-- HOD Analytics Filters -->
+                <div class="analytics-filters-bar" id="hodAnalyticsFilters">
+                    <div class="filter-group">
+                        <label for="hodFilterClass">Class / Department</label>
+                        <select id="hodFilterClass" class="analytics-filter-select">
+                            <option value="">All Classes</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="hodFilterSection">Section</label>
+                        <select id="hodFilterSection" class="analytics-filter-select">
+                            <option value="">All Sections</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="hodFilterYear">Year</label>
+                        <select id="hodFilterYear" class="analytics-filter-select">
+                            <option value="">All Years</option>
+                            <option value="1">Year 1</option>
+                            <option value="2">Year 2</option>
+                            <option value="3">Year 3</option>
+                            <option value="4">Year 4</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="hodFilterCategory">Category</label>
+                        <select id="hodFilterCategory" class="analytics-filter-select">
+                            <option value="">All Categories</option>
+                            <option value="UG">UG</option>
+                            <option value="PG">PG</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-secondary analytics-filter-reset" id="hodFilterReset">Reset</button>
+                </div>
 
-                <div class="analytics-charts-row">
-                    <div class="chart-card">
+                <!-- Four-Box Analytics Grid -->
+                <div class="analytics-four-grid">
+                    <!-- Box 1: OD Application Trend -->
+                    <div class="chart-card analytics-box">
                         <div class="chart-card-header">
-                            <h3>Winning Status Distribution</h3>
+                            <h3>OD Application Trend</h3>
+                            <span class="chart-badge" id="hodTrendBadge"></span>
                         </div>
                         <div class="chart-canvas-wrap">
-                            <canvas id="winningStatusChart"></canvas>
+                            <canvas id="hodOdTrendChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
+                    <!-- Box 2: OD Status Distribution -->
+                    <div class="chart-card analytics-box">
                         <div class="chart-card-header">
-                            <h3>Participation by Event</h3>
+                            <h3>OD Status Distribution</h3>
+                            <span class="chart-badge" id="hodStatusBadge"></span>
                         </div>
                         <div class="chart-canvas-wrap">
-                            <canvas id="eventChart"></canvas>
+                            <canvas id="hodOdStatusChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
+                    <!-- Box 3: OD by Section / Year -->
+                    <div class="chart-card analytics-box">
                         <div class="chart-card-header">
-                            <h3>OD & Certificates by Company / College</h3>
+                            <h3>OD by Section / Year</h3>
+                            <span class="chart-badge" id="hodSectionBadge"></span>
                         </div>
                         <div class="chart-canvas-wrap">
-                            <canvas id="companyChart"></canvas>
+                            <canvas id="hodSectionChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Box 4: Individual vs Group OD -->
+                    <div class="chart-card analytics-box">
+                        <div class="chart-card-header">
+                            <h3>Individual vs Group OD</h3>
+                            <span class="chart-badge" id="hodTypeBadge"></span>
+                        </div>
+                        <div class="chart-canvas-wrap">
+                            <canvas id="hodTypeChart"></canvas>
                         </div>
                     </div>
                 </div>

@@ -4745,3 +4745,128 @@ select option,
 [data-theme="light"] .logo-role {
     color: #475569 !important;
 }
+
+/* ── Calendar month label light theme fix ── */
+[data-theme="light"] .calendar-nav-group h3,
+[data-theme="light"] .calendar-header-row h3 {
+    color: #0f172a !important;
+}
+
+/* ══════════════════════════════════════════════
+   ANALYTICS — Four-Box Grid (Staff)
+   ══════════════════════════════════════════════ */
+.analytics-class-banner {
+    background: rgba(99,102,241,0.1);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #a5b4fc;
+    margin-bottom: 16px;
+}
+[data-theme="light"] .analytics-class-banner {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #3730a3;
+}
+
+.analytics-four-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (max-width: 900px) {
+    .analytics-four-grid { grid-template-columns: 1fr; }
+}
+
+.analytics-box {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+.analytics-box .chart-canvas-wrap {
+    flex: 1;
+    min-height: 200px;
+}
+
+.chart-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.2);
+    white-space: nowrap;
+}
+[data-theme="light"] .chart-badge {
+    background: #eef2ff;
+    color: #3730a3;
+    border-color: #c7d2fe;
+}
+
+/* Student Search Box (Box 4) */
+.student-search-form {
+    padding: 12px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.student-search-form label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+[data-theme="light"] .student-search-form label { color: #475569; }
+
+.student-search-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.student-search-row .report-search-input { flex: 1; min-width: 0; }
+.student-search-btn { white-space: nowrap; flex-shrink: 0; }
+
+.student-analytics-result { flex: 1; min-height: 160px; }
+
+.student-analytics-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px 12px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+.student-analytics-empty span { font-size: 1.8rem; }
+[data-theme="light"] .student-analytics-empty { color: #475569; }
+
+.student-info-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+}
+.student-info-header strong { font-size: 0.9rem; color: #e2e8f0; }
+[data-theme="light"] .student-info-header strong { color: #0f172a; }
+.student-info-header span {
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+[data-theme="light"] .student-info-header span {
+    background: #eef2ff;
+    color: #3730a3;
+}
+.student-chart-wrap { height: 160px; position: relative; }
