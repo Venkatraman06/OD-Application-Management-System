@@ -14,6 +14,7 @@
             if (sun) sun.style.display = theme === DARK ? 'block' : 'none';
             if (moon) moon.style.display = theme === LIGHT ? 'block' : 'none';
         });
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
     }
 
     function toggleTheme() {

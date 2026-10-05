@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 function getOrdinal(n) {
     const num = parseInt(n, 10) || 0;
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const stLabels = Object.keys(statusCounts).filter(k => statusCounts[k] > 0);
         const stData   = stLabels.map(k => statusCounts[k]);
-        const stColors = { Approved: '#22c55e', Pending: '#f59e0b', Rejected: '#ef4444', 'No Action': '#64748b' };
+        const stColors = { Approved: '#10b981', Pending: '#f59e0b', Rejected: '#f43f5e', 'No Action': '#64748b' };
 
         const hodStatusBadge = document.getElementById('hodStatusBadge');
         if (hodStatusBadge) hodStatusBadge.textContent = statusCounts['Approved'] + ' approved';
@@ -368,8 +368,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     datasets: [{
                         data: stData.length ? stData : [1],
                         backgroundColor: stLabels.length ? stLabels.map(k => stColors[k] || '#64748b') : ['#334155'],
-                        borderColor: isDark ? 'rgba(15,23,42,0.9)' : '#ffffff',
-                        borderWidth: 3
+                        borderColor: isDark ? 'rgba(15,23,42,0.95)' : '#ffffff',
+                        borderWidth: 2.5
                     }]
                 },
                 options: {
@@ -2779,6 +2779,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sidebarOverlayEl?.classList.remove('active');
             }
         });
+    });
+
+    window.addEventListener('themechange', () => {
+        if (hodTrendChartInst && document.getElementById('analyticsView')?.style.display !== 'none') {
+            loadAnalytics();
+        }
     });
 
     loadODs();

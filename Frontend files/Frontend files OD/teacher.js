@@ -1,4 +1,4 @@
-﻿const API_BASE = 'https://od-application-backend.onrender.com';
+const API_BASE = 'https://od-application-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const facultyId = localStorage.getItem('facultyId');
@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        // ── BOX 2: OD Status Distribution (donut) ──
+        // ── BOX 2: OD Status Breakdown (Horizontal Bar Chart) ──
         const statusCounts = { Approved: 0, Pending: 0, Rejected: 0, 'No Action': 0 };
         ods.forEach(o => {
             const fs = (o.facultyStatus || o.FacultyStatus || '').toLowerCase();
@@ -315,9 +315,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (fs === 'pending' || hs === 'pending') statusCounts['Pending']++;
             else statusCounts['No Action']++;
         });
-        const sLabels = Object.keys(statusCounts).filter(k => statusCounts[k] > 0);
-        const sData   = sLabels.map(k => statusCounts[k]);
-        const sColors = { Approved: '#22c55e', Pending: '#f59e0b', Rejected: '#ef4444', 'No Action': '#64748b' };
+        const statusLabels = ['Approved', 'Pending', 'Rejected', 'No Action'];
+        const statusData   = statusLabels.map(k => statusCounts[k]);
+        const statusColors = { Approved: '#10b981', Pending: '#f59e0b', Rejected: '#f43f5e', 'No Action': '#64748b' };
 
         const statusBadge = document.getElementById('statusBadge');
         if (statusBadge) statusBadge.textContent = statusCounts['Approved'] + ' approved';
@@ -325,24 +325,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         const statusCtx = document.getElementById('odStatusChart');
         if (statusCtx && window.Chart) {
             if (odStatusChartInst) odStatusChartInst.destroy();
-            const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
             odStatusChartInst = new Chart(statusCtx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: sLabels.length ? sLabels : ['No Data'],
+                    labels: statusLabels,
                     datasets: [{
-                        data: sData.length ? sData : [1],
-                        backgroundColor: sLabels.length ? sLabels.map(k => sColors[k] || '#64748b') : ['#334155'],
-                        borderColor: isDark ? 'rgba(15,23,42,0.9)' : '#ffffff',
-                        borderWidth: 3
+                        label: 'Applications',
+                        data: statusData,
+                        backgroundColor: statusLabels.map(k => statusColors[k] || '#64748b'),
+                        borderRadius: 6,
+                        maxBarThickness: 28
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '68%',
+                    indexAxis: 'y',
                     plugins: {
-                        legend: { position: 'bottom', labels: { color: tc, font: { size: 11 }, padding: 12 } }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.parsed.x} application${context.parsed.x === 1 ? '' : 's'}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { color: tc, stepSize: 1, precision: 0 },
+                            grid: { color: gc }
+                        },
+                        y: {
+                            ticks: { color: tc, font: { size: 11, weight: '600' } },
+                            grid: { display: false }
+                        }
                     }
                 }
             });
@@ -411,7 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const stLabels = Object.keys(sc).filter(k => sc[k] > 0);
         const stData   = stLabels.map(k => sc[k]);
-        const stColors = { Approved: '#22c55e', Pending: '#f59e0b', Rejected: '#ef4444', 'No Action': '#64748b' };
+        const stColors = { Approved: '#10b981', Pending: '#f59e0b', Rejected: '#f43f5e', 'No Action': '#64748b' };
 
         resultEl.innerHTML = `
             <div class="student-info-header">
@@ -435,14 +453,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     datasets: [{
                         data: stData.length ? stData : [1],
                         backgroundColor: stLabels.length ? stLabels.map(k => stColors[k] || '#64748b') : ['#334155'],
-                        borderColor: isDark ? 'rgba(15,23,42,0.9)' : '#ffffff',
-                        borderWidth: 3
+                        borderColor: isDark ? 'rgba(15,23,42,0.95)' : '#ffffff',
+                        borderWidth: 2.5
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '60%',
+                    cutout: '65%',
                     plugins: {
                         legend: { position: 'bottom', labels: { color: tc, font: { size: 10 }, padding: 10 } }
                     }
@@ -2920,6 +2938,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sidebarOverlayEl?.classList.remove('active');
             }
         });
+    });
+
+    window.addEventListener('themechange', () => {
+        if (odTrendChartInst && document.getElementById('analyticsView')?.style.display !== 'none') {
+            loadAnalytics();
+        }
     });
 
     loadODs();
