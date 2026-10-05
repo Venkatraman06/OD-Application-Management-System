@@ -197,12 +197,10 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     padding: 16px 12px 12px;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     flex-shrink: 0;
     height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.7);
+    overflow: hidden;
 }
 
 .admin-sidebar-nav {
@@ -210,6 +208,11 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     flex-direction: column;
     gap: 4px;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.7);
 }
 
 .admin-nav-group {
@@ -322,7 +325,7 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
 .admin-sidebar-footer {
     padding-top: 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    margin-top: 8px;
+    margin-top: auto;
     flex-shrink: 0;
 }
 
@@ -334,7 +337,7 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
     padding: 10px 14px;
     border-radius: var(--radius-md);
     border: 1px solid rgba(239, 68, 68, 0.2);
-    background: transparent;
+    background: rgba(239, 68, 68, 0.08);
     color: #f87171;
     font-family: var(--font-family);
     font-size: 0.87rem;
@@ -487,17 +490,6 @@ button.admin-logout-link:hover { background: rgba(239,68,68,0.18); }
         flex-direction: column;
         overflow: visible;
         height: auto;
-    }
-    .admin-sidebar {
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        overflow-x: auto;
-    }
-    .admin-sidebar-nav {
-        flex-direction: row;
-        flex-wrap: nowrap;
     }
     .admin-main {
         height: auto;
@@ -1474,13 +1466,15 @@ button#btnResetHod:hover {
         bottom: 0 !important;
         width: 280px !important;
         height: 100vh !important;
+        height: 100dvh !important;
         z-index: 1000 !important;
         border-right: 1px solid rgba(255,255,255,0.1) !important;
         border-bottom: none !important;
         transform: translateX(-100%) !important;
         transition: transform 0.28s cubic-bezier(0.16,1,0.3,1) !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     .admin-sidebar.admin-mobile-open {
         transform: translateX(0) !important;
@@ -1490,7 +1484,15 @@ button#btnResetHod:hover {
         flex-wrap: nowrap !important;
         gap: 4px !important;
         padding: 16px 12px !important;
-        overflow-x: visible !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+    .admin-sidebar-footer {
+        padding: 12px 12px 16px !important;
+        margin-top: auto !important;
+        flex-shrink: 0 !important;
     }
     .admin-nav-item { width: 100% !important; text-align: left !important; }
     .admin-nav-children { width: 100% !important; }
