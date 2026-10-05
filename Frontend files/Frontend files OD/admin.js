@@ -14,7 +14,7 @@ function resolveSigUrl(url) {
 // ============================================
 
 function getAdminToken() {
-    return sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken') || localStorage.getItem('userToken') || '';
+    return sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken') || '';
 }
 
 function logoutAdmin() {
