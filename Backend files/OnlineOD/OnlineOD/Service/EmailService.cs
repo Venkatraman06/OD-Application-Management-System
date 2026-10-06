@@ -470,16 +470,35 @@ namespace OnlineOD.Services
                 $"{subjectTag}OD Approval Required — {studentName} ({registerNumber})", body);
         }
 
+        private string GetAdminRecipientEmail()
+        {
+            var adminEmail = Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
+                          ?? _config["EmailSettings:AdminEmail"];
+
+            if (string.IsNullOrWhiteSpace(adminEmail)
+                || adminEmail.Equals("YOUR_ADMIN_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                || adminEmail.Equals("admin@example.com", StringComparison.OrdinalIgnoreCase))
+            {
+                adminEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                          ?? _config["Gmail:SenderEmail"]
+                          ?? Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
+                          ?? _config["EmailSettings:SenderEmail"];
+            }
+
+            if (string.IsNullOrWhiteSpace(adminEmail)
+                || adminEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase))
+            {
+                adminEmail = "admin@example.com";
+            }
+
+            return adminEmail.Trim();
+        }
+
         // ── 3. "Contact Admin" form on the login page ─────────────────────────
         public async Task SendContactAdminEmailAsync(
             string registerNumber, string dob, string password, string role, string message)
         {
-            var adminEmail = Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
-                          ?? _config["EmailSettings:AdminEmail"]
-                          ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
-                          ?? _config["Gmail:SenderEmail"]
-                          ?? _config["EmailSettings:SenderEmail"]
-                          ?? "admin@example.com";
+            var adminEmail = GetAdminRecipientEmail();
 
             var rows = $@"
             <table style='width:100%;border-collapse:collapse;font-size:14px'>
@@ -529,12 +548,7 @@ namespace OnlineOD.Services
         // ── 5. "Request a Demo" form from Contact Admin page ──────────────────
         public async Task SendDemoRequestEmailAsync(string description)
         {
-            var adminEmail = Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
-                          ?? _config["EmailSettings:AdminEmail"]
-                          ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
-                          ?? _config["Gmail:SenderEmail"]
-                          ?? _config["EmailSettings:SenderEmail"]
-                          ?? "admin@example.com";
+            var adminEmail = GetAdminRecipientEmail();
 
             var safeDescription = System.Net.WebUtility.HtmlEncode(description);
 

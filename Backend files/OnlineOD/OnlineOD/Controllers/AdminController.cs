@@ -154,7 +154,7 @@ namespace OnlineOD.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AdminController] RequestDemo email failed: {ex.Message}");
+                Console.WriteLine($"[AdminController] RequestDemo email failed: {ex}");
                 return StatusCode(500, new { message = "Unable to send your demo request. Please try again." });
             }
         }
