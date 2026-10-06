@@ -525,5 +525,31 @@ namespace OnlineOD.Services
 
             await SendAsync(toEmail, toName, "Your Password Reset Verification Code — OD Application", body);
         }
+
+        // ── 5. "Request a Demo" form from Contact Admin page ──────────────────
+        public async Task SendDemoRequestEmailAsync(string description)
+        {
+            var adminEmail = Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
+                          ?? _config["EmailSettings:AdminEmail"]
+                          ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                          ?? _config["Gmail:SenderEmail"]
+                          ?? _config["EmailSettings:SenderEmail"]
+                          ?? "admin@example.com";
+
+            var safeDescription = System.Net.WebUtility.HtmlEncode(description);
+
+            var rows = $@"
+            <table style='width:100%;border-collapse:collapse;font-size:14px'>
+                <tr><td style='padding:6px 0;color:#6b7280;width:140px;vertical-align:top'>Request Type</td><td style='color:#111827'><b>Demo Request</b></td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;vertical-align:top'>Description</td><td style='color:#111827;white-space:pre-wrap'>{safeDescription}</td></tr>
+            </table>";
+
+            var intro = "A user submitted a <b>New Demo Request</b> for the Online OD Application Management System. " +
+                        "Details are provided below:";
+
+            var body = Wrap("Admin", intro, rows, "");
+
+            await SendAsync(adminEmail, "Admin", "New Demo Request - Online OD Application Management System", body);
+        }
     }
 }

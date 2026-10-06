@@ -291,9 +291,17 @@
     <div class="modal-overlay" id="contactAdminOverlay" style="display:none">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>Contact Admin</h3>
+                <h3 id="contactModalTitle">Contact Admin</h3>
                 <button type="button" class="modal-close" id="contactAdminClose" aria-label="Close">&times;</button>
             </div>
+
+            <!-- Contact Admin / Request Demo Tabs -->
+            <div class="contact-modal-tabs">
+                <button type="button" class="contact-tab-btn active" id="tabBtnContactIssue">Report Issue</button>
+                <button type="button" class="contact-tab-btn" id="tabBtnRequestDemo">Request a Demo</button>
+            </div>
+
+            <!-- Tab 1: Existing Contact Admin Form (Report Issue) -->
             <form id="contactAdminForm" class="modal-body" novalidate>
                 <div class="input-group">
                     <label for="contactRegNo">Register / Staff Number</label>
@@ -326,6 +334,19 @@
 
                 <button type="submit" class="login-btn" id="contactAdminSubmit">
                     <span class="btn-text">Send to Admin</span>
+                    <span class="btn-loader" style="display:none"><span class="spinner"></span></span>
+                </button>
+            </form>
+
+            <!-- Tab 2: Request a Demo Form (ONLY Description + Send) -->
+            <form id="requestDemoForm" class="modal-body" style="display:none" novalidate>
+                <div class="input-group">
+                    <label for="demoDescription">Description</label>
+                    <textarea id="demoDescription" name="demoDescription" rows="5" placeholder="Tell us what you would like to know about the system or what you would like demonstrated..." required></textarea>
+                </div>
+
+                <button type="submit" class="login-btn" id="requestDemoSubmit">
+                    <span class="btn-text">Send</span>
                     <span class="btn-loader" style="display:none"><span class="spinner"></span></span>
                 </button>
             </form>

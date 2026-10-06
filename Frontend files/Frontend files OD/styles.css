@@ -936,6 +936,57 @@ input:focus-visible {
     box-shadow: 0 0 0 3px var(--primary-100);
 }
 
+/* ── Contact Modal Tabs (Report Issue / Request Demo) ── */
+.contact-modal-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 14px 20px 0;
+}
+
+.contact-tab-btn {
+    flex: 1;
+    padding: 9px 14px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--surface-300, #cbd5e1);
+    background: var(--surface-100, #f1f5f9);
+    color: var(--surface-600, #475569);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.contact-tab-btn:hover {
+    color: var(--surface-900, #0f172a);
+    background: var(--surface-200, #e2e8f0);
+}
+
+.contact-tab-btn.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--primary-600), var(--accent-600));
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+[data-theme="light"] .contact-tab-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+[data-theme="light"] .contact-tab-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+[data-theme="light"] .contact-tab-btn.active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    GLOBAL THEME TOGGLE BUTTON & LIGHT THEME (styles.css)
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */

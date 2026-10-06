@@ -129,6 +129,36 @@ namespace OnlineOD.Controllers
             }
         }
 
+        // POST /api/Admin/RequestDemo
+        // Body: { description }
+        // Sends a demo request email to the admin with the provided description.
+        [HttpPost("RequestDemo")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RequestDemo([FromBody] RequestDemoDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Description))
+            {
+                return BadRequest(new { message = "Description is required." });
+            }
+
+            var cleanDescription = dto.Description.Trim();
+            if (cleanDescription.Length > 2000)
+            {
+                return BadRequest(new { message = "Description cannot exceed 2000 characters." });
+            }
+
+            try
+            {
+                await _emailService.SendDemoRequestEmailAsync(cleanDescription);
+                return Ok(new { message = "Demo request sent successfully." });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AdminController] RequestDemo email failed: {ex.Message}");
+                return StatusCode(500, new { message = "Unable to send your demo request. Please try again." });
+            }
+        }
+
         // GET /api/Admin/ContactRequests
         [HttpGet("ContactRequests")]
         public async Task<IActionResult> GetContactRequests()

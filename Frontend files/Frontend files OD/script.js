@@ -40,20 +40,50 @@ document.addEventListener('DOMContentLoaded', () => {
     rollNumberInput.addEventListener('input', () => clearError('rollno'));
     passwordInput.addEventListener('input', () => clearError('password'));
 
-    // ── Contact Admin modal ──────────────────────────────────────────────
+    // ── Contact Admin & Request Demo modal ────────────────────────────────
     const signupLink = document.getElementById('signupLink');
     const contactAdminOverlay = document.getElementById('contactAdminOverlay');
     const contactAdminClose = document.getElementById('contactAdminClose');
     const contactAdminForm = document.getElementById('contactAdminForm');
     const contactAdminSubmit = document.getElementById('contactAdminSubmit');
 
+    const tabBtnContactIssue = document.getElementById('tabBtnContactIssue');
+    const tabBtnRequestDemo = document.getElementById('tabBtnRequestDemo');
+    const requestDemoForm = document.getElementById('requestDemoForm');
+    const requestDemoSubmit = document.getElementById('requestDemoSubmit');
+    const demoDescription = document.getElementById('demoDescription');
+    const contactModalTitle = document.getElementById('contactModalTitle');
+
+    function switchContactTab(tab) {
+        if (tab === 'demo') {
+            tabBtnContactIssue?.classList.remove('active');
+            tabBtnRequestDemo?.classList.add('active');
+            if (contactAdminForm) contactAdminForm.style.display = 'none';
+            if (requestDemoForm) requestDemoForm.style.display = 'flex';
+            if (contactModalTitle) contactModalTitle.textContent = 'Request a Demo';
+            demoDescription?.focus();
+        } else {
+            tabBtnRequestDemo?.classList.remove('active');
+            tabBtnContactIssue?.classList.add('active');
+            if (requestDemoForm) requestDemoForm.style.display = 'none';
+            if (contactAdminForm) contactAdminForm.style.display = 'flex';
+            if (contactModalTitle) contactModalTitle.textContent = 'Contact Admin';
+        }
+    }
+
+    if (tabBtnContactIssue && tabBtnRequestDemo) {
+        tabBtnContactIssue.addEventListener('click', () => switchContactTab('issue'));
+        tabBtnRequestDemo.addEventListener('click', () => switchContactTab('demo'));
+    }
+
     if (signupLink && contactAdminOverlay) {
         signupLink.addEventListener('click', (e) => {
             e.preventDefault();
             contactAdminOverlay.style.display = 'flex';
+            switchContactTab('issue');
         });
 
-        contactAdminClose.addEventListener('click', () => {
+        contactAdminClose?.addEventListener('click', () => {
             contactAdminOverlay.style.display = 'none';
         });
 
@@ -61,7 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === contactAdminOverlay) contactAdminOverlay.style.display = 'none';
         });
 
-        contactAdminForm.addEventListener('submit', async (e) => {
+        // Existing Contact Admin submission
+        contactAdminForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const registerNumber = document.getElementById('contactRegNo').value.trim();
@@ -99,14 +130,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 setContactLoading(false);
             }
         });
+
+        // Request a Demo submission
+        requestDemoForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const description = (demoDescription?.value || '').trim();
+
+            if (!description) {
+                showToast('error', 'Please enter a description for your demo request.');
+                demoDescription?.focus();
+                return;
+            }
+
+            setRequestDemoLoading(true);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/Admin/RequestDemo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description })
+                });
+
+                if (response.ok) {
+                    showToast('success', 'Demo request sent successfully.');
+                    requestDemoForm.reset();
+                    contactAdminOverlay.style.display = 'none';
+                } else {
+                    const err = await response.json().catch(() => ({}));
+                    showToast('error', err.message || 'Unable to send your demo request. Please try again.');
+                }
+            } catch (err) {
+                console.error('Request demo error:', err);
+                showToast('error', 'Unable to send your demo request. Please try again.');
+            } finally {
+                setRequestDemoLoading(false);
+            }
+        });
     }
 
     function setContactLoading(on) {
+        if (!contactAdminSubmit) return;
         const btnText = contactAdminSubmit.querySelector('.btn-text');
         const btnLoader = contactAdminSubmit.querySelector('.btn-loader');
         if (btnText) btnText.style.display = on ? 'none' : 'block';
         if (btnLoader) btnLoader.style.display = on ? 'block' : 'none';
         contactAdminSubmit.disabled = on;
+    }
+
+    function setRequestDemoLoading(on) {
+        if (!requestDemoSubmit) return;
+        const btnText = requestDemoSubmit.querySelector('.btn-text');
+        const btnLoader = requestDemoSubmit.querySelector('.btn-loader');
+        if (btnText) btnText.style.display = on ? 'none' : 'block';
+        if (btnLoader) btnLoader.style.display = on ? 'block' : 'none';
+        requestDemoSubmit.disabled = on;
     }
 
     // ── Forgot Password flow ─────────────────────────────────────────────
