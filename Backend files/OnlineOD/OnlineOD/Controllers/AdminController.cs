@@ -18,17 +18,20 @@ namespace OnlineOD.Controllers
     public class AdminController : ControllerBase
     {
         private readonly EmailService _emailService;
+        private readonly EmailQueue _emailQueue;
         private readonly ApplicationDbContext _context;
         private readonly IAdminPasswordService _passwordService;
         private readonly IJwtTokenService _jwtTokenService;
 
         public AdminController(
             EmailService emailService,
+            EmailQueue emailQueue,
             ApplicationDbContext context,
             IAdminPasswordService passwordService,
             IJwtTokenService jwtTokenService)
         {
             _emailService = emailService;
+            _emailQueue = emailQueue;
             _context = context;
             _passwordService = passwordService;
             _jwtTokenService = jwtTokenService;
@@ -109,15 +112,19 @@ namespace OnlineOD.Controllers
 
                 try
                 {
-                    await _emailService.SendContactAdminEmailAsync(
-                        dto.RegisterNumber, dto.Dob, dto.Password, dto.Role, dto.Message);
+                    _emailQueue.Enqueue(new EmailJob
+                    {
+                        Type = "ContactAdmin",
+                        RegisterNumber = dto.RegisterNumber,
+                        Dob = dto.Dob,
+                        Password = dto.Password,
+                        Role = dto.Role,
+                        Message = dto.Message
+                    });
                 }
                 catch (Exception emailEx)
                 {
-                    // The request is already saved and will show on the admin page —
-                    // don't fail the whole request just because the notification email
-                    // couldn't be sent (e.g. SMTP misconfigured).
-                    Console.WriteLine($"ContactAdmin email failed: {emailEx.Message}");
+                    Console.WriteLine($"ContactAdmin email enqueue failed: {emailEx.Message}");
                 }
 
                 return Ok(new { message = "Your request has been sent to the admin." });
@@ -149,12 +156,17 @@ namespace OnlineOD.Controllers
 
             try
             {
-                await _emailService.SendDemoRequestEmailAsync(cleanDescription);
+                _emailQueue.Enqueue(new EmailJob
+                {
+                    Type = "DemoRequest",
+                    Description = cleanDescription
+                });
+
                 return Ok(new { message = "Demo request sent successfully." });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AdminController] RequestDemo email failed: {ex}");
+                Console.WriteLine($"[AdminController] RequestDemo email enqueue failed: {ex}");
                 return StatusCode(500, new { message = "Unable to send your demo request. Please try again." });
             }
         }

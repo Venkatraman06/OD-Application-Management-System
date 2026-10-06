@@ -386,7 +386,7 @@ namespace OnlineOD.Services
 
         // ── Email wrapper shell ───────────────────────────────────────────────
         private string Wrap(string recipientName, string intro, string tableRows,
-                            string actionButtons, bool isGroup = false)
+                            string actionButtons, bool isGroup = false, string cardTitle = "OD Request Details")
         {
             var badge = isGroup
                 ? "<span style='background:#6366f1;color:white;padding:2px 10px;border-radius:12px;font-size:12px;margin-left:8px'>Group OD</span>"
@@ -404,7 +404,7 @@ namespace OnlineOD.Services
                     <p style='color:#374151'>{intro}</p>
                     <div style='background:#f9fafb;border:1px solid #e5e5eb;border-radius:10px;
                                 padding:20px;margin:20px 0'>
-                        <h3 style='margin:0 0 14px;color:#6366f1;font-size:15px'>OD Request Details</h3>
+                        <h3 style='margin:0 0 14px;color:#6366f1;font-size:15px'>{cardTitle}</h3>
                         {tableRows}
                     </div>
                     {actionButtons}
@@ -512,7 +512,7 @@ namespace OnlineOD.Services
             var intro = "A user submitted the <b>Contact Admin</b> form from the login page. " +
                         "They may need account creation, a password reset, or help with the issue below.";
 
-            var body = Wrap("Admin", intro, rows, "");
+            var body = Wrap("Admin", intro, rows, "", false, "Contact Admin Request");
 
             await SendAsync(adminEmail, "Admin",
                 $"Contact Admin — {role} ({registerNumber})", body);
@@ -540,7 +540,7 @@ namespace OnlineOD.Services
                 </p>
             </div>";
 
-            var body = Wrap(toName, "Password Reset Request", content, "");
+            var body = Wrap(toName, "Password Reset Request", content, "", false, "Password Reset Request");
 
             await SendAsync(toEmail, toName, "Your Password Reset Verification Code — OD Application", body);
         }
@@ -561,7 +561,7 @@ namespace OnlineOD.Services
             var intro = "A user submitted a <b>New Demo Request</b> for the Online OD Application Management System. " +
                         "Details are provided below:";
 
-            var body = Wrap("Admin", intro, rows, "");
+            var body = Wrap("Admin", intro, rows, "", false, "Demo Request Details");
 
             await SendAsync(adminEmail, "Admin", "New Demo Request - Online OD Application Management System", body);
         }

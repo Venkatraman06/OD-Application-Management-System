@@ -95,8 +95,22 @@ namespace OnlineOD.Service
                             endTime: job.EndTime
                         );
                     }
+                    else if (job.Type == "DemoRequest")
+                    {
+                        await emailService.SendDemoRequestEmailAsync(job.Description);
+                    }
+                    else if (job.Type == "ContactAdmin")
+                    {
+                        await emailService.SendContactAdminEmailAsync(
+                            job.RegisterNumber,
+                            job.Dob,
+                            job.Password,
+                            job.Role,
+                            job.Message
+                        );
+                    }
 
-                    _logger.LogInformation("[EmailBackgroundWorker] Successfully sent {Type} email to {ToEmail} for OD #{OdId}.", job.Type, job.ToEmail, job.OdId);
+                    _logger.LogInformation("[EmailBackgroundWorker] Successfully processed {Type} email job.", job.Type);
                     return; // Success — exit retry loop
                 }
                 catch (Exception ex)
