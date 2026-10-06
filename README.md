@@ -67,18 +67,4 @@ This system converts that traditional process into a digital workflow where stud
 
 ## OD Approval Workflow
 
-Student
-   ↓
-Apply Individual / Group OD
-   ↓
-Staff Review
-   ↓
-Approve / Reject
-   ↓
-If Approved
-   ↓
-HOD Review
-   ↓
-Final Approve / Reject
-   ↓
-Student receives final status
+Student → Apply Individual/Group OD → Staff Review → Approve/Reject → HOD Review → Final Approve/Reject → Student Receives Final Status
