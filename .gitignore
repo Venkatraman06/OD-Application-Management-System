@@ -1,9 +1,24 @@
+# .NET build output
 bin/
 obj/
+
+# Visual Studio
 .vs/
+
+# Node.js dependencies
 node_modules/
+
+# Environment / secrets
 .env
+.env.*
+!.env.example
+
+# Development configuration
 appsettings.Development.json
+
+# OAuth setup / credentials
 GmailOAuthSetup/
+
+# Uploaded files
 Backend files/OnlineOD/OnlineOD/wwwroot/uploads/*
 !Backend files/OnlineOD/OnlineOD/wwwroot/uploads/.gitkeep
