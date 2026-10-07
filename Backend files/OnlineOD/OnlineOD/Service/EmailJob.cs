@@ -2,7 +2,7 @@ namespace OnlineOD.Service
 {
     public class EmailJob
     {
-        public string Type { get; set; } = string.Empty; // "Submission", "Approval", "DemoRequest", "ContactAdmin"
+        public string Type { get; set; } = string.Empty; // "Submission", "Approval", "ContactAdmin"
         public string ToEmail { get; set; } = string.Empty;
         public string StaffName { get; set; } = string.Empty;
         public string StudentName { get; set; } = string.Empty;
@@ -20,7 +20,6 @@ namespace OnlineOD.Service
         public string? StartTime { get; set; }
         public string? EndTime { get; set; }
         public string HodName { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
         public string Dob { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;

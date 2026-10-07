@@ -95,10 +95,6 @@ namespace OnlineOD.Service
                             endTime: job.EndTime
                         );
                     }
-                    else if (job.Type == "DemoRequest")
-                    {
-                        await emailService.SendDemoRequestEmailAsync(job.Description);
-                    }
                     else if (job.Type == "ContactAdmin")
                     {
                         await emailService.SendContactAdminEmailAsync(

@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabBtnRequestDemo = document.getElementById('tabBtnRequestDemo');
     const requestDemoForm = document.getElementById('requestDemoForm');
     const requestDemoSubmit = document.getElementById('requestDemoSubmit');
+    const demoName = document.getElementById('demoName');
+    const demoMobile = document.getElementById('demoMobile');
+    const demoOrg = document.getElementById('demoOrg');
     const demoDescription = document.getElementById('demoDescription');
     const contactModalTitle = document.getElementById('contactModalTitle');
 
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (contactAdminForm) contactAdminForm.style.display = 'none';
             if (requestDemoForm) requestDemoForm.style.display = 'flex';
             if (contactModalTitle) contactModalTitle.textContent = 'Request a Demo';
-            demoDescription?.focus();
+            demoName?.focus();
         } else {
             tabBtnRequestDemo?.classList.remove('active');
             tabBtnContactIssue?.classList.add('active');
@@ -131,11 +134,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Request a Demo submission
+        // Request a Demo submission (Name, Mobile Number, Organization Name, Description)
         requestDemoForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const name = (demoName?.value || '').trim();
+            const mobileNumber = (demoMobile?.value || '').trim();
+            const organizationName = (demoOrg?.value || '').trim();
             const description = (demoDescription?.value || '').trim();
+
+            if (!name) {
+                showToast('error', 'Please enter your name.');
+                demoName?.focus();
+                return;
+            }
+
+            if (!mobileNumber) {
+                showToast('error', 'Please enter your mobile number.');
+                demoMobile?.focus();
+                return;
+            }
+
+            const cleanDigits = mobileNumber.replace(/[\s\-\(\)\+]/g, '');
+            if (!/^[0-9]{7,15}$/.test(cleanDigits)) {
+                showToast('error', 'Please enter a valid mobile number (7 to 15 digits).');
+                demoMobile?.focus();
+                return;
+            }
+
+            if (!organizationName) {
+                showToast('error', 'Please enter your organization name.');
+                demoOrg?.focus();
+                return;
+            }
 
             if (!description) {
                 showToast('error', 'Please enter a description for your demo request.');
@@ -149,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`${API_BASE}/api/Admin/RequestDemo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ description })
+                    body: JSON.stringify({ name, mobileNumber, organizationName, description })
                 });
 
                 if (response.ok) {

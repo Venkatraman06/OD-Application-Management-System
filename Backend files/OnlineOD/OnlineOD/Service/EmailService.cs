@@ -486,9 +486,10 @@ namespace OnlineOD.Services
             }
 
             if (string.IsNullOrWhiteSpace(adminEmail)
-                || adminEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase))
+                || adminEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                || adminEmail.Equals("admin@example.com", StringComparison.OrdinalIgnoreCase))
             {
-                adminEmail = "admin@example.com";
+                throw new InvalidOperationException("[EmailService] Missing required admin recipient configuration: 'EmailSettings:AdminEmail' (or environment variable 'EmailSettings__AdminEmail').");
             }
 
             return adminEmail.Trim();
@@ -546,16 +547,21 @@ namespace OnlineOD.Services
         }
 
         // ── 5. "Request a Demo" form from Contact Admin page ──────────────────
-        public async Task SendDemoRequestEmailAsync(string description)
+        public async Task SendDemoRequestEmailAsync(string name, string mobileNumber, string organizationName, string description)
         {
             var adminEmail = GetAdminRecipientEmail();
 
+            var safeName = System.Net.WebUtility.HtmlEncode(name);
+            var safeMobile = System.Net.WebUtility.HtmlEncode(mobileNumber);
+            var safeOrg = System.Net.WebUtility.HtmlEncode(organizationName);
             var safeDescription = System.Net.WebUtility.HtmlEncode(description);
 
             var rows = $@"
             <table style='width:100%;border-collapse:collapse;font-size:14px'>
-                <tr><td style='padding:6px 0;color:#6b7280;width:140px;vertical-align:top'>Request Type</td><td style='color:#111827'><b>Demo Request</b></td></tr>
-                <tr><td style='padding:6px 0;color:#6b7280;vertical-align:top'>Description</td><td style='color:#111827;white-space:pre-wrap'>{safeDescription}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Name</td><td style='color:#111827'><b>{safeName}</b></td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Mobile Number</td><td style='color:#111827'>{safeMobile}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Organization Name</td><td style='color:#111827'>{safeOrg}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Description</td><td style='color:#111827;white-space:pre-wrap'>{safeDescription}</td></tr>
             </table>";
 
             var intro = "A user submitted a <b>New Demo Request</b> for the Online OD Application Management System. " +

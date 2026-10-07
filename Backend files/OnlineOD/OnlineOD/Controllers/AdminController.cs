@@ -137,18 +137,57 @@ namespace OnlineOD.Controllers
         }
 
         // POST /api/Admin/RequestDemo
-        // Body: { description }
-        // Sends a demo request email to the admin with the provided description.
+        // Body: { name, mobileNumber, organizationName, description }
+        // Sends a demo request email to the admin with the provided details.
         [HttpPost("RequestDemo")]
         [AllowAnonymous]
         public async Task<IActionResult> RequestDemo([FromBody] RequestDemoDto dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Description))
+            if (dto == null)
+            {
+                return BadRequest(new { message = "Request payload is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Name))
+            {
+                return BadRequest(new { message = "Name is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.MobileNumber))
+            {
+                return BadRequest(new { message = "Mobile Number is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.OrganizationName))
+            {
+                return BadRequest(new { message = "Organization Name is required." });
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Description))
             {
                 return BadRequest(new { message = "Description is required." });
             }
 
+            var cleanName = dto.Name.Trim();
+            var cleanMobile = dto.MobileNumber.Trim();
+            var cleanOrg = dto.OrganizationName.Trim();
             var cleanDescription = dto.Description.Trim();
+
+            if (cleanName.Length > 100)
+            {
+                return BadRequest(new { message = "Name cannot exceed 100 characters." });
+            }
+
+            if (cleanMobile.Length > 20)
+            {
+                return BadRequest(new { message = "Mobile Number cannot exceed 20 characters." });
+            }
+
+            if (cleanOrg.Length > 150)
+            {
+                return BadRequest(new { message = "Organization Name cannot exceed 150 characters." });
+            }
+
             if (cleanDescription.Length > 2000)
             {
                 return BadRequest(new { message = "Description cannot exceed 2000 characters." });
@@ -156,18 +195,13 @@ namespace OnlineOD.Controllers
 
             try
             {
-                _emailQueue.Enqueue(new EmailJob
-                {
-                    Type = "DemoRequest",
-                    Description = cleanDescription
-                });
-
+                await _emailService.SendDemoRequestEmailAsync(cleanName, cleanMobile, cleanOrg, cleanDescription);
                 return Ok(new { message = "Demo request sent successfully." });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AdminController] RequestDemo email enqueue failed: {ex}");
-                return StatusCode(500, new { message = "Unable to send your demo request. Please try again." });
+                Console.WriteLine($"[AdminController] RequestDemo email failed: {ex}");
+                return StatusCode(500, new { message = "Unable to send your demo request. Please check server email configuration or try again later." });
             }
         }
 
