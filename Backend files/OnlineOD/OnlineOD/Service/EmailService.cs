@@ -64,34 +64,64 @@ namespace OnlineOD.Services
         // ── Shared send helper ────────────────────────────────────────────────
         private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
         {
+            var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
+                          ?? _config["EmailSettings:SenderName"]
+                          ?? "OD Application";
+
+            // 1. Check for Gmail API configuration
             var gmailClientId = Environment.GetEnvironmentVariable("Gmail__ClientId")
                              ?? _config["Gmail:ClientId"];
             var gmailClientSecret = Environment.GetEnvironmentVariable("Gmail__ClientSecret")
                                  ?? _config["Gmail:ClientSecret"];
             var gmailRefreshToken = Environment.GetEnvironmentVariable("Gmail__RefreshToken")
                                  ?? _config["Gmail:RefreshToken"];
-            var senderEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
-                           ?? _config["Gmail:SenderEmail"];
+            var gmailSenderEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                                ?? _config["Gmail:SenderEmail"];
 
-            var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
-                          ?? _config["EmailSettings:SenderName"]
-                          ?? "OD Application";
+            bool hasGmailApi = !string.IsNullOrWhiteSpace(gmailClientId)
+                            && !string.IsNullOrWhiteSpace(gmailClientSecret)
+                            && !string.IsNullOrWhiteSpace(gmailRefreshToken)
+                            && !string.IsNullOrWhiteSpace(gmailSenderEmail)
+                            && !gmailClientId.Equals("YOUR_CLIENT_ID", StringComparison.OrdinalIgnoreCase);
 
-            var missingConfigs = new List<string>();
-            if (string.IsNullOrWhiteSpace(gmailClientId)) missingConfigs.Add("Gmail__ClientId");
-            if (string.IsNullOrWhiteSpace(gmailClientSecret)) missingConfigs.Add("Gmail__ClientSecret");
-            if (string.IsNullOrWhiteSpace(gmailRefreshToken)) missingConfigs.Add("Gmail__RefreshToken");
-            if (string.IsNullOrWhiteSpace(senderEmail)) missingConfigs.Add("Gmail__SenderEmail");
-
-            if (missingConfigs.Count > 0)
+            if (hasGmailApi)
             {
-                var errorMsg = $"[EmailService] Gmail API is the required email provider, but the following configuration is missing: {string.Join(", ", missingConfigs)}";
-                Console.WriteLine(errorMsg);
-                throw new InvalidOperationException(errorMsg);
+                await SendViaGmailApiAsync(gmailClientId!.Trim(), gmailClientSecret!.Trim(), gmailRefreshToken!.Trim(),
+                                           senderName, gmailSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+                return;
             }
 
-            await SendViaGmailApiAsync(gmailClientId!.Trim(), gmailClientSecret!.Trim(), gmailRefreshToken!.Trim(),
-                                       senderName, senderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+            // 2. Check for MailKit / SMTP configuration
+            var smtpSenderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
+                               ?? _config["EmailSettings:SenderEmail"]
+                               ?? gmailSenderEmail;
+            var smtpSenderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
+                                  ?? _config["EmailSettings:SenderPassword"];
+
+            bool hasSmtp = !string.IsNullOrWhiteSpace(smtpSenderEmail)
+                        && !smtpSenderEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(smtpSenderPassword)
+                        && !smtpSenderPassword.Equals("YOUR_APP_PASSWORD", StringComparison.OrdinalIgnoreCase);
+
+            if (hasSmtp)
+            {
+                await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+                return;
+            }
+
+            // 3. Check for Resend API configuration
+            var resendApiKey = Environment.GetEnvironmentVariable("EmailSettings__ResendApiKey")
+                            ?? Environment.GetEnvironmentVariable("RESEND_API_KEY")
+                            ?? _config["EmailSettings:ResendApiKey"];
+
+            if (!string.IsNullOrWhiteSpace(resendApiKey))
+            {
+                var resendSender = !string.IsNullOrWhiteSpace(smtpSenderEmail) ? smtpSenderEmail : "onboarding@resend.dev";
+                await SendViaResendAsync(resendApiKey.Trim(), senderName, resendSender, toEmail, subject, htmlBody);
+                return;
+            }
+
+            throw new InvalidOperationException("[EmailService] No email provider configured. Please configure Gmail API (Gmail__ClientId, Gmail__ClientSecret, Gmail__RefreshToken, Gmail__SenderEmail) or SMTP (EmailSettings__SenderEmail, EmailSettings__SenderPassword).");
         }
 
         private async Task SendViaGmailApiAsync(
@@ -244,7 +274,16 @@ namespace OnlineOD.Services
             message.From.Add(new MailboxAddress(senderName, senderEmail));
             message.To.Add(new MailboxAddress(toName, toEmail));
             message.Subject = subject;
-            message.Body = new TextPart("html") { Text = htmlBody };
+            message.Date = DateTimeOffset.UtcNow;
+            message.MessageId = MimeKit.Utils.MimeUtils.GenerateMessageId();
+            message.Headers.Add(HeaderId.XMailer, "OD-Application-Management-System");
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = htmlBody,
+                TextBody = System.Text.RegularExpressions.Regex.Replace(htmlBody, "<[^>]*>", " ").Trim()
+            };
+            message.Body = builder.ToMessageBody();
 
             using var smtp = new SmtpClient();
             smtp.Timeout = timeoutSeconds * 1000;
