@@ -511,27 +511,22 @@ namespace OnlineOD.Services
 
         private string GetAdminRecipientEmail()
         {
-            var adminEmail = Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
-                          ?? _config["EmailSettings:AdminEmail"];
+            var recipientEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
+                              ?? _config["EmailSettings:SenderEmail"]
+                              ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+                              ?? _config["Gmail:SenderEmail"]
+                              ?? Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
+                              ?? _config["EmailSettings:AdminEmail"];
 
-            if (string.IsNullOrWhiteSpace(adminEmail)
-                || adminEmail.Equals("YOUR_ADMIN_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
-                || adminEmail.Equals("admin@example.com", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(recipientEmail)
+                || recipientEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                || recipientEmail.Equals("YOUR_ADMIN_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                || recipientEmail.Equals("admin@example.com", StringComparison.OrdinalIgnoreCase))
             {
-                adminEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
-                          ?? _config["Gmail:SenderEmail"]
-                          ?? Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
-                          ?? _config["EmailSettings:SenderEmail"];
+                throw new InvalidOperationException("[EmailService] Missing required email recipient configuration: 'EmailSettings:SenderEmail' (or environment variable 'EmailSettings__SenderEmail').");
             }
 
-            if (string.IsNullOrWhiteSpace(adminEmail)
-                || adminEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
-                || adminEmail.Equals("admin@example.com", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("[EmailService] Missing required admin recipient configuration: 'EmailSettings:AdminEmail' (or environment variable 'EmailSettings__AdminEmail').");
-            }
-
-            return adminEmail.Trim();
+            return recipientEmail.Trim();
         }
 
         // ── 3. "Contact Admin" form on the login page ─────────────────────────
