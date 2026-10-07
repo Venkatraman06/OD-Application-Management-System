@@ -306,13 +306,24 @@ namespace OnlineOD.Services
             try
             {
                 Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connecting to {host}:{port} using {security} (timeout: {timeoutSeconds}s)...");
-                await smtp.ConnectAsync(host, port, security);
-                Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connected successfully to {host}:{port}.");
+                try
+                {
+                    await smtp.ConnectAsync(host, port, security);
+                }
+                catch (Exception connectEx) when (host == "smtp.gmail.com" && (port == 587 || port == 465))
+                {
+                    var fallbackPort = port == 587 ? 465 : 587;
+                    var fallbackSec = fallbackPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+                    Console.WriteLine($"[EmailService] [SMTP] Connect to port {port} failed ({connectEx.Message}). Trying fallback port {fallbackPort} ({fallbackSec})...");
+                    await smtp.ConnectAsync(host, fallbackPort, fallbackSec);
+                }
+                Console.WriteLine($"[EmailService] [SMTP Step 1/3] Connected successfully to {host}.");
 
-                if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(senderPassword))
+                var cleanPassword = senderPassword?.Replace(" ", "").Trim();
+                if (!string.IsNullOrEmpty(senderEmail) && !string.IsNullOrEmpty(cleanPassword))
                 {
                     Console.WriteLine($"[EmailService] [SMTP Step 2/3] Authenticating as {senderEmail}...");
-                    await smtp.AuthenticateAsync(senderEmail, senderPassword);
+                    await smtp.AuthenticateAsync(senderEmail.Trim(), cleanPassword);
                     Console.WriteLine($"[EmailService] [SMTP Step 2/3] Authenticated successfully as {senderEmail}.");
                 }
                 else
