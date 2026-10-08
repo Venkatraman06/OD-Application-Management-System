@@ -68,26 +68,7 @@ namespace OnlineOD.Services
                           ?? _config["EmailSettings:SenderName"]
                           ?? "OD Application";
 
-            // 1. Check for MailKit / SMTP configuration first (preferred when App Password is provided)
-            var smtpSenderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
-                               ?? _config["EmailSettings:SenderEmail"]
-                               ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
-                               ?? _config["Gmail:SenderEmail"];
-            var smtpSenderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
-                                  ?? _config["EmailSettings:SenderPassword"];
-
-            bool hasSmtp = !string.IsNullOrWhiteSpace(smtpSenderEmail)
-                        && !smtpSenderEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrWhiteSpace(smtpSenderPassword)
-                        && !smtpSenderPassword.Equals("YOUR_APP_PASSWORD", StringComparison.OrdinalIgnoreCase);
-
-            if (hasSmtp)
-            {
-                await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
-                return;
-            }
-
-            // 2. Check for Gmail API configuration
+            // 1. Check for Gmail API configuration (primary provider used by OD system over HTTPS)
             var gmailClientId = Environment.GetEnvironmentVariable("Gmail__ClientId")
                              ?? _config["Gmail:ClientId"];
             var gmailClientSecret = Environment.GetEnvironmentVariable("Gmail__ClientSecret")
@@ -114,13 +95,25 @@ namespace OnlineOD.Services
                 catch (Exception gEx)
                 {
                     Console.WriteLine($"[EmailService] Gmail API send failed: {gEx.Message}. Attempting fallback...");
-                    if (hasSmtp)
-                    {
-                        await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
-                        return;
-                    }
-                    throw;
                 }
+            }
+
+            // 2. Check for MailKit / SMTP configuration
+            var smtpSenderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
+                               ?? _config["EmailSettings:SenderEmail"]
+                               ?? gmailSenderEmail;
+            var smtpSenderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
+                                  ?? _config["EmailSettings:SenderPassword"];
+
+            bool hasSmtp = !string.IsNullOrWhiteSpace(smtpSenderEmail)
+                        && !smtpSenderEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(smtpSenderPassword)
+                        && !smtpSenderPassword.Equals("YOUR_APP_PASSWORD", StringComparison.OrdinalIgnoreCase);
+
+            if (hasSmtp)
+            {
+                await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+                return;
             }
 
             // 3. Check for Resend API configuration
@@ -135,7 +128,7 @@ namespace OnlineOD.Services
                 return;
             }
 
-            throw new InvalidOperationException("[EmailService] No email provider configured. Please configure SMTP (EmailSettings__SenderEmail, EmailSettings__SenderPassword) or Gmail API (Gmail__ClientId, Gmail__ClientSecret, Gmail__RefreshToken, Gmail__SenderEmail).");
+            throw new InvalidOperationException("[EmailService] No email provider configured. Please configure Gmail API (Gmail__ClientId, Gmail__ClientSecret, Gmail__RefreshToken, Gmail__SenderEmail) or SMTP (EmailSettings__SenderEmail, EmailSettings__SenderPassword).");
         }
 
         private async Task SendViaGmailApiAsync(
@@ -633,24 +626,7 @@ namespace OnlineOD.Services
 
             var body = Wrap("Admin", intro, rows, "", false, "Demo Request Details");
 
-            var smtpSenderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
-                               ?? _config["EmailSettings:SenderEmail"];
-            var smtpSenderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
-                                  ?? _config["EmailSettings:SenderPassword"];
-            var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
-                          ?? _config["EmailSettings:SenderName"]
-                          ?? "OD Application";
-
-            if (string.IsNullOrWhiteSpace(smtpSenderEmail)
-                || smtpSenderEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
-                || string.IsNullOrWhiteSpace(smtpSenderPassword)
-                || smtpSenderPassword.Equals("YOUR_APP_PASSWORD", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("[EmailService] SMTP credentials are not configured. Please set 'EmailSettings__SenderEmail' and 'EmailSettings__SenderPassword' (Google App Password).");
-            }
-
-            // Explicitly use MailKit SMTP — do not use Gmail API or OAuth refresh tokens for Request Demo
-            await SendViaSmtpAsync(senderName, smtpSenderEmail.Trim(), recipientEmail.Trim(), "Recipient", "Request Demo Request - Online OD Application Management System", body);
+            await SendAsync(recipientEmail.Trim(), "Recipient", "Request Demo Request - Online OD Application Management System", body);
         }
     }
 }
