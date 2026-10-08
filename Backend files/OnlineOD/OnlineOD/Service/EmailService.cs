@@ -606,13 +606,17 @@ namespace OnlineOD.Services
         }
 
         // ── 5. "Request a Demo" form from Contact Admin page ──────────────────
-        public async Task SendDemoRequestEmailAsync(string name, string mobileNumber, string organizationName, string description)
+        public async Task SendDemoRequestEmailAsync(string name, string mobileNumber, string organizationName, string recipientEmail, string description)
         {
-            var recipientEmail = GetAdminRecipientEmail();
+            if (string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                throw new ArgumentException("Recipient email address cannot be empty.", nameof(recipientEmail));
+            }
 
             var safeName = System.Net.WebUtility.HtmlEncode(name);
             var safeMobile = System.Net.WebUtility.HtmlEncode(mobileNumber);
             var safeOrg = System.Net.WebUtility.HtmlEncode(organizationName);
+            var safeRecipientEmail = System.Net.WebUtility.HtmlEncode(recipientEmail);
             var safeDescription = System.Net.WebUtility.HtmlEncode(description);
 
             var rows = $@"
@@ -620,6 +624,7 @@ namespace OnlineOD.Services
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Name</td><td style='color:#111827'><b>{safeName}</b></td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Mobile Number</td><td style='color:#111827'>{safeMobile}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Organization Name</td><td style='color:#111827'>{safeOrg}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Recipient Email</td><td style='color:#111827'>{safeRecipientEmail}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Description</td><td style='color:#111827;white-space:pre-wrap'>{safeDescription}</td></tr>
             </table>";
 
@@ -629,28 +634,23 @@ namespace OnlineOD.Services
             var body = Wrap("Admin", intro, rows, "", false, "Demo Request Details");
 
             var smtpSenderEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
-                               ?? _config["EmailSettings:SenderEmail"]
-                               ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
-                               ?? _config["Gmail:SenderEmail"];
+                               ?? _config["EmailSettings:SenderEmail"];
             var smtpSenderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
                                   ?? _config["EmailSettings:SenderPassword"];
             var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
                           ?? _config["EmailSettings:SenderName"]
                           ?? "OD Application";
 
-            bool hasSmtp = !string.IsNullOrWhiteSpace(smtpSenderEmail)
-                        && !smtpSenderEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrWhiteSpace(smtpSenderPassword)
-                        && !smtpSenderPassword.Equals("YOUR_APP_PASSWORD", StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(smtpSenderEmail)
+                || smtpSenderEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrWhiteSpace(smtpSenderPassword)
+                || smtpSenderPassword.Equals("YOUR_APP_PASSWORD", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("[EmailService] SMTP credentials are not configured. Please set 'EmailSettings__SenderEmail' and 'EmailSettings__SenderPassword' (Google App Password).");
+            }
 
-            if (hasSmtp)
-            {
-                await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), recipientEmail, "Admin", "New Demo Request - Online OD Application Management System", body);
-            }
-            else
-            {
-                await SendAsync(recipientEmail, "Admin", "New Demo Request - Online OD Application Management System", body);
-            }
+            // Explicitly use MailKit SMTP — do not use Gmail API or OAuth refresh tokens for Request Demo
+            await SendViaSmtpAsync(senderName, smtpSenderEmail.Trim(), recipientEmail.Trim(), "Recipient", "Request Demo Request - Online OD Application Management System", body);
         }
     }
 }

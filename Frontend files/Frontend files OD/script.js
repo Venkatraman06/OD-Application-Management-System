@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const demoName = document.getElementById('demoName');
     const demoMobile = document.getElementById('demoMobile');
     const demoOrg = document.getElementById('demoOrg');
+    const demoRecipientEmail = document.getElementById('demoRecipientEmail');
     const demoDescription = document.getElementById('demoDescription');
     const contactModalTitle = document.getElementById('contactModalTitle');
 
@@ -134,13 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Request a Demo submission (Name, Mobile Number, Organization Name, Description)
+        // Request a Demo submission (Name, Mobile Number, Organization Name, Recipient Email, Description)
         requestDemoForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const name = (demoName?.value || '').trim();
             const mobileNumber = (demoMobile?.value || '').trim();
             const organizationName = (demoOrg?.value || '').trim();
+            const recipientEmail = (demoRecipientEmail?.value || '').trim();
             const description = (demoDescription?.value || '').trim();
 
             if (!name) {
@@ -168,6 +170,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (!recipientEmail) {
+                showToast('error', 'Please enter the recipient email address.');
+                demoRecipientEmail?.focus();
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(recipientEmail)) {
+                showToast('error', 'Please enter a valid recipient email address.');
+                demoRecipientEmail?.focus();
+                return;
+            }
+
             if (!description) {
                 showToast('error', 'Please enter a description for your demo request.');
                 demoDescription?.focus();
@@ -180,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`${API_BASE}/api/Admin/RequestDemo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, mobileNumber, organizationName, description })
+                    body: JSON.stringify({ name, mobileNumber, organizationName, recipientEmail, description })
                 });
 
                 if (response.ok) {

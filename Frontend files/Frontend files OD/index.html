@@ -339,7 +339,7 @@
                 </button>
             </form>
 
-            <!-- Tab 2: Request a Demo Form (Name, Mobile Number, Organization Name, Description) -->
+            <!-- Tab 2: Request a Demo Form (Name, Mobile Number, Organization Name, Recipient Email, Description) -->
             <form id="requestDemoForm" class="modal-body" style="display:none" novalidate>
                 <div class="input-group">
                     <label for="demoName">Name</label>
@@ -354,6 +354,11 @@
                 <div class="input-group">
                     <label for="demoOrg">Organization Name</label>
                     <input type="text" id="demoOrg" name="demoOrg" placeholder="Enter your organization/college/company name" required maxlength="150">
+                </div>
+
+                <div class="input-group">
+                    <label for="demoRecipientEmail">Recipient Email</label>
+                    <input type="email" id="demoRecipientEmail" name="demoRecipientEmail" placeholder="Enter recipient email address" required maxlength="150">
                 </div>
 
                 <div class="input-group">

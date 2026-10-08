@@ -137,8 +137,8 @@ namespace OnlineOD.Controllers
         }
 
         // POST /api/Admin/RequestDemo
-        // Body: { name, mobileNumber, organizationName, description }
-        // Sends a demo request email to the admin with the provided details.
+        // Body: { name, mobileNumber, organizationName, recipientEmail, description }
+        // Sends a demo request email to the recipient with the provided details.
         [HttpPost("RequestDemo")]
         [AllowAnonymous]
         public async Task<IActionResult> RequestDemo([FromBody] RequestDemoDto dto)
@@ -163,6 +163,11 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "Organization Name is required." });
             }
 
+            if (string.IsNullOrWhiteSpace(dto.RecipientEmail))
+            {
+                return BadRequest(new { message = "Recipient Email is required." });
+            }
+
             if (string.IsNullOrWhiteSpace(dto.Description))
             {
                 return BadRequest(new { message = "Description is required." });
@@ -171,6 +176,7 @@ namespace OnlineOD.Controllers
             var cleanName = dto.Name.Trim();
             var cleanMobile = dto.MobileNumber.Trim();
             var cleanOrg = dto.OrganizationName.Trim();
+            var cleanRecipientEmail = dto.RecipientEmail.Trim();
             var cleanDescription = dto.Description.Trim();
 
             if (cleanName.Length > 100)
@@ -188,6 +194,24 @@ namespace OnlineOD.Controllers
                 return BadRequest(new { message = "Organization Name cannot exceed 150 characters." });
             }
 
+            if (cleanRecipientEmail.Length > 150)
+            {
+                return BadRequest(new { message = "Recipient Email cannot exceed 150 characters." });
+            }
+
+            try
+            {
+                var emailAddr = new System.Net.Mail.MailAddress(cleanRecipientEmail);
+                if (emailAddr.Address != cleanRecipientEmail || !cleanRecipientEmail.Contains('.'))
+                {
+                    return BadRequest(new { message = "Please provide a valid Recipient Email address." });
+                }
+            }
+            catch
+            {
+                return BadRequest(new { message = "Please provide a valid Recipient Email address." });
+            }
+
             if (cleanDescription.Length > 2000)
             {
                 return BadRequest(new { message = "Description cannot exceed 2000 characters." });
@@ -195,7 +219,7 @@ namespace OnlineOD.Controllers
 
             try
             {
-                await _emailService.SendDemoRequestEmailAsync(cleanName, cleanMobile, cleanOrg, cleanDescription);
+                await _emailService.SendDemoRequestEmailAsync(cleanName, cleanMobile, cleanOrg, cleanRecipientEmail, cleanDescription);
                 return Ok(new { message = "Demo request sent successfully." });
             }
             catch (Exception ex)
