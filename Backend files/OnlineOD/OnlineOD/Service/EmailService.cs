@@ -62,7 +62,7 @@ namespace OnlineOD.Services
         }
 
         // ── Shared send helper ────────────────────────────────────────────────
-        private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody)
+        private async Task SendAsync(string toEmail, string toName, string subject, string htmlBody, string? replyToEmail = null)
         {
             var senderName = Environment.GetEnvironmentVariable("EmailSettings__SenderName")
                           ?? _config["EmailSettings:SenderName"]
@@ -89,7 +89,7 @@ namespace OnlineOD.Services
                 try
                 {
                     await SendViaGmailApiAsync(gmailClientId!.Trim(), gmailClientSecret!.Trim(), gmailRefreshToken!.Trim(),
-                                               senderName, gmailSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+                                               senderName, gmailSenderEmail!.Trim(), toEmail, toName, subject, htmlBody, replyToEmail);
                     return;
                 }
                 catch (Exception gEx)
@@ -112,7 +112,7 @@ namespace OnlineOD.Services
 
             if (hasSmtp)
             {
-                await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), toEmail, toName, subject, htmlBody);
+                await SendViaSmtpAsync(senderName, smtpSenderEmail!.Trim(), toEmail, toName, subject, htmlBody, replyToEmail);
                 return;
             }
 
@@ -124,7 +124,7 @@ namespace OnlineOD.Services
             if (!string.IsNullOrWhiteSpace(resendApiKey))
             {
                 var resendSender = !string.IsNullOrWhiteSpace(smtpSenderEmail) ? smtpSenderEmail : "onboarding@resend.dev";
-                await SendViaResendAsync(resendApiKey.Trim(), senderName, resendSender, toEmail, subject, htmlBody);
+                await SendViaResendAsync(resendApiKey.Trim(), senderName, resendSender, toEmail, subject, htmlBody, replyToEmail);
                 return;
             }
 
@@ -135,13 +135,18 @@ namespace OnlineOD.Services
             string clientId, string clientSecret, string refreshToken,
             string senderName, string senderEmail,
             string toEmail, string toName,
-            string subject, string htmlBody)
+            string subject, string htmlBody,
+            string? replyToEmail = null)
         {
             Console.WriteLine($"[EmailService] [Gmail API Step 1/3] Preparing MIME message for {toEmail}...");
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(senderName, senderEmail));
             message.To.Add(new MailboxAddress(toName, toEmail));
+            if (!string.IsNullOrWhiteSpace(replyToEmail))
+            {
+                message.ReplyTo.Add(new MailboxAddress(toName == "Admin" ? "Customer" : toName, replyToEmail.Trim()));
+            }
             message.Subject = subject;
             message.Date = DateTimeOffset.UtcNow;
             message.MessageId = MimeKit.Utils.MimeUtils.GenerateMessageId();
@@ -200,7 +205,7 @@ namespace OnlineOD.Services
             Console.WriteLine($"[EmailService] [Gmail API] Email sent successfully to {toEmail}. Gmail Message ID: {sentMessage.Id}");
         }
 
-        private async Task SendViaResendAsync(string apiKey, string senderName, string senderEmail, string toEmail, string subject, string htmlBody)
+        private async Task SendViaResendAsync(string apiKey, string senderName, string senderEmail, string toEmail, string subject, string htmlBody, string? replyToEmail = null)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -209,13 +214,18 @@ namespace OnlineOD.Services
                 ? $"{senderName} <{senderEmail}>"
                 : senderEmail;
 
-            var payload = new
+            var payload = new Dictionary<string, object>
             {
-                from = fromAddress,
-                to = new[] { toEmail },
-                subject = subject,
-                html = htmlBody
+                ["from"] = fromAddress,
+                ["to"] = new[] { toEmail },
+                ["subject"] = subject,
+                ["html"] = htmlBody
             };
+
+            if (!string.IsNullOrWhiteSpace(replyToEmail))
+            {
+                payload["reply_to"] = replyToEmail.Trim();
+            }
 
             var json = JsonSerializer.Serialize(payload);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -235,7 +245,7 @@ namespace OnlineOD.Services
             }
         }
 
-        private async Task SendViaSmtpAsync(string senderName, string senderEmail, string toEmail, string toName, string subject, string htmlBody)
+        private async Task SendViaSmtpAsync(string senderName, string senderEmail, string toEmail, string toName, string subject, string htmlBody, string? replyToEmail = null)
         {
             var senderPassword = Environment.GetEnvironmentVariable("EmailSettings__SenderPassword")
                               ?? _config["EmailSettings:SenderPassword"];
@@ -280,6 +290,10 @@ namespace OnlineOD.Services
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(senderName, senderEmail));
             message.To.Add(new MailboxAddress(toName, toEmail));
+            if (!string.IsNullOrWhiteSpace(replyToEmail))
+            {
+                message.ReplyTo.Add(new MailboxAddress(toName == "Admin" ? "Customer" : toName, replyToEmail.Trim()));
+            }
             message.Subject = subject;
             message.Date = DateTimeOffset.UtcNow;
             message.MessageId = MimeKit.Utils.MimeUtils.GenerateMessageId();
@@ -529,19 +543,19 @@ namespace OnlineOD.Services
 
         private string GetAdminRecipientEmail()
         {
-            var recipientEmail = Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
-                              ?? _config["EmailSettings:SenderEmail"]
-                              ?? Environment.GetEnvironmentVariable("Gmail__SenderEmail")
+            var recipientEmail = Environment.GetEnvironmentVariable("Gmail__SenderEmail")
                               ?? _config["Gmail:SenderEmail"]
                               ?? Environment.GetEnvironmentVariable("EmailSettings__AdminEmail")
-                              ?? _config["EmailSettings:AdminEmail"];
+                              ?? _config["EmailSettings:AdminEmail"]
+                              ?? Environment.GetEnvironmentVariable("EmailSettings__SenderEmail")
+                              ?? _config["EmailSettings:SenderEmail"];
 
             if (string.IsNullOrWhiteSpace(recipientEmail)
                 || recipientEmail.Equals("YOUR_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
                 || recipientEmail.Equals("YOUR_ADMIN_EMAIL@gmail.com", StringComparison.OrdinalIgnoreCase)
                 || recipientEmail.Equals("admin@example.com", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("[EmailService] Missing required email recipient configuration: 'EmailSettings:SenderEmail' (or environment variable 'EmailSettings__SenderEmail').");
+                throw new InvalidOperationException("[EmailService] Missing required email recipient configuration: 'Gmail:SenderEmail' or 'EmailSettings:AdminEmail'.");
             }
 
             return recipientEmail.Trim();
@@ -599,17 +613,19 @@ namespace OnlineOD.Services
         }
 
         // ── 5. "Request a Demo" form from Contact Admin page ──────────────────
-        public async Task SendDemoRequestEmailAsync(string name, string mobileNumber, string organizationName, string recipientEmail, string description)
+        public async Task SendDemoRequestEmailAsync(string name, string mobileNumber, string organizationName, string customerEmail, string description)
         {
-            if (string.IsNullOrWhiteSpace(recipientEmail))
+            if (string.IsNullOrWhiteSpace(customerEmail))
             {
-                throw new ArgumentException("Recipient email address cannot be empty.", nameof(recipientEmail));
+                throw new ArgumentException("Customer email address cannot be empty.", nameof(customerEmail));
             }
+
+            var adminEmail = GetAdminRecipientEmail();
 
             var safeName = System.Net.WebUtility.HtmlEncode(name);
             var safeMobile = System.Net.WebUtility.HtmlEncode(mobileNumber);
             var safeOrg = System.Net.WebUtility.HtmlEncode(organizationName);
-            var safeRecipientEmail = System.Net.WebUtility.HtmlEncode(recipientEmail);
+            var safeCustomerEmail = System.Net.WebUtility.HtmlEncode(customerEmail);
             var safeDescription = System.Net.WebUtility.HtmlEncode(description);
 
             var rows = $@"
@@ -617,16 +633,16 @@ namespace OnlineOD.Services
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Name</td><td style='color:#111827'><b>{safeName}</b></td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Mobile Number</td><td style='color:#111827'>{safeMobile}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Organization Name</td><td style='color:#111827'>{safeOrg}</td></tr>
-                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Recipient Email</td><td style='color:#111827'>{safeRecipientEmail}</td></tr>
+                <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Customer Email</td><td style='color:#111827'>{safeCustomerEmail}</td></tr>
                 <tr><td style='padding:6px 0;color:#6b7280;width:150px;vertical-align:top'>Description</td><td style='color:#111827;white-space:pre-wrap'>{safeDescription}</td></tr>
             </table>";
 
-            var intro = "A user submitted a <b>New Demo Request</b> for the Online OD Application Management System. " +
+            var intro = "A customer submitted a <b>New Demo Request</b> for the Online OD Application Management System. " +
                         "Details are provided below:";
 
             var body = Wrap("Admin", intro, rows, "", false, "Demo Request Details");
 
-            await SendAsync(recipientEmail.Trim(), "Recipient", "Request Demo Request - Online OD Application Management System", body);
+            await SendAsync(adminEmail, "Admin", "New Demo Request - Online OD Application Management System", body, replyToEmail: customerEmail.Trim());
         }
     }
 }
