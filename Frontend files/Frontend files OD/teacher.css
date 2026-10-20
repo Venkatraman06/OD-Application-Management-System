@@ -4864,7 +4864,7 @@ select option,
     flex: 0 0 auto;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 768px) {
     .student-search-row {
         flex-direction: column;
         gap: 10px;

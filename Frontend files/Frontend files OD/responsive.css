@@ -741,3 +741,22 @@ html, body {
     display: inline-block !important;
     vertical-align: middle !important;
 }
+
+/* ── Student Analytics Card Mobile Layout (Staff & HOD) ── */
+@media (max-width: 768px) {
+    .student-search-row {
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+    .student-search-row .report-search-input {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        box-sizing: border-box !important;
+    }
+    .student-search-btn {
+        width: 100% !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+}
