@@ -681,6 +681,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
+    // Map certification/winning status string to result-tag CSS modifier class
+    function resultTagClass(status) {
+        if (!status) return 'empty';
+        const s = String(status).trim().toLowerCase();
+        if (s === 'not submitted' || s === 'none' || s === '-' || s === '') return 'empty';
+        if (s.includes('1st') || s.includes('first') || s.includes('winner') || s.includes('gold')) return 'gold';
+        if (s.includes('2nd') || s.includes('second') || s.includes('runner') || s.includes('silver')) return 'silver';
+        if (s.includes('3rd') || s.includes('third') || s.includes('bronze')) return 'bronze';
+        if (s.includes('submitted') || s.includes('participat')) return 'neutral';
+        return 'other';
+    }
+
     function renderReportSearchResults(list) {
         const tbody = document.getElementById('odReportTableBody');
         const badge = document.getElementById('rptResultBadge');
